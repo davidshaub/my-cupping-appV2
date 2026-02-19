@@ -1,0 +1,258 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  --os-bg: #f2ece2;
+  --os-bg-soft: #f8f3ea;
+  --os-surface: #fffaf3;
+  --os-line: #dbcdb9;
+  --os-ink: #1f2b23;
+  --os-muted: #7c6f5f;
+  --os-accent: #c78547;
+  --os-accent-dark: #9d6331;
+  --os-accent-soft: #f4e2cf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(199, 133, 71, 0.14), transparent 30%),
+    radial-gradient(circle at 100% 100%, rgba(31, 43, 35, 0.09), transparent 34%),
+    var(--os-bg);
+  color: var(--os-ink);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  touch-action: manipulation;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Fraunces', serif;
+  letter-spacing: -0.01em;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (max-width: 400px) {
+  .score-label {
+    font-size: 0.8rem !important;
+    flex: 1;
+  }
+
+  .score-control-group {
+    gap: 0.25rem !important;
+  }
+
+  .score-value {
+    font-size: 1.1rem !important;
+    width: 2.5rem !important;
+  }
+
+  .control-btn {
+    width: 2rem !important;
+    height: 2rem !important;
+  }
+}
+
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+
+  body {
+    background-color: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  @page {
+    size: landscape;
+    margin: 0.5cm;
+  }
+
+  .report-container {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .sample-spec-sheet {
+    break-before: page !important;
+    page-break-before: always !important;
+    border: 2px solid #1c1917 !important;
+    padding: 0.8cm !important;
+    margin-bottom: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: 19cm !important;
+    overflow: hidden !important;
+    position: relative;
+  }
+
+  .sample-spec-sheet:first-child {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  .spec-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1cm !important;
+    margin-top: 0.5cm !important;
+  }
+
+  .visual-row {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin-bottom: 1cm !important;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 0.5cm !important;
+  }
+
+  .grade-display {
+    background-color: #1c1917 !important;
+    color: white !important;
+    padding: 0.5cm 1cm !important;
+    border-radius: 0 !important;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+.btn-stone-dark {
+  background: linear-gradient(145deg, #27372c, #1f2b23) !important;
+  color: #f9f4eb !important;
+  border: 1px solid #1a241e !important;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  box-shadow: 0 10px 24px rgba(31, 43, 35, 0.28);
+}
+
+.btn-stone-light {
+  background-color: var(--os-bg-soft) !important;
+  color: var(--os-ink) !important;
+  border: 1px solid var(--os-line);
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+}
+
+.tag-fruity {
+  background-color: #fceee8;
+  color: #8f412f;
+  border: 1px solid #eec5b5;
+}
+
+.tag-citrus {
+  background-color: #fff3dc;
+  color: #946022;
+  border: 1px solid #efcf95;
+}
+
+.tag-floral {
+  background-color: #f7eef4;
+  color: #7b3d5f;
+  border: 1px solid #ddc0d0;
+}
+
+.tag-sweet {
+  background-color: #fbefdf;
+  color: #995a1f;
+  border: 1px solid #eecda8;
+}
+
+.tag-nutty {
+  background-color: #f1ebe1;
+  color: #574839;
+  border: 1px solid #d8cabc;
+}
+
+.tag-spices {
+  background-color: #f5ecf7;
+  color: #69417e;
+  border: 1px solid #d8bfde;
+}
+
+.tag-negative {
+  background-color: #eceff2;
+  color: #4a5760;
+  border: 1px solid #d4dde5;
+}
+
+.section-header {
+  letter-spacing: 0.2em;
+  font-size: 9px;
+  font-weight: 900;
+  color: #8e7f6d;
+  text-transform: uppercase;
+}
+
+.pb-safe {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* Osito-inspired palette remap over Tailwind utility classes used in this app */
+.bg-stone-50 {
+  background-color: #fbf7f0 !important;
+}
+
+.bg-stone-100 {
+  background-color: var(--os-bg-soft) !important;
+}
+
+.bg-stone-200 {
+  background-color: #e7d8c4 !important;
+}
+
+.bg-stone-800,
+.bg-stone-900 {
+  background-color: var(--os-ink) !important;
+}
+
+.text-stone-900 {
+  color: var(--os-ink) !important;
+}
+
+.text-stone-800,
+.text-stone-700,
+.text-stone-600 {
+  color: #4f4437 !important;
+}
+
+.text-stone-500,
+.text-stone-400,
+.text-stone-300 {
+  color: var(--os-muted) !important;
+}
+
+.border-stone-50 {
+  border-color: #f0e8dc !important;
+}
+
+.border-stone-100,
+.border-stone-200 {
+  border-color: var(--os-line) !important;
+}
+
+.text-blue-600 {
+  color: var(--os-accent-dark) !important;
+}
+
+.border-blue-100 {
+  border-color: #e6c7a5 !important;
+}
