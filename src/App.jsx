@@ -642,6 +642,7 @@ const App = () => {
               tags={currentSample.notes.negativeTags}
               options={{ Negative: NEGATIVE_LEXICON }}
               onToggle={(t) => toggleTag(activeSampleIndex, 'negative', t)}
+              onCycle={(t) => cycleTagModifier(activeSampleIndex, 'negative', t)}
             />
             <div className="space-y-3 pt-8 border-t-2 border-stone-100">
               <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-2">
