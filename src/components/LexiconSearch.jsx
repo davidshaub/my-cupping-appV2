@@ -73,6 +73,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
               filtered.slice(0, 8).map((option) => (
                 <button
                   key={option}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(option)}
                   className="w-full text-left px-5 py-3.5 text-sm font-bold text-stone-700 hover:bg-stone-50 rounded-xl transition-colors"
                 >
@@ -86,6 +87,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
                   {categories.map((cat) => (
                     <button
                       key={cat}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleSelect(cat)}
                       className="px-3 py-2 rounded-lg bg-stone-100 text-stone-600 font-black text-[10px] uppercase tracking-tighter hover:bg-stone-200 transition-colors"
                     >
@@ -97,6 +99,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
             )}
             {smartMatch && !filtered.includes(smartMatch) && (
               <button
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleSelect(smartMatch)}
                 className="w-full text-left px-5 py-4 bg-stone-900 text-white flex justify-between items-center rounded-xl mt-1"
               >
