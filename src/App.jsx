@@ -442,7 +442,7 @@ const App = () => {
                   key={s.id}
                   className="sample-spec-sheet mb-14 md:mb-32 border-b-2 border-stone-100 pb-10 md:pb-16 last:border-0 last:mb-0 last:pb-0 print:border-stone-900 print:border-2 print:p-[0.8cm] print:mb-0 print:pb-0"
                 >
-                  <div className="flex flex-col sm:flex-row items-stretch justify-between border border-stone-900 mb-6">
+                  <div className="print-identity-block flex flex-col sm:flex-row items-stretch justify-between border border-stone-900 mb-6">
                     <div className="flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
                       <div className="flex items-center gap-3 mb-1">
                         <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">Sample 0{s.id}</span>
@@ -469,28 +469,28 @@ const App = () => {
                     </div>
                   </div>
 
-                  <div className="spec-grid flex flex-col sm:grid sm:grid-cols-[auto_1fr] gap-8 md:gap-12 lg:gap-16">
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 md:gap-12 visual-row">
-                      <div className="flex flex-col items-center w-full sm:w-auto">
+                  <div className="spec-grid print-spec-grid flex flex-col sm:grid sm:grid-cols-[auto_1fr] gap-8 md:gap-12 lg:gap-16">
+                    <div className="print-visual-row flex flex-col sm:flex-row items-center sm:items-start gap-8 md:gap-12 visual-row">
+                      <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
                         <p className="section-header mb-6">Attribute Map</p>
                         <SpiderGraph scores={s.scores} size={reportRadarSize} />
                       </div>
-                      <div className="flex flex-col items-center w-full sm:w-auto">
+                      <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
                         <p className="section-header mb-6">Sensory Balance</p>
-                        <DonutChart tags={[...s.notes.fragAromaTags, ...s.notes.inCupTags]} size={reportDonutSize} />
+                        <DonutChart tags={[...s.notes.fragAromaTags, ...s.notes.inCupTags]} size={reportDonutSize} className="print-donut-chart" />
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-8 data-column">
-                      <div className="space-y-6">
+                      <div className="space-y-6 print-tag-sections">
                         <ReportTags label="Fragrance/Aroma" tags={s.notes.fragAromaTags} alwaysShow />
                         <ReportTags label="In the Cup" tags={s.notes.inCupTags} alwaysShow />
                         <ReportTags label="Negative" tags={s.notes.negativeTags} alwaysShow />
                       </div>
 
-                      <div className="pt-6 border-t border-stone-100">
+                      <div className="pt-6 border-t border-stone-100 print-notes-block">
                         <p className="section-header text-stone-900 mb-3">Other Observations</p>
-                        <div className="text-[13px] leading-relaxed text-stone-700 italic pr-4">
+                        <div className="text-[13px] leading-relaxed text-stone-700 italic pr-4 print-notes-body">
                           {s.notes.otherText || <span className="text-stone-300 italic opacity-50">None recorded.</span>}
                         </div>
                       </div>
@@ -500,7 +500,7 @@ const App = () => {
               ))}
             </div>
 
-            <div className="mt-12 pt-4 border-t border-stone-100 text-center">
+            <div className="report-signoff mt-12 pt-4 border-t border-stone-100 text-center">
               <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.6em]">Authorized Analysis • Osito Laboratory Protocol</p>
             </div>
           </div>

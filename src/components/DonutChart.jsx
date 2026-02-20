@@ -2,7 +2,7 @@ import React from 'react';
 import { CATEGORY_COLORS } from '../constants';
 import { getCategoryForItem } from '../lib/cupping';
 
-const DonutChart = ({ tags, size = 200 }) => {
+const DonutChart = ({ tags, size = 200, className = '' }) => {
   const counts = { Fruity: 0, Citrus: 0, Floral: 0, Sweet: 0, 'Nutty/Cocoa': 0, Spices: 0 };
 
   tags.forEach((t) => {
@@ -33,7 +33,7 @@ const DonutChart = ({ tags, size = 200 }) => {
   const sortedEntries = Object.entries(counts).filter(([, weight]) => weight > 0);
 
   return (
-    <div className="relative flex flex-col items-center justify-center" style={{ width: size, height: size }}>
+    <div className={`relative flex flex-col items-center justify-center ${className}`} style={{ width: size, height: size }}>
       <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90 overflow-visible">
         {sortedEntries.map(([cat, weight]) => {
           const percentage = (weight / totalWeight) * 100;
