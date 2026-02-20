@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Icon from './Icon';
 import { getBaseTag, getSmartMatch, getTagStyle } from '../lib/cupping';
 
@@ -7,6 +7,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [smartMatch, setSmartMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const inputRef = useRef(null);
 
   const flatOptions = useMemo(() => Object.values(options).flat(), [options]);
   const categories = useMemo(() => Object.keys(options), [options]);
@@ -33,6 +34,13 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
     (o) => o.toLowerCase().includes(searchTerm.toLowerCase()) && !tags.some((t) => getBaseTag(t) === o)
   );
 
+  const handleSelect = (value) => {
+    onToggle(value);
+    setSearchTerm('');
+    setIsFocused(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   return (
     <div className="space-y-3 relative">
       <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest block leading-none">{label}</label>
@@ -44,6 +52,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
         >
           <Icon name="search" size={16} className="text-stone-300 shrink-0" />
           <input
+            ref={inputRef}
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -64,10 +73,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
               filtered.slice(0, 8).map((option) => (
                 <button
                   key={option}
-                  onClick={() => {
-                    onToggle(option);
-                    setSearchTerm('');
-                  }}
+                  onClick={() => handleSelect(option)}
                   className="w-full text-left px-5 py-3.5 text-sm font-bold text-stone-700 hover:bg-stone-50 rounded-xl transition-colors"
                 >
                   {option}
@@ -80,10 +86,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
                   {categories.map((cat) => (
                     <button
                       key={cat}
-                      onClick={() => {
-                        onToggle(cat);
-                        setSearchTerm('');
-                      }}
+                      onClick={() => handleSelect(cat)}
                       className="px-3 py-2 rounded-lg bg-stone-100 text-stone-600 font-black text-[10px] uppercase tracking-tighter hover:bg-stone-200 transition-colors"
                     >
                       {cat}
@@ -94,10 +97,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
             )}
             {smartMatch && !filtered.includes(smartMatch) && (
               <button
-                onClick={() => {
-                  onToggle(smartMatch);
-                  setSearchTerm('');
-                }}
+                onClick={() => handleSelect(smartMatch)}
                 className="w-full text-left px-5 py-4 bg-stone-900 text-white flex justify-between items-center rounded-xl mt-1"
               >
                 <div className="flex flex-col">

@@ -69,7 +69,8 @@ export const CATEGORISED_LEXICON = {
     'Pipe Tobacco',
     'Licorice',
     'Good Sweetness',
-    'Brown Fruit: Raisin/Date'
+    'Brown Fruit: Raisin/Date',
+    'Dried Apricot'
   ],
   'Nutty/Cocoa': ['Chocolate', 'Nuts', 'Almond', 'Hazelnut', 'Wafer Cookie', 'Terracotta'],
   Spices: ['Baking Spices', 'Cinnamon', 'Mint'],
@@ -114,5 +115,7 @@ export const NEGATIVE_LEXICON = [
   'Onion',
   'Muddled',
   'Boozy',
-  'Pepper'
+  'Pepper',
+  'Winey',
+  'Unclean Finish'
 ];
