@@ -119,18 +119,6 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
             title={onCycle ? 'Click to cycle: normal -> Slight -> Intense' : undefined}
           >
             {tag}
-            {onCycle && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCycle(tag);
-                }}
-                className="opacity-60 hover:opacity-100 shrink-0 text-[8px] px-1.5 py-0.5 rounded bg-white/70 border border-black/10"
-                title="Cycle intensity"
-              >
-                S/I
-              </button>
-            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
