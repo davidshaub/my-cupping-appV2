@@ -4,6 +4,8 @@ import { GRAPH_FLOOR, RADAR_LABELS } from '../constants';
 const SpiderGraph = ({ scores, size }) => {
   const center = size / 2;
   const radius = (size / 2) * 0.72;
+  const labelDistance = radius + (size <= 190 ? 20 : 26);
+  const labelFontSize = size <= 190 ? 7 : 8;
   const fragAroma = scores.aroma !== null ? (scores.fragrance + scores.aroma) / 2 : scores.fragrance;
   const data = [
     fragAroma,
@@ -27,7 +29,7 @@ const SpiderGraph = ({ scores, size }) => {
   const path = `${pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')} Z`;
 
   return (
-    <div className="w-full flex items-center justify-center overflow-hidden">
+    <div className="w-full flex items-center justify-center overflow-visible">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible font-sans max-w-full h-auto">
         {[7.5, 8.5, 9.5].map((v) => (
           <circle
@@ -43,13 +45,23 @@ const SpiderGraph = ({ scores, size }) => {
         ))}
         {RADAR_LABELS.map((label, i) => {
           const angle = i * ((Math.PI * 2) / 10) - Math.PI / 2;
+          const cos = Math.cos(angle);
           const x2 = center + radius * Math.cos(angle);
           const y2 = center + radius * Math.sin(angle);
-          const lp = { x: center + (radius + 30) * Math.cos(angle), y: center + (radius + 30) * Math.sin(angle) };
+          const lp = { x: center + labelDistance * Math.cos(angle), y: center + labelDistance * Math.sin(angle) };
+          let textAnchor = 'middle';
+          let labelX = lp.x;
+          if (cos > 0.28) {
+            textAnchor = 'end';
+            labelX -= 4;
+          } else if (cos < -0.28) {
+            textAnchor = 'start';
+            labelX += 4;
+          }
           return (
             <g key={label}>
               <line x1={center} y1={center} x2={x2} y2={y2} stroke="#f5f5f4" strokeWidth="1.5" />
-              <text x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" className="text-[8px] font-black fill-stone-400 uppercase tracking-tighter">
+              <text x={labelX} y={lp.y} textAnchor={textAnchor} dominantBaseline="middle" fontSize={labelFontSize} className="font-black fill-stone-400 uppercase tracking-tighter">
                 {label}
               </text>
             </g>
