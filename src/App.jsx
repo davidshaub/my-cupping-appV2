@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   CATEGORIES,
   CATEGORISED_LEXICON,
+  INITIAL_SCORE,
   NEGATIVE_LEXICON
 } from './constants';
 import {
@@ -106,8 +107,9 @@ const App = () => {
   const updateScore = (sampleIdx, cat, delta) => {
     setSamples((prev) => {
       const sample = prev[sampleIdx];
-      const cur = sample.scores[cat] ?? (cat === 'aroma' ? 8.5 : 0);
-      let next = Math.round((cur + delta) * 4) / 4;
+      const current = sample.scores[cat];
+      const cur = current ?? 0;
+      let next = current === null ? INITIAL_SCORE : Math.round((cur + delta) * 4) / 4;
       if (next < 0 && cat !== 'correction') next = 0;
       if (next > 10 && !['defects', 'correction'].includes(cat)) next = 10;
 
