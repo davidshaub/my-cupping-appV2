@@ -90,8 +90,11 @@ export const CATEGORY_COLORS = {
 export const NEGATIVE_LEXICON = [
   'Acetic',
   'Age',
+  'Astringent',
   'Artificial Grape',
+  'Artificial/Process',
   'Earthy',
+  'Drying',
   'Flabby',
   'Hard Cups',
   'Harsh Finish',
