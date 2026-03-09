@@ -118,7 +118,9 @@ export const NEGATIVE_LEXICON = [
   'Onion',
   'Muddled',
   'Boozy',
+  'Butyric',
   'Pepper',
+  'Flat/Lacking',
   'Winey',
   'Unclean Finish'
 ];
