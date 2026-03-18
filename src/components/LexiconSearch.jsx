@@ -127,9 +127,10 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
                 e.stopPropagation();
                 onToggle(tag);
               }}
-              className="opacity-40 hover:opacity-100 shrink-0"
+              className="opacity-70 hover:opacity-100 shrink-0 text-[11px] px-2 py-1 leading-none rounded-lg bg-white/90 border border-black/10"
+              title="Remove"
             >
-              <Icon name="x" size={12} />
+              <Icon name="x" size={13} />
             </button>
           </span>
         ))}

@@ -52,8 +52,8 @@ export const CATEGORISED_LEXICON = {
     'Juicy',
     'Bubblegum'
   ],
-  Citrus: ['Citrus', 'Orange', 'Pulpy Citrus'],
-  Floral: ['Floral', 'Bergamot', 'Hops', 'Herbal', 'Black Tea'],
+  Citrus: ['Citrus', 'Orange', 'Pulpy Citrus', 'Bergamot'],
+  Floral: ['Floral', 'Hops', 'Herbal', 'Black Tea'],
   Sweet: [
     'Browning Sugars',
     'Vanilla',
@@ -120,6 +120,7 @@ export const NEGATIVE_LEXICON = [
   'Boozy',
   'Butyric',
   'Pepper',
+  'Leather',
   'Flat/Lacking',
   'Winey',
   'Unclean Finish'
