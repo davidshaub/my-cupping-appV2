@@ -455,13 +455,16 @@ const App = () => {
                   <div className="print-identity-block flex flex-col sm:flex-row items-stretch justify-between border border-stone-900 mb-6">
                     <div className="flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
                       <div className="flex items-center gap-3 mb-1">
-                        <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">Sample 0{s.id}</span>
+                        {!s.lotName && (
+                          <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">Sample 0{s.id}</span>
+                        )}
                         <span className="inline-flex items-center gap-2 text-base font-black text-stone-900 uppercase tracking-tight px-2 py-1 rounded-xl bg-stone-100 border border-stone-200">
-                          <Icon name="tag" size={13} className="text-stone-500" />
                           {s.ositoId || 'No ID'}
                         </span>
                       </div>
-                      <h2 className="text-xl sm:text-2xl md:text-4xl font-black text-stone-900 tracking-tighter uppercase leading-tight">{s.lotName || `Coffee ${s.id}`}</h2>
+                      <h2 className="text-xl sm:text-2xl md:text-4xl font-black text-stone-900 tracking-tighter uppercase leading-tight">
+                        {s.lotName ? s.lotName : `Sample 0${s.id}`}
+                      </h2>
                       <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-2">
                         <div className="flex flex-col">
                           <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">Processing</span>
