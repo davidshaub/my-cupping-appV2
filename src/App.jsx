@@ -418,7 +418,15 @@ const App = () => {
                 CSV
               </button>
               <button
-                onClick={() => window.print()}
+                onClick={() => {
+                  const prev = document.title;
+                  const stamp = new Date().toLocaleString();
+                  document.title = `Cupping Report ${stamp}`;
+                  window.print();
+                  setTimeout(() => {
+                    document.title = prev;
+                  }, 500);
+                }}
                 className="flex items-center gap-2 px-6 py-2 btn-stone-dark font-bold shadow-xl active:scale-95 text-xs"
               >
                 <Icon name="printer" size={16} />
@@ -431,7 +439,7 @@ const App = () => {
             <div className="print-header flex flex-col sm:flex-row sm:justify-between sm:items-baseline border-b-2 border-stone-900 pb-4 mb-8 gap-3">
               <div>
                 <h1 className="text-xl md:text-2xl font-black text-stone-900 uppercase tracking-tighter leading-none mb-1">
-                  Laboratory Evaluation Summary
+                  Lab Evaluation Summary
                 </h1>
                 <p className="text-[9px] font-bold text-stone-400 uppercase tracking-[0.2em]">Sourcing & Supply Quality Control</p>
               </div>
@@ -448,7 +456,7 @@ const App = () => {
                     <div className="flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
                       <div className="flex items-center gap-3 mb-1">
                         <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">Sample 0{s.id}</span>
-                        <span className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-tight">{s.ositoId || 'No ID'}</span>
+                        <span className="text-sm font-black text-stone-900 uppercase tracking-tight">{s.ositoId || 'No ID'}</span>
                       </div>
                       <h2 className="text-xl sm:text-2xl md:text-4xl font-black text-stone-900 tracking-tighter uppercase leading-tight">{s.lotName || `Coffee ${s.id}`}</h2>
                       <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-2">
@@ -459,10 +467,6 @@ const App = () => {
                           </span>
                         </div>
                         <div className="w-[1px] h-6 bg-stone-200" />
-                        <div className="flex flex-col">
-                          <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">Grade</span>
-                          <span className="text-[12px] font-bold text-stone-600 uppercase">Specialty Analysis</span>
-                        </div>
                       </div>
                     </div>
                     <div className="grade-display w-full sm:w-auto shrink-0 flex flex-col items-center justify-center bg-stone-900 px-6 sm:px-10 py-4 sm:min-w-[200px]">
@@ -503,7 +507,7 @@ const App = () => {
             </div>
 
             <div className="report-signoff mt-12 pt-4 border-t border-stone-100 text-center">
-              <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.6em]">Authorized Analysis • Osito Laboratory Protocol</p>
+              <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.6em]">Authorized Analysis • Osito Lab Protocol</p>
             </div>
           </div>
         </div>

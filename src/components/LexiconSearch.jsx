@@ -44,35 +44,35 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
   return (
     <div className="space-y-3 relative">
       <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest block leading-none">{label}</label>
-      <div className="relative">
-        <div
-          className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all shadow-inner ${
-            isFocused ? 'bg-white border-stone-300' : 'bg-stone-50 border-transparent'
-          }`}
-        >
-          <Icon name="search" size={16} className="text-stone-300 shrink-0" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setTimeout(() => setIsFocused(false), 250)}
-            placeholder="Search..."
-            className="bg-transparent border-none p-0 text-sm font-bold text-stone-800 focus:ring-0 w-full placeholder:text-stone-300 outline-none"
-          />
-          {isLoading && (
-            <div className="animate-spin text-stone-400 shrink-0">
-              <Icon name="loader-2" size={14} />
+          <div className="relative">
+            <div
+              className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all shadow-inner ${
+                isFocused ? 'bg-white border-stone-300' : 'bg-stone-50 border-transparent'
+              }`}
+            >
+              <Icon name="search" size={16} className="text-stone-300 shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setTimeout(() => setIsFocused(false), 250)}
+                placeholder="Search..."
+                className="bg-transparent border-none p-0 text-sm font-bold text-stone-800 focus:ring-0 w-full placeholder:text-stone-300 outline-none"
+              />
+              {isLoading && (
+                <div className="animate-spin text-stone-400 shrink-0">
+                  <Icon name="loader-2" size={14} />
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        {isFocused && searchTerm.length > 0 && (
-          <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border-2 border-stone-200 rounded-3xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto p-1">
-            {filtered.length > 0 ? (
-              filtered.slice(0, 8).map((option) => (
-                <button
-                  key={option}
+            {isFocused && searchTerm.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border-2 border-stone-200 rounded-3xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto p-1">
+                {filtered.length > 0 ? (
+                  filtered.slice(0, 8).map((option) => (
+                    <button
+                      key={option}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(option)}
                   className="w-full text-left px-5 py-3.5 text-sm font-bold text-stone-700 hover:bg-stone-50 rounded-xl transition-colors"
