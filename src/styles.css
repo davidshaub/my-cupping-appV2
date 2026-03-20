@@ -68,7 +68,6 @@ h3 {
 
 @media print {
   .print-hidden,
-  .print-header,
   .report-signoff {
     display: none !important;
   }
@@ -128,6 +127,55 @@ h3 {
   .sample-spec-sheet * {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-page-header,
+  .print-page-footer {
+    width: 100%;
+  }
+
+  .print-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25cm;
+  }
+
+  .print-page-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.12cm;
+    margin-top: 0.3cm;
+    text-align: center;
+  }
+
+  .print-page-title {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .print-page-subtitle {
+    margin: 2px 0 0 0;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .print-footer-text {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0;
   }
 
   .print-identity-block {
@@ -195,6 +243,52 @@ h3 {
   .print-donut-chart > .absolute:nth-of-type(2) span {
     font-size: 7px !important;
     letter-spacing: 0.01em !important;
+  }
+
+  .print-header-inner {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin-bottom: 0.25cm !important;
+  }
+
+  .print-page-header {
+    width: 100% !important;
+  }
+
+  .print-page-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.12cm !important;
+    margin-top: 0.3cm !important;
+    text-align: center !important;
+    width: 100% !important;
+  }
+
+  .print-page-title {
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.14em !important;
+    text-transform: uppercase !important;
+    margin: 0 !important;
+  }
+
+  .print-page-subtitle {
+    margin: 2px 0 0 0 !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+  }
+
+  .print-footer-text {
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    margin: 0 !important;
   }
 
   .data-column {
@@ -333,6 +427,10 @@ h3 {
 
 .pb-safe {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+.print-only {
+  display: none;
 }
 
 .report-logo {

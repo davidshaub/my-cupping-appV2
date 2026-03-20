@@ -452,6 +452,13 @@ const App = () => {
                   key={s.id}
                   className="sample-spec-sheet mb-14 md:mb-32 border-b-2 border-stone-100 pb-10 md:pb-16 last:border-0 last:mb-0 last:pb-0 print:border-stone-900 print:border-2 print:p-[0.8cm] print:mb-0 print:pb-0"
                 >
+                  <div className="print-page-header print-only">
+                    <div>
+                      <p className="print-page-title">Lab Evaluation Summary</p>
+                      <p className="print-page-subtitle">Sourcing & Supply Quality Control</p>
+                    </div>
+                    <div className="print-header-date">{sessionStartTime}</div>
+                  </div>
                   <div className="print-identity-block flex flex-col sm:flex-row items-stretch justify-between border border-stone-900 mb-6">
                     <div className="flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
                       <div className="flex items-center gap-3 mb-1">
@@ -506,9 +513,9 @@ const App = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="print-logo">
-                      <img src={HandsLogo} alt="Osito logo" />
-                    </div>
+                  </div>
+                  <div className="print-page-footer print-only">
+                    <p className="print-footer-text">Authorized Analysis • Osito Lab Protocol</p>
                     <div className="print-logo">
                       <img src={HandsLogo} alt="Osito logo" />
                     </div>
@@ -517,10 +524,10 @@ const App = () => {
               ))}
             </div>
 
-            <div className="report-signoff mt-12 pt-4 border-t border-stone-100 text-center">
+            <div className="report-signoff mt-12 pt-4 border-t border-stone-100 text-center print-hidden">
               <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.6em]">Authorized Analysis • Osito Lab Protocol</p>
             </div>
-            <div className="report-logo">
+            <div className="report-logo print-hidden">
               <img src={HandsLogo} alt="Osito logo" />
             </div>
           </div>
