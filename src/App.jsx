@@ -507,6 +507,9 @@ const App = () => {
                         </div>
                       </div>
                     </div>
+                    <div className="print-logo">
+                      <img src={HandsLogo} alt="Osito logo" />
+                    </div>
                   </div>
                 </div>
               ))}

@@ -235,11 +235,22 @@ h3 {
   }
 
   .report-logo {
-    margin-top: 0.35cm !important;
+    display: none !important;
   }
 
   .report-logo img {
-    width: 6.2cm !important;
+    display: none !important;
+  }
+
+  .print-logo {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin-top: 0.25cm !important;
+  }
+
+  .print-logo img {
+    width: 4.6cm !important;
     height: auto !important;
   }
 
@@ -321,6 +332,22 @@ h3 {
 
 .pb-safe {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+.report-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 24px;
+}
+
+.report-logo img {
+  max-width: 280px;
+  height: auto;
+}
+
+.print-logo {
+  display: none;
 }
 
 .report-logo {
