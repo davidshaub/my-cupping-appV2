@@ -247,10 +247,11 @@ h3 {
     justify-content: center !important;
     align-items: center !important;
     margin-top: 0.25cm !important;
+    width: 100% !important;
   }
 
   .print-logo img {
-    width: 4.6cm !important;
+    width: 4.2cm !important;
     height: auto !important;
   }
 
