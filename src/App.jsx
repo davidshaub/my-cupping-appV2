@@ -437,16 +437,15 @@ const App = () => {
           </header>
 
           <div className="bg-white p-4 md:p-10 rounded-3xl shadow-sm border border-stone-200 print:p-0 print:border-none print:shadow-none">
-            <div className="print-header flex flex-col sm:flex-row sm:justify-between sm:items-baseline border-b-2 border-stone-900 pb-4 mb-8 gap-3">
-              <div>
-                <h1 className="text-xl md:text-2xl font-black text-stone-900 uppercase tracking-tighter leading-none mb-1">
-                  Lab Evaluation Summary
-                </h1>
-                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-[0.2em]">Sourcing & Supply Quality Control</p>
+            <div className="print-header print-only">
+              <div className="print-header-inner">
+                <div>
+                  <h1>Lab Evaluation Summary</h1>
+                  <p>Sourcing & Supply Quality Control</p>
+                </div>
+                <div className="print-header-date">{sessionStartTime}</div>
               </div>
-              <div className="text-left sm:text-right text-[10px] font-mono text-stone-500 uppercase">{sessionStartTime}</div>
             </div>
-
             <div className="space-y-0">
               {samples.map((s) => (
                 <div
@@ -506,6 +505,9 @@ const App = () => {
                           {s.notes.otherText || <span className="text-stone-300 italic opacity-50">None recorded.</span>}
                         </div>
                       </div>
+                    </div>
+                    <div className="print-logo">
+                      <img src={HandsLogo} alt="Osito logo" />
                     </div>
                     <div className="print-logo">
                       <img src={HandsLogo} alt="Osito logo" />
