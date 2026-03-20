@@ -234,6 +234,15 @@ h3 {
     padding-right: 0 !important;
   }
 
+  .report-logo {
+    margin-top: 0.35cm !important;
+  }
+
+  .report-logo img {
+    width: 6.2cm !important;
+    height: auto !important;
+  }
+
   .grade-display {
     background-color: #1c1917 !important;
     color: white !important;
@@ -312,6 +321,18 @@ h3 {
 
 .pb-safe {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+.report-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 24px;
+}
+
+.report-logo img {
+  max-width: 280px;
+  height: auto;
 }
 
 /* Osito-inspired palette remap over Tailwind utility classes used in this app */

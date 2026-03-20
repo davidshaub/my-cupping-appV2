@@ -17,6 +17,7 @@ import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
+import HandsLogo from '../assets/hands.png';
 
 const App = () => {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
@@ -513,6 +514,9 @@ const App = () => {
 
             <div className="report-signoff mt-12 pt-4 border-t border-stone-100 text-center">
               <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.6em]">Authorized Analysis • Osito Lab Protocol</p>
+            </div>
+            <div className="report-logo">
+              <img src={HandsLogo} alt="Osito logo" />
             </div>
           </div>
         </div>
