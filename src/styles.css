@@ -475,14 +475,15 @@ h3 {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 28px;
+  margin-top: 42px;
 }
 
 .report-logo img {
-  max-width: 220px;
+  max-width: 160px;
   height: auto;
   transform: rotate(90deg);
   transform-origin: center;
+  object-fit: contain;
 }
 
 .print-logo {
