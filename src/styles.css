@@ -475,11 +475,12 @@ h3 {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 42px;
+  margin-top: 64px;
 }
 
 .report-logo img {
-  max-width: 160px;
+  max-width: 140px;
+  max-height: 140px;
   height: auto;
   transform: rotate(90deg);
   transform-origin: center;
