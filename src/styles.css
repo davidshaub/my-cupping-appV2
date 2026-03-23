@@ -195,12 +195,12 @@ h3 {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    gap: 0.12cm !important;
-    margin-top: 0.35cm !important;
+    gap: 0.25cm !important;
+    margin-top: 0.45cm !important;
     text-align: center !important;
     width: 100% !important;
     border-top: 1.4px solid #1c1917 !important;
-    padding-top: 0.2cm !important;
+    padding-top: 0.35cm !important;
   }
 
   .print-page-heading-group {
@@ -374,13 +374,15 @@ h3 {
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
-    margin-top: 0.25cm !important;
+    margin-top: 0.2cm !important;
     width: 100% !important;
   }
 
   .print-logo img {
-    width: 4.2cm !important;
+    width: 3cm !important;
     height: auto !important;
+    max-height: 3.6cm !important;
+    object-fit: contain !important;
     transform: rotate(90deg) !important;
     transform-origin: center center !important;
   }
@@ -473,11 +475,11 @@ h3 {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 24px;
+  margin-top: 28px;
 }
 
 .report-logo img {
-  max-width: 280px;
+  max-width: 220px;
   height: auto;
   transform: rotate(90deg);
   transform-origin: center;
