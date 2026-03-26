@@ -73,7 +73,7 @@ export const initializeSamples = (count) =>
       defects: 0,
       correction: 0
     },
-    notes: { fragAromaTags: [], inCupTags: [], negativeTags: [], otherText: '' }
+    notes: { fragAromaTags: [], inCupTags: [], negativeTags: [], otherText: '', acidityLevel: '', sweetnessLevel: '' }
   }));
 
 export const calculateTotal = (sample) => {
@@ -115,6 +115,8 @@ export const downloadCSV = (samples, sessionStartTime) => {
     'Defects',
     'Cup Correction',
     'Score',
+    'Acidity Level',
+    'Sweetness Level',
     'Frag/Aroma Notes',
     'In the Cup Notes',
     'Negative Notes',
@@ -144,6 +146,8 @@ export const downloadCSV = (samples, sessionStartTime) => {
       s.scores.defects.toFixed(2),
       s.scores.correction.toFixed(2),
       calculateTotal(s),
+      csvEscape(s.notes?.acidityLevel || ''),
+      csvEscape(s.notes?.sweetnessLevel || ''),
       csvEscape(s.notes.fragAromaTags.join('; ')),
       csvEscape(s.notes.inCupTags.join('; ')),
       csvEscape(s.notes.negativeTags.join('; ')),

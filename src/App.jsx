@@ -18,6 +18,7 @@ import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
 import HandsLogo from '../assets/hands.png';
+import LevelSelector from './components/LevelSelector';
 
 const App = () => {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
@@ -159,6 +160,22 @@ const App = () => {
           : item
       );
     });
+  };
+
+  const updateLevel = (sampleIdx, field, value) => {
+    setSamples((prev) =>
+      prev.map((item, idx) =>
+        idx === sampleIdx
+          ? {
+              ...item,
+              notes: {
+                ...item.notes,
+                [field]: value
+              }
+            }
+          : item
+      )
+    );
   };
 
   const updateMetadata = (sampleIdx, field, value) => {
@@ -540,8 +557,24 @@ const App = () => {
 
                       <div className="pt-6 border-t border-stone-100 print-notes-block">
                         <p className="section-header text-stone-900 mb-3">Other Observations</p>
+                        {(s.notes.acidityLevel || s.notes.sweetnessLevel) && (
+                          <div className="flex flex-wrap gap-2 mb-2 text-[11px] font-black text-stone-800 print:text-[10px]">
+                            {s.notes.acidityLevel && (
+                              <span className="px-3 py-1 rounded-lg bg-stone-100 border border-stone-200">
+                                Acidity: {s.notes.acidityLevel}
+                              </span>
+                            )}
+                            {s.notes.sweetnessLevel && (
+                              <span className="px-3 py-1 rounded-lg bg-stone-100 border border-stone-200">
+                                Sweetness: {s.notes.sweetnessLevel}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="text-[13px] leading-relaxed text-stone-700 italic pr-4 print-notes-body">
-                          {s.notes.otherText || <span className="text-stone-300 italic opacity-50">None recorded.</span>}
+                          {s.notes.otherText ? s.notes.otherText : s.notes.acidityLevel || s.notes.sweetnessLevel ? '' : (
+                            <span className="text-stone-300 italic opacity-50">None recorded.</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -661,7 +694,23 @@ const App = () => {
               Attribute Grading
             </h3>
             {CATEGORIES.map((cat) => (
-              <ScoreControl key={cat.id} label={cat.label} value={currentSample.scores[cat.id]} onUpdate={(d) => updateScore(activeSampleIndex, cat.id, d)} />
+              <div key={cat.id} className="space-y-2">
+                <ScoreControl label={cat.label} value={currentSample.scores[cat.id]} onUpdate={(d) => updateScore(activeSampleIndex, cat.id, d)} />
+                {cat.id === 'sweetness' && (
+                  <LevelSelector
+                    label="Sweetness level"
+                    value={currentSample.notes?.sweetnessLevel || ''}
+                    onSelect={(val) => updateLevel(activeSampleIndex, 'sweetnessLevel', val)}
+                  />
+                )}
+                {cat.id === 'acidity' && (
+                  <LevelSelector
+                    label="Acidity level"
+                    value={currentSample.notes?.acidityLevel || ''}
+                    onSelect={(val) => updateLevel(activeSampleIndex, 'acidityLevel', val)}
+                  />
+                )}
+              </div>
             ))}
             <div className="pt-6 space-y-2 md:space-y-3 border-t-2 border-stone-100 mt-6">
               <ScoreControl
