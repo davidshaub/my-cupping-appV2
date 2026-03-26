@@ -35,6 +35,7 @@ export const CATEGORISED_LEXICON = {
     'Red Currant',
     'Berries',
     'Dark Berries',
+    'Raspberry',
     'Strawberry',
     'Blueberry',
     'Lychee',
