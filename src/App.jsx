@@ -30,6 +30,7 @@ const App = () => {
   const [history, setHistory] = useState([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [sessionName, setSessionName] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, onConfirm: null });
 
   useEffect(() => {
     const saved = localStorage.getItem('cupping_history');
@@ -52,6 +53,13 @@ const App = () => {
   const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
   const reportRadarSize = isMobile ? 180 : isTablet ? 220 : 240;
   const reportDonutSize = isMobile ? 150 : isTablet ? 180 : 200;
+
+  const openConfirm = (action) => setConfirmDialog({ open: true, onConfirm: action });
+  const closeConfirm = () => setConfirmDialog({ open: false, onConfirm: null });
+  const confirmAndRun = () => {
+    confirmDialog.onConfirm?.();
+    closeConfirm();
+  };
 
   const resetToHome = () => {
     setSamples([]);
@@ -104,6 +112,31 @@ const App = () => {
     setMetadataOrigin(origin);
     setAppState('metadata');
   };
+
+  const renderConfirmModal = () =>
+    confirmDialog.open && (
+      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-stone-900/70 backdrop-blur-sm p-6">
+        <div className="bg-white w-full max-w-md rounded-[1.75rem] p-8 space-y-5 shadow-2xl">
+          <div className="space-y-2">
+            <h3 className="text-xl font-black text-stone-900 leading-tight">Leave this session?</h3>
+            <p className="text-sm text-stone-600 leading-relaxed">
+              Returning to the Start page will discard any cupping data that hasn’t been saved.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={closeConfirm}
+              className="w-full py-3 rounded-xl font-bold text-stone-700 bg-stone-100 border border-stone-200 hover:bg-stone-200 active:scale-95 transition"
+            >
+              Stay here
+            </button>
+            <button onClick={confirmAndRun} className="w-full py-3 rounded-xl font-bold text-white btn-stone-dark active:scale-95 transition">
+              Yes, go back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
 
   const updateScore = (sampleIdx, cat, delta) => {
     setSamples((prev) => {
@@ -354,6 +387,7 @@ const App = () => {
   if (appState === 'report') {
     return (
       <div className="min-h-screen bg-stone-100 p-4 md:p-8 relative">
+        {renderConfirmModal()}
         {showSaveModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
             <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
@@ -382,12 +416,12 @@ const App = () => {
           <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
               <button
-                onClick={resetToHome}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-stone-100 px-4 md:px-5 py-2 rounded-xl font-bold shadow-sm border border-stone-200 text-stone-600 active:scale-95 transition-all text-xs"
-              >
-                <Icon name="home" size={16} />
-                Reset
-              </button>
+              onClick={() => openConfirm(resetToHome)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-stone-100 px-4 md:px-5 py-2 rounded-xl font-bold shadow-sm border border-stone-200 text-stone-600 active:scale-95 transition-all text-xs"
+            >
+              <Icon name="home" size={16} />
+              Reset
+            </button>
               <button
                 onClick={() => setAppState('cupping')}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white px-4 md:px-5 py-2 rounded-xl font-bold shadow-sm border border-stone-200 text-stone-600 active:scale-95 transition-all text-xs"
@@ -399,11 +433,11 @@ const App = () => {
             <div className="hidden md:flex flex-wrap gap-2">
               <button
                 onClick={() => setShowSaveModal(true)}
-                className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-blue-600 border border-blue-100 active:scale-95 text-xs"
-              >
-                <Icon name="save" size={16} />
-                Save
-              </button>
+            className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-blue-600 border border-blue-100 active:scale-95 text-xs"
+          >
+            <Icon name="save" size={16} />
+            Save
+          </button>
               <button
                 onClick={() => goToMetadata('report')}
                 className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-stone-600 border border-stone-200 active:scale-95 text-xs"
@@ -578,10 +612,11 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 pb-24 md:pb-40">
+      {renderConfirmModal()}
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
         <header className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <button
-            onClick={() => setAppState('setup')}
+            onClick={() => openConfirm(resetToHome)}
             className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-transform active:scale-90"
           >
             <Icon name="chevron-left" size={24} />
