@@ -590,7 +590,10 @@ const App = () => {
             </div>
 
             <div className="report-signoff mt-12 pt-4 border-t border-stone-100 text-center print-hidden">
-              <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.6em]">Authorized Analysis • Osito Lab Protocol</p>
+              <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.6em] leading-snug">
+                <span className="block">Authorized Analysis</span>
+                <span className="block">Osito Lab Protocol</span>
+              </p>
             </div>
             <div className="report-logo print-hidden">
               <img src={HandsLogo} alt="Osito logo" />

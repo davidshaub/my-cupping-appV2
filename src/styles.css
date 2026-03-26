@@ -383,7 +383,7 @@ h3 {
     height: auto !important;
     max-height: 3.6cm !important;
     object-fit: contain !important;
-    transform: rotate(90deg) !important;
+    transform: rotate(-90deg) !important;
     transform-origin: center center !important;
   }
 
@@ -475,14 +475,14 @@ h3 {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 64px;
+  margin-top: 16px;
 }
 
 .report-logo img {
   max-width: 140px;
   max-height: 140px;
   height: auto;
-  transform: rotate(90deg);
+  transform: rotate(-90deg);
   transform-origin: center;
   object-fit: contain;
 }
@@ -490,19 +490,6 @@ h3 {
 .print-logo {
   display: none;
 }
-
-.report-logo {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 24px;
-}
-
-.report-logo img {
-  max-width: 280px;
-  height: auto;
-}
-
 /* Osito-inspired palette remap over Tailwind utility classes used in this app */
 .bg-stone-50 {
   background-color: #fbf7f0 !important;
