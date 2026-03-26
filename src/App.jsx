@@ -32,6 +32,7 @@ const App = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [sessionName, setSessionName] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ open: false, onConfirm: null });
+  const [metadataTableMode, setMetadataTableMode] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('cupping_history');
@@ -182,6 +183,40 @@ const App = () => {
     setSamples((prev) => prev.map((item, idx) => (idx === sampleIdx ? { ...item, [field]: value } : item)));
   };
 
+  const handleTablePaste = (startRow, startCol, columnOrder, e) => {
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+    const rows = text.split(/\r?\n/).filter((line) => line.length > 0).map((line) => line.split('\t'));
+    if (rows.length === 0) return;
+
+    e.preventDefault();
+    setSamples((prev) => {
+      const updated = [...prev];
+      rows.forEach((cells, rIdx) => {
+        const targetRow = startRow + rIdx;
+        if (!updated[targetRow]) return;
+        const next = { ...updated[targetRow] };
+        cells.forEach((value, cIdx) => {
+          const targetCol = startCol + cIdx;
+          const colKey = columnOrder[targetCol];
+          if (!colKey) return;
+          if (colKey === 'processing' && value) {
+            next.processing = value;
+          } else if (colKey === 'processingOther' && value) {
+            next.processingOther = value;
+            next.processing = next.processing === 'Other' ? next.processing : 'Other';
+          } else if (colKey === 'ositoId') {
+            next.ositoId = value;
+          } else if (colKey === 'lotName') {
+            next.lotName = value;
+          }
+        });
+        updated[targetRow] = next;
+      });
+      return updated;
+    });
+  };
+
   const toggleTag = (idx, section, tag) => {
     setSamples((prev) => {
       const field = `${section}Tags`;
@@ -326,70 +361,161 @@ const App = () => {
   }
 
   if (appState === 'metadata') {
+    const tableColumns = samples.some((s) => s.processing === 'Other')
+      ? ['ositoId', 'lotName', 'processing', 'processingOther']
+      : ['ositoId', 'lotName', 'processing'];
     return (
       <div className="min-h-screen bg-stone-100 p-4 md:p-12">
         <div className="max-w-4xl mx-auto space-y-6 pb-32">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-2xl font-black text-stone-900 tracking-tight">Lot Information</h1>
-            <button
-              onClick={() => setAppState(metadataOrigin === 'report' ? 'report' : 'setup')}
-              className="text-stone-400 font-bold text-sm"
-            >
-              Back
-            </button>
-          </div>
-          {samples.map((s, idx) => (
-            <div key={idx} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
-              <div className="flex items-center gap-3 border-b border-stone-50 pb-3">
-                <span className="w-6 h-6 rounded-full bg-stone-900 text-white flex items-center justify-center font-black text-[10px]">#{s.id}</span>
-                <h3 className="font-black text-stone-800 uppercase tracking-widest text-[10px]">Lot Data</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-stone-400 uppercase ml-1">Osito ID</label>
-                  <input
-                    value={s.ositoId}
-                    onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
-                    placeholder="OS-ID..."
-                    className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-stone-400 uppercase ml-1">Lot Name</label>
-                  <input
-                    value={s.lotName}
-                    onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
-                    placeholder="Lot Name..."
-                    className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-stone-400 uppercase ml-1">Processing</label>
-                  <select
-                    value={s.processing}
-                    onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
-                    className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
-                  >
-                    <option>Select One</option>
-                    <option>Washed</option>
-                    <option>Natural</option>
-                    <option>Honey</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-              </div>
-              {s.processing === 'Other' && (
-                <div className="animate-in slide-in-from-top-2">
-                  <input
-                    value={s.processingOther}
-                    onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
-                    placeholder="Processing Details..."
-                    className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
-                  />
-                </div>
-              )}
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setMetadataTableMode(false)}
+                className={`px-4 py-2 rounded-xl font-bold text-xs border ${
+                  !metadataTableMode ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-700 border-stone-200'
+                }`}
+              >
+                Standard View
+              </button>
+              <button
+                onClick={() => setMetadataTableMode(true)}
+                className={`px-4 py-2 rounded-xl font-bold text-xs border ${
+                  metadataTableMode ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-700 border-stone-200'
+                }`}
+              >
+                Edit in Table View
+              </button>
+              <button
+                onClick={() => setAppState(metadataOrigin === 'report' ? 'report' : 'setup')}
+                className="text-stone-400 font-bold text-sm"
+              >
+                Back
+              </button>
             </div>
-          ))}
+          </div>
+
+          {metadataTableMode ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-x-auto">
+              <table className="min-w-full text-left text-sm border-collapse">
+                <thead className="bg-stone-50 border-b border-stone-100 text-[11px] font-black uppercase tracking-widest text-stone-500">
+                  <tr>
+                    <th className="px-3 py-2">Osito ID</th>
+                    <th className="px-3 py-2">Lot Name</th>
+                    <th className="px-3 py-2">Processing</th>
+                    {tableColumns.includes('processingOther') && <th className="px-3 py-2">Processing Details</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {samples.map((s, idx) => (
+                    <tr key={idx} className="border-b border-stone-100 last:border-0 hover:bg-stone-50/60">
+                      <td className="px-3 py-2 align-top">
+                        <input
+                          value={s.ositoId}
+                          onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
+                          onPaste={(e) => handleTablePaste(idx, 0, tableColumns, e)}
+                          placeholder="OS-ID..."
+                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <input
+                          value={s.lotName}
+                          onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
+                          onPaste={(e) => handleTablePaste(idx, 1, tableColumns, e)}
+                          placeholder="Lot Name..."
+                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top min-w-[140px]">
+                        <select
+                          value={s.processing}
+                          onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
+                          onPaste={(e) => handleTablePaste(idx, 2, tableColumns, e)}
+                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                        >
+                          <option>Select One</option>
+                          <option>Washed</option>
+                          <option>Natural</option>
+                          <option>Honey</option>
+                          <option>Other</option>
+                        </select>
+                      </td>
+                      {tableColumns.includes('processingOther') && (
+                        <td className="px-3 py-2 align-top min-w-[160px]">
+                          <input
+                            value={s.processingOther}
+                            onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
+                            onPaste={(e) => handleTablePaste(idx, 3, tableColumns, e)}
+                            placeholder={s.processing === 'Other' ? 'Processing details...' : '—'}
+                            disabled={s.processing !== 'Other'}
+                            className={`w-full p-2 rounded-lg border ${
+                              s.processing === 'Other'
+                                ? 'bg-transparent border-stone-200 focus:bg-white focus:border-stone-300'
+                                : 'bg-stone-50 text-stone-300 border-stone-100'
+                            } outline-none font-bold text-stone-800 text-sm`}
+                          />
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            samples.map((s, idx) => (
+              <div key={idx} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
+                <div className="flex items-center gap-3 border-b border-stone-50 pb-3">
+                  <span className="w-6 h-6 rounded-full bg-stone-900 text-white flex items-center justify-center font-black text-[10px]">#{s.id}</span>
+                  <h3 className="font-black text-stone-800 uppercase tracking-widest text-[10px]">Lot Data</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-stone-400 uppercase ml-1">Osito ID</label>
+                    <input
+                      value={s.ositoId}
+                      onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
+                      placeholder="OS-ID..."
+                      className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-stone-400 uppercase ml-1">Lot Name</label>
+                    <input
+                      value={s.lotName}
+                      onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
+                      placeholder="Lot Name..."
+                      className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-stone-400 uppercase ml-1">Processing</label>
+                    <select
+                      value={s.processing}
+                      onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
+                      className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
+                    >
+                      <option>Select One</option>
+                      <option>Washed</option>
+                      <option>Natural</option>
+                      <option>Honey</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                </div>
+                {s.processing === 'Other' && (
+                  <div className="animate-in slide-in-from-top-2">
+                    <input
+                      value={s.processingOther}
+                      onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
+                      placeholder="Processing Details..."
+                      className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
           <button
             onClick={() => setAppState(metadataOrigin === 'report' ? 'report' : 'cupping')}
             className="w-[calc(100%-2rem)] md:w-full py-4 md:py-5 btn-stone-dark font-black text-base md:text-lg shadow-2xl fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 max-w-lg uppercase tracking-wider pb-safe"
