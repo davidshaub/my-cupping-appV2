@@ -9,7 +9,7 @@ const LEVELS = [
 ];
 
 const LevelSelector = ({ label, value, onSelect }) => (
-  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2 w-full" aria-label={`${label} intensity`}>
+  <div className="grid grid-cols-5 gap-1.5 sm:gap-2 mt-2 w-full" aria-label={`${label} intensity`}>
     {LEVELS.map((level) => {
       const active = value === level.label;
       return (
@@ -17,7 +17,7 @@ const LevelSelector = ({ label, value, onSelect }) => (
           key={level.label}
           type="button"
           onClick={() => onSelect(active ? '' : level.label)}
-          className={`w-full px-3 py-2 text-xs sm:text-xs md:text-sm font-black uppercase tracking-wide rounded-xl border transition-all shadow-sm ${
+          className={`w-full px-2 py-2 text-[11px] sm:px-3 sm:py-2 sm:text-xs md:text-sm font-black uppercase tracking-wide rounded-xl border transition-all shadow-sm ${
             active
               ? 'bg-stone-900 text-white border-stone-900'
               : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
