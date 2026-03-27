@@ -75,7 +75,7 @@ export const CATEGORISED_LEXICON = {
   ],
   'Nutty/Cocoa': ['Chocolate', 'Nuts', 'Almond', 'Hazelnut', 'Wafer Cookie', 'Terracotta'],
   Spices: ['Baking Spices', 'Cinnamon', 'Mint'],
-  Structure: ['Balanced', 'Lactic', 'Tartaric', 'Phosphoric']
+  Structure: ['Balanced', 'Lactic', 'Tartaric', 'Phosphoric', 'Nice Structure']
 };
 
 export const CATEGORY_COLORS = {
@@ -124,5 +124,6 @@ export const NEGATIVE_LEXICON = [
   'Leather',
   'Flat/Lacking',
   'Winey',
-  'Unclean Finish'
+  'Unclean Finish',
+  'Off Ferment Character'
 ];
