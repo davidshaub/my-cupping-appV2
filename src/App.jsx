@@ -400,6 +400,7 @@ const App = () => {
               <table className="min-w-full text-left text-sm border-collapse">
                 <thead className="bg-stone-50 border-b border-stone-100 text-[11px] font-black uppercase tracking-widest text-stone-500">
                   <tr>
+                    <th className="px-3 py-2 w-12 text-center">#</th>
                     <th className="px-3 py-2">Osito ID</th>
                     <th className="px-3 py-2">Lot Name</th>
                     <th className="px-3 py-2">Processing</th>
@@ -409,11 +410,12 @@ const App = () => {
                 <tbody>
                   {samples.map((s, idx) => (
                     <tr key={idx} className="border-b border-stone-100 last:border-0 hover:bg-stone-50/60">
+                      <td className="px-3 py-2 align-top text-center text-xs font-black text-stone-500">{idx + 1}</td>
                       <td className="px-3 py-2 align-top">
                         <input
                           value={s.ositoId}
                           onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 0, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 1, tableColumns, e)}
                           placeholder="OS-ID..."
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         />
@@ -422,7 +424,7 @@ const App = () => {
                         <input
                           value={s.lotName}
                           onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 1, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 2, tableColumns, e)}
                           placeholder="Lot Name..."
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         />
@@ -431,7 +433,7 @@ const App = () => {
                         <select
                           value={s.processing}
                           onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 2, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 3, tableColumns, e)}
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         >
                           <option>Select One</option>
@@ -446,7 +448,7 @@ const App = () => {
                           <input
                             value={s.processingOther}
                             onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
-                            onPaste={(e) => handleTablePaste(idx, 3, tableColumns, e)}
+                            onPaste={(e) => handleTablePaste(idx, 4, tableColumns, e)}
                             placeholder={s.processing === 'Other' ? 'Processing details...' : '—'}
                             disabled={s.processing !== 'Other'}
                             className={`w-full p-2 rounded-lg border ${
