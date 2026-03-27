@@ -415,7 +415,7 @@ const App = () => {
                         <input
                           value={s.ositoId}
                           onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 1, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 0, tableColumns, e)}
                           placeholder="OS-ID..."
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         />
@@ -424,7 +424,7 @@ const App = () => {
                         <input
                           value={s.lotName}
                           onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 2, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 1, tableColumns, e)}
                           placeholder="Lot Name..."
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         />
@@ -433,7 +433,7 @@ const App = () => {
                         <select
                           value={s.processing}
                           onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 3, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 2, tableColumns, e)}
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         >
                           <option>Select One</option>
@@ -446,11 +446,11 @@ const App = () => {
                       {tableColumns.includes('processingOther') && (
                         <td className="px-3 py-2 align-top min-w-[160px]">
                           <input
-                            value={s.processingOther}
-                            onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
-                            onPaste={(e) => handleTablePaste(idx, 4, tableColumns, e)}
-                            placeholder={s.processing === 'Other' ? 'Processing details...' : '—'}
-                            disabled={s.processing !== 'Other'}
+                          value={s.processingOther}
+                          onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
+                          onPaste={(e) => handleTablePaste(idx, 3, tableColumns, e)}
+                          placeholder={s.processing === 'Other' ? 'Processing details...' : '—'}
+                          disabled={s.processing !== 'Other'}
                             className={`w-full p-2 rounded-lg border ${
                               s.processing === 'Other'
                                 ? 'bg-transparent border-stone-200 focus:bg-white focus:border-stone-300'
