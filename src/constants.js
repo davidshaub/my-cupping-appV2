@@ -125,5 +125,6 @@ export const NEGATIVE_LEXICON = [
   'Flat/Lacking',
   'Winey',
   'Unclean Finish',
-  'Off Ferment Character'
+  'Off Ferment Character',
+  'Olive Brine'
 ];
