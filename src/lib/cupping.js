@@ -58,6 +58,8 @@ export const initializeSamples = (count) =>
     lotName: '',
     processing: 'Select One',
     processingOther: '',
+    waterActivity: '',
+    moisture: '',
     scores: {
       fragrance: INITIAL_SCORE,
       aroma: null,

@@ -188,6 +188,24 @@ const App = () => {
     setSamples((prev) => prev.map((item, idx) => (idx === sampleIdx ? { ...item, [field]: value } : item)));
   };
 
+  const formatWaterActivity = (value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    const numeric = Number.parseFloat(raw);
+    if (Number.isNaN(numeric)) return '';
+    const clamped = Math.min(Math.max(numeric, 0), 0.99);
+    return clamped.toFixed(2);
+  };
+
+  const formatMoisture = (value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    const numeric = Number.parseFloat(raw.replace('%', ''));
+    if (Number.isNaN(numeric)) return '';
+    const clamped = Math.min(Math.max(numeric, 0), 100);
+    return clamped.toFixed(1);
+  };
+
   const handleTablePaste = (startRow, startCol, columnOrder, e) => {
     const text = e.clipboardData?.getData('text');
     if (!text) return;
@@ -210,6 +228,10 @@ const App = () => {
           } else if (colKey === 'processingOther' && value) {
             next.processingOther = value;
             next.processing = next.processing === 'Other' ? next.processing : 'Other';
+          } else if (colKey === 'waterActivity') {
+            next.waterActivity = formatWaterActivity(value);
+          } else if (colKey === 'moisture') {
+            next.moisture = formatMoisture(value);
           } else if (colKey === 'ositoId') {
             next.ositoId = value;
           } else if (colKey === 'lotName') {
@@ -366,9 +388,15 @@ const App = () => {
   }
 
   if (appState === 'metadata') {
-    const tableColumns = samples.some((s) => s.processing === 'Other')
-      ? ['ositoId', 'lotName', 'processing', 'processingOther']
-      : ['ositoId', 'lotName', 'processing'];
+    const tablePasteOrder = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther'];
+    const tableColumns = [
+      'ositoId',
+      'lotName',
+      'processing',
+      'waterActivity',
+      'moisture',
+      ...(samples.some((s) => s.processing === 'Other') ? ['processingOther'] : [])
+    ];
     return (
       <div className="min-h-screen bg-stone-100 p-4 md:p-12">
         <div className="max-w-4xl mx-auto space-y-6 pb-32">
@@ -409,7 +437,9 @@ const App = () => {
                     <th className="px-3 py-2">Osito ID</th>
                     <th className="px-3 py-2">Lot Name</th>
                     <th className="px-3 py-2">Processing</th>
-                    {tableColumns.includes('processingOther') && <th className="px-3 py-2">Processing Details</th>}
+                    <th className="px-3 py-2 whitespace-nowrap">Water Activity</th>
+                    <th className="px-3 py-2">Moisture</th>
+                    {tableColumns.includes('processingOther') && <th className="px-3 py-2 whitespace-nowrap">Processing Details</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -418,27 +448,27 @@ const App = () => {
                       <td className="px-3 py-2 align-top text-center text-xs font-black text-stone-500">{idx + 1}</td>
                       <td className="px-3 py-2 align-top">
                         <input
-                          value={s.ositoId}
+                          value={s.ositoId || ''}
                           onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 0, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 0, tablePasteOrder, e)}
                           placeholder="OS-ID..."
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         />
                       </td>
                       <td className="px-3 py-2 align-top">
                         <input
-                          value={s.lotName}
+                          value={s.lotName || ''}
                           onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 1, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 1, tablePasteOrder, e)}
                           placeholder="Lot Name..."
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         />
                       </td>
                       <td className="px-3 py-2 align-top min-w-[140px]">
                         <select
-                          value={s.processing}
+                          value={s.processing || 'Select One'}
                           onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 2, tableColumns, e)}
+                          onPaste={(e) => handleTablePaste(idx, 2, tablePasteOrder, e)}
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         >
                           <option>Select One</option>
@@ -448,14 +478,47 @@ const App = () => {
                           <option>Other</option>
                         </select>
                       </td>
+                      <td className="px-3 py-2 align-top min-w-[140px]">
+                        <input
+                          value={s.waterActivity || ''}
+                          onChange={(e) => updateMetadata(idx, 'waterActivity', e.target.value)}
+                          onBlur={(e) => updateMetadata(idx, 'waterActivity', formatWaterActivity(e.target.value))}
+                          onPaste={(e) => handleTablePaste(idx, 3, tablePasteOrder, e)}
+                          placeholder="0.00"
+                          inputMode="decimal"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="0.99"
+                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm tabular-nums"
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top min-w-[120px]">
+                        <div className="relative">
+                          <input
+                            value={s.moisture || ''}
+                            onChange={(e) => updateMetadata(idx, 'moisture', e.target.value)}
+                            onBlur={(e) => updateMetadata(idx, 'moisture', formatMoisture(e.target.value))}
+                            onPaste={(e) => handleTablePaste(idx, 4, tablePasteOrder, e)}
+                            placeholder="0.0"
+                            inputMode="decimal"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            className="w-full bg-transparent p-2 pr-7 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm tabular-nums"
+                          />
+                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs font-black text-stone-400">%</span>
+                        </div>
+                      </td>
                       {tableColumns.includes('processingOther') && (
                         <td className="px-3 py-2 align-top min-w-[160px]">
                           <input
-                          value={s.processingOther}
-                          onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 3, tableColumns, e)}
-                          placeholder={s.processing === 'Other' ? 'Processing details...' : '—'}
-                          disabled={s.processing !== 'Other'}
+                            value={s.processingOther || ''}
+                            onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
+                            onPaste={(e) => handleTablePaste(idx, 5, tablePasteOrder, e)}
+                            placeholder={s.processing === 'Other' ? 'Processing details...' : '—'}
+                            disabled={s.processing !== 'Other'}
                             className={`w-full p-2 rounded-lg border ${
                               s.processing === 'Other'
                                 ? 'bg-transparent border-stone-200 focus:bg-white focus:border-stone-300'
@@ -508,6 +571,41 @@ const App = () => {
                       <option>Honey</option>
                       <option>Other</option>
                     </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-stone-400 uppercase ml-1">Water Activity</label>
+                    <input
+                      value={s.waterActivity || ''}
+                      onChange={(e) => updateMetadata(idx, 'waterActivity', e.target.value)}
+                      onBlur={(e) => updateMetadata(idx, 'waterActivity', formatWaterActivity(e.target.value))}
+                      placeholder="0.00"
+                      inputMode="decimal"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="0.99"
+                      className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm tabular-nums"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-stone-400 uppercase ml-1">Moisture</label>
+                    <div className="relative">
+                      <input
+                        value={s.moisture || ''}
+                        onChange={(e) => updateMetadata(idx, 'moisture', e.target.value)}
+                        onBlur={(e) => updateMetadata(idx, 'moisture', formatMoisture(e.target.value))}
+                        placeholder="0.0"
+                        inputMode="decimal"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        className="w-full bg-stone-50 p-3 pr-9 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm tabular-nums"
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-stone-400">%</span>
+                    </div>
                   </div>
                 </div>
                 {s.processing === 'Other' && (
@@ -661,6 +759,18 @@ const App = () => {
                             {s.processing !== 'Select One' ? (s.processing === 'Other' ? s.processingOther : s.processing) : 'Undefined'}
                           </span>
                         </div>
+                        {s.waterActivity && (
+                          <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest whitespace-nowrap">Water Activity</span>
+                            <span className="text-[12px] font-bold text-stone-600 tabular-nums">{formatWaterActivity(s.waterActivity)}</span>
+                          </div>
+                        )}
+                        {s.moisture && (
+                          <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">Moisture</span>
+                            <span className="text-[12px] font-bold text-stone-600 tabular-nums">{formatMoisture(s.moisture)}%</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="grade-display w-full sm:w-auto shrink-0 flex flex-col items-center justify-center bg-stone-900 px-6 sm:px-10 py-4 sm:min-w-[200px]">
