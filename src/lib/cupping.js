@@ -94,7 +94,17 @@ export const calculateTotal = (sample) => {
   return (Math.ceil(raw * 4) / 4).toFixed(2);
 };
 
-export const downloadCSV = (samples, sessionStartTime) => {
+const toSafeFilenamePart = (value) => {
+  const cleaned = String(value ?? '')
+    .trim()
+    .replace(/[^a-zA-Z0-9 _-]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return cleaned.slice(0, 60);
+};
+
+export const downloadCSV = (samples, sessionStartTime, sessionName) => {
   const headers = [
     'Sample #',
     'Osito ID',
@@ -165,8 +175,13 @@ export const downloadCSV = (samples, sessionStartTime) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  const stamp = new Date().toLocaleString().replace(/[/:]/g, '-').replace(/\\s+/g, '_');
-  link.download = `Cupping_Report_${stamp}.csv`;
+  const stamp = new Date()
+    .toLocaleString()
+    .replace(/[/:]/g, '-')
+    .replace(/,/g, '')
+    .replace(/\s+/g, '_');
+  const safeSessionName = toSafeFilenamePart(sessionName);
+  link.download = safeSessionName ? `Cupping_Report_${safeSessionName}_${stamp}.csv` : `Cupping_Report_${stamp}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 };

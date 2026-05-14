@@ -31,6 +31,7 @@ const App = () => {
   const [history, setHistory] = useState([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [sessionName, setSessionName] = useState('');
+  const [activeSessionName, setActiveSessionName] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ open: false, onConfirm: null });
   const [metadataTableMode, setMetadataTableMode] = useState(false);
 
@@ -67,6 +68,7 @@ const App = () => {
     setSamples([]);
     setSessionStartTime(null);
     setActiveSampleIndex(0);
+    setActiveSessionName('');
     setAppState('setup');
   };
 
@@ -85,6 +87,7 @@ const App = () => {
     const updatedHistory = [newEntry, ...history];
     setHistory(updatedHistory);
     localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+    setActiveSessionName(sessionName);
     setShowSaveModal(false);
     setSessionName('');
   };
@@ -99,12 +102,14 @@ const App = () => {
   const loadSession = (session) => {
     setSamples(session.samples);
     setSessionStartTime(session.startTime);
+    setActiveSessionName(session.name || '');
     setAppState('report');
   };
 
   const startSession = () => {
     if (!sessionStartTime) setSessionStartTime(new Date().toLocaleString());
     setSamples(initializeSamples(numSamples));
+    setActiveSessionName('');
     setAppState('cupping');
   };
 
@@ -591,7 +596,7 @@ const App = () => {
                 Lots
               </button>
               <button
-                onClick={() => downloadCSV(samples, sessionStartTime)}
+                onClick={() => downloadCSV(samples, sessionStartTime, activeSessionName)}
                 className="flex items-center gap-2 bg-stone-200 px-4 py-2 rounded-xl font-bold text-stone-800 active:scale-95 text-xs"
               >
                 <Icon name="download" size={16} />
@@ -753,7 +758,7 @@ const App = () => {
               Save
             </button>
             <button
-              onClick={() => downloadCSV(samples, sessionStartTime)}
+              onClick={() => downloadCSV(samples, sessionStartTime, activeSessionName)}
               className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-200 text-stone-800 text-[10px] font-black uppercase tracking-wider"
             >
               <Icon name="download" size={14} />
