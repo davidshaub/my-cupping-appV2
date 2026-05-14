@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   CATEGORIES,
   CATEGORISED_LEXICON,
@@ -9,6 +9,7 @@ import {
   calculateTotal,
   downloadCSV,
   getBaseTag,
+  importSessionFromCSV,
   initializeSamples
 } from './lib/cupping';
 import DonutChart from './components/DonutChart';
@@ -34,6 +35,9 @@ const App = () => {
   const [activeSessionName, setActiveSessionName] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ open: false, onConfirm: null });
   const [metadataTableMode, setMetadataTableMode] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = useRef(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('cupping_history');
@@ -118,6 +122,28 @@ const App = () => {
     if (samples.length === 0) setSamples(initializeSamples(numSamples));
     setMetadataOrigin(origin);
     setAppState('metadata');
+  };
+
+  const importSessionCsvFile = async (file) => {
+    if (!file) return;
+    setImportError('');
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const imported = importSessionFromCSV(text, file.name);
+      setSamples(imported.samples);
+      setNumSamples(imported.samples.length);
+      setActiveSampleIndex(0);
+      setSessionStartTime(imported.sessionStartTime);
+      setActiveSessionName(imported.sessionName || '');
+      if (imported.sessionName) setSessionName(imported.sessionName);
+      setAppState('report');
+    } catch (err) {
+      setImportError(err?.message || 'Could not import that CSV file.');
+    } finally {
+      setIsImporting(false);
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
   };
 
   const renderConfirmModal = () =>
@@ -343,6 +369,33 @@ const App = () => {
                 <Icon name="history" size={14} />
                 History
               </button>
+            </div>
+
+            <div className="pt-5 mt-6 border-t border-stone-100 text-left space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest">Bring A Session From Another Device</p>
+                  <p className="text-xs text-stone-500 font-bold">Upload a CSV you exported from Cupping Lab.</p>
+                </div>
+              </div>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => importSessionCsvFile(e.target.files?.[0])}
+              />
+              <button
+                onClick={() => importInputRef.current?.click()}
+                disabled={isImporting}
+                className={`w-full py-3 md:py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 border transition-colors ${
+                  isImporting ? 'bg-stone-100 text-stone-300 border-stone-100' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                }`}
+              >
+                <Icon name="upload" size={16} />
+                {isImporting ? 'Importing…' : 'Upload Session CSV'}
+              </button>
+              {importError && <p className="text-xs font-bold text-red-600">{importError}</p>}
             </div>
           </div>
         </div>
