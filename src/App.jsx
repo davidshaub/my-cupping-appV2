@@ -775,7 +775,7 @@ const App = () => {
             <div className="report-title print-hidden">
               <div>
                 <h1>Lab Evaluation Summary</h1>
-                <p>Sourcing & Supply Quality Control</p>
+                <p>Osito Quality Control</p>
               </div>
               <div className="report-title-date">{sessionStartTime}</div>
             </div>
@@ -788,7 +788,7 @@ const App = () => {
                   <div className="print-page-header print-only">
                     <div className="print-page-heading-group">
                       <p className="print-page-title">Lab Evaluation Summary</p>
-                      <p className="print-page-subtitle">Sourcing & Supply Quality Control</p>
+                      <p className="print-page-subtitle">Osito Quality Control</p>
                     </div>
                     <div className="print-page-date">{sessionStartTime}</div>
                   </div>
