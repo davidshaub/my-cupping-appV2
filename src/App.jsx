@@ -18,7 +18,8 @@ import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
-import HandsLogo from '../assets/hands.png';
+  // Pre-rotated asset (avoids html2canvas distortion with CSS transforms).
+  import HandsLogo from '../assets/hands-rotated.png';
 import LevelSelector from './components/LevelSelector';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -195,6 +196,39 @@ const App = () => {
 
   const exportElementToSinglePagePdf = async (element, filename) => {
     if (!element) throw new Error('Could not find the report page to export.');
+
+    // html2canvas can mis-measure layout if fonts/images are still loading.
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await document.fonts?.ready;
+    } catch {
+      // Ignore if the browser doesn't support the Font Loading API.
+    }
+
+    const waitForImages = async (root) => {
+      const images = Array.from(root.querySelectorAll('img'));
+      await Promise.all(
+        images.map(async (img) => {
+          if (img.complete && img.naturalWidth) return;
+          if (typeof img.decode === 'function') {
+            try {
+              await img.decode();
+              return;
+            } catch {
+              // Fall back to load/error events.
+            }
+          }
+          await new Promise((resolve) => {
+            img.addEventListener('load', resolve, { once: true });
+            img.addEventListener('error', resolve, { once: true });
+          });
+        })
+      );
+    };
+
+    // eslint-disable-next-line no-await-in-loop
+    await waitForImages(element);
+
     const marker = `pdf-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     element.setAttribute('data-pdf-export-id', marker);
 
@@ -468,8 +502,7 @@ const App = () => {
               height: auto !important;
               max-height: 3.6cm !important;
               object-fit: contain !important;
-              transform: rotate(-90deg) !important;
-              transform-origin: center center !important;
+              display: inline-block !important;
             }
 
             body.pdf-export .grade-display {

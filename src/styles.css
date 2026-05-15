@@ -378,14 +378,12 @@ h3 {
     width: 100% !important;
   }
 
-  .print-logo img {
-    width: 3cm !important;
-    height: auto !important;
-    max-height: 3.6cm !important;
-    object-fit: contain !important;
-    transform: rotate(-90deg) !important;
-    transform-origin: center center !important;
-  }
+	  .print-logo img {
+	    width: 3cm !important;
+	    height: auto !important;
+	    max-height: 3.6cm !important;
+	    object-fit: contain !important;
+	  }
 
   .grade-display {
     background-color: #1c1917 !important;
@@ -478,14 +476,12 @@ h3 {
   margin-top: 16px;
 }
 
-.report-logo img {
-  max-width: 140px;
-  max-height: 140px;
-  height: auto;
-  transform: rotate(-90deg);
-  transform-origin: center;
-  object-fit: contain;
-}
+	.report-logo img {
+	  max-width: 140px;
+	  max-height: 140px;
+	  height: auto;
+	  object-fit: contain;
+	}
 
 .print-logo {
   display: none;
