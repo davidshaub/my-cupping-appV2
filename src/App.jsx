@@ -396,49 +396,45 @@ const App = () => {
               <Icon name="plus" size={18} />
             </button>
           </div>
-	          <div className="space-y-3">
-	            <button onClick={startSession} className="w-full py-4 md:py-5 btn-stone-dark font-black text-base md:text-lg flex items-center justify-center gap-3 shadow-2xl">
-	              Start Session
-	              <Icon name="chevron-right" />
-	            </button>
+          <div className="space-y-3">
+            <button onClick={startSession} className="w-full py-4 md:py-5 btn-stone-dark font-black text-base md:text-lg flex items-center justify-center gap-3 shadow-2xl">
+              Start Session
+              <Icon name="chevron-right" />
+            </button>
 	            <div className="grid grid-cols-3 gap-3">
 	              <button
 	                onClick={() => {
 	                  setImportError('');
 	                  setAppState('import');
 	                }}
-	                className="h-[72px] md:h-[76px] px-2 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors flex flex-col items-center justify-center gap-2 text-center"
+	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
 	              >
-	                <Icon name="upload" size={16} className="shrink-0" />
-	                <span className="font-black text-[9px] sm:text-[10px] md:text-[11px] uppercase tracking-wide leading-tight break-words">
-	                  <span className="block">Upload</span>
-	                  <span className="block">Session</span>
+	                <Icon name="upload" size={14} />
+	                <span>
+	                  <span className="block sm:inline">Upload</span>
+	                  <span className="block sm:inline sm:ml-1">Session</span>
 	                </span>
 	              </button>
 	              <button
 	                onClick={() => goToMetadata('setup')}
-	                className="h-[72px] md:h-[76px] px-2 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors flex flex-col items-center justify-center gap-2 text-center"
+	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
 	              >
-	                <Icon name="edit-3" size={16} className="shrink-0" />
-	                <span className="font-black text-[9px] sm:text-[10px] md:text-[11px] uppercase tracking-wide leading-tight break-words">
-	                  Configure
-	                </span>
+	                <Icon name="edit-3" size={14} />
+	                Configure
 	              </button>
 	              <button
 	                onClick={() => setAppState('history')}
-	                className="h-[72px] md:h-[76px] px-2 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors flex flex-col items-center justify-center gap-2 text-center"
+	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
 	              >
-	                <Icon name="clock" size={16} className="shrink-0" />
-	                <span className="font-black text-[9px] sm:text-[10px] md:text-[11px] uppercase tracking-wide leading-tight break-words">
-	                  History
-	                </span>
+	                <Icon name="clock" size={14} />
+	                History
 	              </button>
 	            </div>
-	          </div>
-	        </div>
-	      </div>
-	    );
-	  }
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 	  if (appState === 'import') {
 	    return (
