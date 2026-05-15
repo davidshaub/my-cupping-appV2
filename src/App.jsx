@@ -232,6 +232,35 @@ const App = () => {
     return clamped.toFixed(1);
   };
 
+  const normalizeProcessingInput = (rawValue, existingDetails = '') => {
+    const raw = String(rawValue ?? '').trim();
+    if (!raw) return { processing: 'Select One', processingOther: '' };
+
+    const lower = raw.toLowerCase();
+    if (lower === 'select one' || lower === 'n/a') return { processing: 'Select One', processingOther: '' };
+
+    const canonical = (processing) => ({
+      processing,
+      processingOther: processing === 'Other' ? existingDetails || '' : ''
+    });
+
+    if (lower === 'washed' || lower === 'wash' || lower === 'fully washed') return canonical('Washed');
+    if (lower === 'natural' || lower === 'dry process' || lower === 'dry-processed') return canonical('Natural');
+    if (lower === 'honey') return canonical('Honey');
+    if (lower === 'other') return canonical('Other');
+
+    if (/^other\s*[:\\-–—]/i.test(raw)) {
+      const details = raw.replace(/^other\s*[:\\-–—]\s*/i, '').trim();
+      return { processing: 'Other', processingOther: details || existingDetails || '' };
+    }
+
+    const match = ['Washed', 'Natural', 'Honey', 'Other', 'Select One'].find((opt) => opt.toLowerCase() === lower);
+    if (match) return canonical(match);
+
+    // Anything else becomes "Other" with the pasted/typed text moved to details.
+    return { processing: 'Other', processingOther: raw };
+  };
+
   const handleTablePaste = (startRow, startCol, columnOrder, e) => {
     const text = e.clipboardData?.getData('text');
     if (!text) return;
@@ -250,7 +279,9 @@ const App = () => {
           const colKey = columnOrder[targetCol];
           if (!colKey) return;
           if (colKey === 'processing' && value) {
-            next.processing = value;
+            const normalized = normalizeProcessingInput(value, next.processingOther);
+            next.processing = normalized.processing;
+            next.processingOther = normalized.processingOther;
           } else if (colKey === 'processingOther' && value) {
             next.processingOther = value;
             next.processing = next.processing === 'Other' ? next.processing : 'Other';
@@ -517,20 +548,30 @@ const App = () => {
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         />
                       </td>
-                      <td className="px-3 py-2 align-top min-w-[140px]">
-                        <select
-                          value={s.processing || 'Select One'}
-                          onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 2, tablePasteOrder, e)}
-                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
-                        >
-                          <option>Select One</option>
-                          <option>Washed</option>
-                          <option>Natural</option>
-                          <option>Honey</option>
-                          <option>Other</option>
-                        </select>
-                      </td>
+	                      <td className="px-3 py-2 align-top min-w-[140px]">
+	                        <input
+	                          value={s.processing && s.processing !== 'Select One' ? s.processing : ''}
+	                          onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
+	                          onBlur={(e) => {
+	                            const normalized = normalizeProcessingInput(e.target.value, s.processingOther);
+	                            setSamples((prev) =>
+	                              prev.map((item, sIdx) =>
+	                                sIdx === idx
+	                                  ? {
+	                                      ...item,
+	                                      processing: normalized.processing,
+	                                      processingOther: normalized.processingOther
+	                                    }
+	                                  : item
+	                              )
+	                            );
+	                          }}
+	                          onPaste={(e) => handleTablePaste(idx, 2, tablePasteOrder, e)}
+	                          placeholder="Washed / Natural / Honey / Other"
+	                          list="processing-options"
+	                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+	                        />
+	                      </td>
                       <td className="px-3 py-2 align-top min-w-[140px]">
                         <input
                           value={s.waterActivity || ''}
@@ -582,10 +623,16 @@ const App = () => {
                       )}
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
+	                </tbody>
+	              </table>
+	              <datalist id="processing-options">
+	                <option value="Washed" />
+	                <option value="Natural" />
+	                <option value="Honey" />
+	                <option value="Other" />
+	              </datalist>
+	            </div>
+	          ) : (
             samples.map((s, idx) => (
               <div key={idx} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-stone-50 pb-3">
