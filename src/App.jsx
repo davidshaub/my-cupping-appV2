@@ -391,130 +391,146 @@ const App = () => {
               Start Session
               <Icon name="chevron-right" />
             </button>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => {
-                  setImportError('');
-                  setAppState('import');
-                }}
-                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-center gap-2 uppercase tracking-widest leading-tight"
-              >
-                <Icon name="upload" size={14} />
-                Upload Session
-              </button>
-              <button
-                onClick={() => goToMetadata('setup')}
-                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-center gap-2 uppercase tracking-widest leading-tight"
-              >
-                <Icon name="edit-3" size={14} />
-                Configure
-              </button>
-              <button
-                onClick={() => setAppState('history')}
-                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-center gap-2 uppercase tracking-widest leading-tight"
-              >
-                <Icon name="clock" size={14} />
-                History
-              </button>
-            </div>
+	            <div className="grid grid-cols-3 gap-3">
+	              <button
+	                onClick={() => {
+	                  setImportError('');
+	                  setAppState('import');
+	                }}
+	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
+	              >
+	                <Icon name="upload" size={14} />
+	                <span>
+	                  <span className="block sm:inline">Upload</span>
+	                  <span className="block sm:inline sm:ml-1">Session</span>
+	                </span>
+	              </button>
+	              <button
+	                onClick={() => goToMetadata('setup')}
+	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
+	              >
+	                <Icon name="edit-3" size={14} />
+	                Configure
+	              </button>
+	              <button
+	                onClick={() => setAppState('history')}
+	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
+	              >
+	                <Icon name="clock" size={14} />
+	                History
+	              </button>
+	            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  if (appState === 'import') {
-    return (
-      <div className="min-h-screen bg-stone-100 p-6 md:p-12">
-        <div className="max-w-2xl mx-auto space-y-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">Upload Session</h1>
-              <p className="text-stone-500 font-bold text-sm md:text-base mt-2 leading-relaxed">
-                Bring a session from another device. Upload a CSV you exported from Cupping Lab on a different device.
-              </p>
-            </div>
-            <button onClick={() => setAppState('setup')} className="text-stone-400 font-bold hover:text-stone-900 text-sm whitespace-nowrap">
-              Back
-            </button>
-          </div>
+	  if (appState === 'import') {
+	    return (
+	      <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
+	        <div className="max-w-xl w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 border border-stone-200">
+	          <div className="flex items-start justify-between gap-4 mb-6">
+	            <div className="flex items-start gap-3">
+	              <div className="inline-flex p-3 rounded-2xl bg-stone-900 text-white shadow-xl">
+	                <Icon name="upload" size={20} />
+	              </div>
+	              <div className="pt-0.5">
+	                <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">Upload Session</h1>
+	                <p className="text-stone-400 font-black text-[10px] uppercase tracking-widest mt-2">
+	                  Import a CSV exported from Cupping Lab
+	                </p>
+	              </div>
+	            </div>
+	            <button
+	              onClick={() => setAppState('setup')}
+	              className="px-3 py-2 rounded-xl bg-white text-stone-700 border border-stone-200 hover:bg-stone-50 font-black text-[11px] uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
+	            >
+	              <Icon name="chevron-left" size={16} />
+	              Back
+	            </button>
+	          </div>
 
-          {importError && (
-            <div className="rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-red-700 font-bold text-sm">{importError}</div>
-          )}
+	          <p className="text-sm text-stone-600 font-bold leading-relaxed">
+	            Bring a session from another device. Upload a CSV you exported from Cupping Lab on a different device.
+	          </p>
 
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(e) => importSessionCsvFile(e.target.files?.[0])}
-          />
+	          {importError && (
+	            <div className="mt-5 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-red-700 font-bold text-sm">{importError}</div>
+	          )}
 
-          <div
-            onClick={() => (isImporting ? null : importInputRef.current?.click())}
-            onDragEnter={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!isImporting) setIsDragActive(true);
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!isImporting) setIsDragActive(true);
-            }}
-            onDragLeave={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragActive(false);
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragActive(false);
-              if (isImporting) return;
-              const file = e.dataTransfer?.files?.[0];
-              if (file) importSessionCsvFile(file);
-            }}
-            className={`rounded-[2rem] border-2 border-dashed p-10 md:p-12 text-center cursor-pointer select-none transition ${
-              isImporting
-                ? 'bg-white border-stone-100 text-stone-300'
-                : isDragActive
-                  ? 'bg-white border-stone-900 text-stone-900'
-                  : 'bg-white border-stone-200 text-stone-700 hover:border-stone-400'
-            }`}
-          >
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-stone-100 text-stone-900 mb-5">
-              <Icon name={isImporting ? 'loader-2' : 'upload'} size={22} className={isImporting ? 'animate-spin' : ''} />
-            </div>
-            <p className="text-lg md:text-xl font-black tracking-tight">{isImporting ? 'Importing…' : 'Drop your CSV here'}</p>
-            <p className="text-sm font-bold text-stone-400 mt-2">or click to browse your device</p>
+	          <input
+	            ref={importInputRef}
+	            type="file"
+	            accept=".csv,text/csv"
+	            className="hidden"
+	            onChange={(e) => importSessionCsvFile(e.target.files?.[0])}
+	          />
 
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isImporting) importInputRef.current?.click();
-                }}
-                disabled={isImporting}
-                className={`px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest inline-flex items-center justify-center gap-2 border transition-colors ${
-                  isImporting ? 'bg-stone-100 text-stone-300 border-stone-100' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                }`}
-              >
-                <Icon name="upload" size={16} />
-                Browse Files
-              </button>
-            </div>
-          </div>
+	          <div
+	            onClick={() => (isImporting ? null : importInputRef.current?.click())}
+	            onDragEnter={(e) => {
+	              e.preventDefault();
+	              e.stopPropagation();
+	              if (!isImporting) setIsDragActive(true);
+	            }}
+	            onDragOver={(e) => {
+	              e.preventDefault();
+	              e.stopPropagation();
+	              if (!isImporting) setIsDragActive(true);
+	            }}
+	            onDragLeave={(e) => {
+	              e.preventDefault();
+	              e.stopPropagation();
+	              setIsDragActive(false);
+	            }}
+	            onDrop={(e) => {
+	              e.preventDefault();
+	              e.stopPropagation();
+	              setIsDragActive(false);
+	              if (isImporting) return;
+	              const file = e.dataTransfer?.files?.[0];
+	              if (file) importSessionCsvFile(file);
+	            }}
+	            className={`mt-6 rounded-[1.75rem] border-2 border-dashed p-8 md:p-10 text-center cursor-pointer select-none transition ${
+	              isImporting
+	                ? 'bg-stone-50 border-stone-100 text-stone-300'
+	                : isDragActive
+	                  ? 'bg-stone-50 border-stone-900 text-stone-900'
+	                  : 'bg-stone-50 border-stone-200 text-stone-700 hover:border-stone-400'
+	            }`}
+	          >
+	            <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-white border border-stone-200 shadow-sm text-stone-900 mb-5">
+	              <Icon name={isImporting ? 'loader-2' : 'upload'} size={22} className={isImporting ? 'animate-spin' : ''} />
+	            </div>
+	            <p className="text-base md:text-lg font-black tracking-tight">{isImporting ? 'Importing…' : 'Drop your CSV here'}</p>
+	            <p className="text-[11px] font-black text-stone-400 uppercase tracking-widest mt-2">or browse your device</p>
 
-          <div className="text-xs text-stone-400 font-bold leading-relaxed">
-            Tip: Use the CSV export from the Report screen. Only CSVs exported by this app will import cleanly.
-          </div>
-        </div>
-      </div>
-    );
-  }
+	            <div className="mt-6">
+	              <button
+	                type="button"
+	                onClick={(e) => {
+	                  e.stopPropagation();
+	                  if (!isImporting) importInputRef.current?.click();
+	                }}
+	                disabled={isImporting}
+	                className={`px-5 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest inline-flex items-center justify-center gap-2 border transition-colors ${
+	                  isImporting ? 'bg-stone-100 text-stone-300 border-stone-100' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
+	                }`}
+	              >
+	                <Icon name="upload" size={16} />
+	                Browse Files
+	              </button>
+	            </div>
+	          </div>
+
+	          <div className="mt-5 text-[11px] text-stone-400 font-bold leading-relaxed">
+	            Tip: Export the CSV from the Report screen on your other device.
+	          </div>
+	        </div>
+	      </div>
+	    );
+	  }
 
   if (appState === 'history') {
     return (
