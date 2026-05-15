@@ -401,35 +401,45 @@ const App = () => {
               Start Session
               <Icon name="chevron-right" />
             </button>
-	            <div className="grid grid-cols-3 gap-3">
-	              <button
-	                onClick={() => {
-	                  setImportError('');
-	                  setAppState('import');
-	                }}
-	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
-	              >
-	                <Icon name="upload" size={14} />
-	                <span>
-	                  <span className="block sm:inline">Upload</span>
-	                  <span className="block sm:inline sm:ml-1">Session</span>
-	                </span>
-	              </button>
-	              <button
-	                onClick={() => goToMetadata('setup')}
-	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
-	              >
-	                <Icon name="edit-3" size={14} />
-	                Configure
-	              </button>
-	              <button
-	                onClick={() => setAppState('history')}
-	                className="py-3 md:py-4 bg-white text-stone-700 border-2 border-stone-100 rounded-2xl font-black text-[10px] md:text-[11px] hover:bg-stone-50 transition-colors flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 uppercase tracking-widest leading-tight text-center"
-	              >
-	                <Icon name="clock" size={14} />
-	                History
-	              </button>
-	            </div>
+		            <div className="grid grid-cols-3 gap-3">
+		              <button
+		                onClick={() => {
+		                  setImportError('');
+		                  setAppState('import');
+		                }}
+		                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
+		              >
+		                <span className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+		                  <Icon name="upload" size={18} />
+		                </span>
+		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
+		                  <span className="block">Upload</span>
+		                  <span className="block">Session</span>
+		                </span>
+		              </button>
+		              <button
+		                onClick={() => goToMetadata('setup')}
+		                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
+		              >
+		                <span className="w-9 h-9 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+		                  <Icon name="settings-2" size={18} />
+		                </span>
+		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
+		                  Configure
+		                </span>
+		              </button>
+		              <button
+		                onClick={() => setAppState('history')}
+		                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
+		              >
+		                <span className="w-9 h-9 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+		                  <Icon name="history" size={18} />
+		                </span>
+		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
+		                  History
+		                </span>
+		              </button>
+		            </div>
           </div>
         </div>
       </div>
