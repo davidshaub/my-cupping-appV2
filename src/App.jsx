@@ -422,7 +422,7 @@ const App = () => {
 		                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
 		              >
 		                <span className="w-9 h-9 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-		                  <Icon name="settings-2" size={18} />
+		                  <Icon name="edit-2" size={18} />
 		                </span>
 		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
 		                  Configure
@@ -433,7 +433,7 @@ const App = () => {
 		                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
 		              >
 		                <span className="w-9 h-9 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-		                  <Icon name="history" size={18} />
+		                  <Icon name="clock" size={18} />
 		                </span>
 		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
 		                  History
