@@ -168,12 +168,15 @@ const App = () => {
   };
 
   const toSafeFilenamePart = (value) => {
+    // Keep dots (e.g. 123.26) and other common ID punctuation, but strip anything
+    // that is unsafe/invalid in filenames across platforms.
     const cleaned = String(value ?? '')
       .trim()
-      .replace(/[^a-zA-Z0-9 _-]/g, '')
-      .replace(/\s+/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_+|_+$/g, '');
+      .replace(/[^a-zA-Z0-9 ._-]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      // Windows doesn't like trailing dots/spaces.
+      .replace(/[. ]+$/g, '');
     return cleaned.slice(0, 60);
   };
 
@@ -205,36 +208,92 @@ const App = () => {
         useCORS: true,
         scale: 2,
         logging: false,
-        windowWidth: Math.max(element.scrollWidth, element.clientWidth),
-        windowHeight: Math.max(element.scrollHeight, element.clientHeight),
-        scrollX: -window.scrollX,
-        scrollY: -window.scrollY,
+        // Match the printable content box defined in src/styles.css (@page margin 0.45cm).
+        windowWidth: 1022,
+        windowHeight: 782,
+        scrollX: 0,
+        scrollY: 0,
         onclone: (doc) => {
           doc.body.classList.add('pdf-export');
           const style = doc.createElement('style');
+          // html2canvas does not apply @media print rules, so we mirror the same print
+          // layout here to match the "Print All" PDF exactly.
           style.textContent = `
-            body.pdf-export { background: #ffffff !important; }
-            body.pdf-export .print-only { display: block !important; }
-            body.pdf-export .print-hidden, body.pdf-export .report-title, body.pdf-export .report-signoff { display: none !important; }
+            body.pdf-export { background-color: #ffffff !important; padding: 0 !important; margin: 0 !important; }
 
-            body.pdf-export [data-pdf-export-id="${marker}"] {
+            body.pdf-export .print-hidden,
+            body.pdf-export .report-signoff {
+              display: none !important;
+            }
+
+            body.pdf-export .report-title {
+              display: none !important;
+            }
+
+            body.pdf-export .print-only {
+              display: block !important;
+            }
+
+            body.pdf-export .report-container {
+              width: 100% !important;
+              max-width: none !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+
+            body.pdf-export .sample-spec-sheet {
+              break-before: auto !important;
+              page-break-before: auto !important;
+              break-after: page !important;
+              page-break-after: always !important;
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
               border: 1.5px solid #1c1917 !important;
               padding: 0.55cm !important;
+              margin-bottom: 0 !important;
+              width: 100% !important;
+              height: 18.8cm !important;
+              overflow: hidden !important;
+              position: relative !important;
+              display: grid !important;
+              grid-template-rows: auto auto 1fr auto !important;
+              gap: 0.4cm !important;
               margin: 0 !important;
               background: #ffffff !important;
             }
 
-            body.pdf-export [data-pdf-export-id="${marker}"] .print-page-header {
+            body.pdf-export .sample-spec-sheet:first-child {
+              break-before: auto !important;
+              page-break-before: auto !important;
+            }
+
+            body.pdf-export .sample-spec-sheet:last-child {
+              break-after: auto !important;
+              page-break-after: auto !important;
+            }
+
+            body.pdf-export .sample-spec-sheet * {
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+            }
+
+            body.pdf-export .print-page-header,
+            body.pdf-export .print-page-footer {
+              width: 100%;
+            }
+
+            body.pdf-export .print-page-header {
               display: flex !important;
               justify-content: space-between !important;
               align-items: flex-start !important;
               gap: 0.3cm !important;
               border-bottom: 1.4px solid #1c1917 !important;
               padding-bottom: 0.2cm !important;
-              width: 100% !important;
             }
 
-            body.pdf-export [data-pdf-export-id="${marker}"] .print-page-footer {
+            body.pdf-export .print-page-footer {
               display: flex !important;
               flex-direction: column !important;
               align-items: center !important;
@@ -246,7 +305,13 @@ const App = () => {
               padding-top: 0.35cm !important;
             }
 
-            body.pdf-export [data-pdf-export-id="${marker}"] .print-page-title {
+            body.pdf-export .print-page-heading-group {
+              display: flex !important;
+              flex-direction: column !important;
+              gap: 2px !important;
+            }
+
+            body.pdf-export .print-page-title {
               font-size: 12px !important;
               font-weight: 800 !important;
               letter-spacing: 0.14em !important;
@@ -255,7 +320,7 @@ const App = () => {
               text-align: left !important;
             }
 
-            body.pdf-export [data-pdf-export-id="${marker}"] .print-page-subtitle {
+            body.pdf-export .print-page-subtitle {
               margin: 2px 0 0 0 !important;
               font-size: 9px !important;
               font-weight: 700 !important;
@@ -264,7 +329,7 @@ const App = () => {
               color: #4f4437 !important;
             }
 
-            body.pdf-export [data-pdf-export-id="${marker}"] .print-page-date {
+            body.pdf-export .print-page-date {
               font-size: 8px !important;
               font-weight: 700 !important;
               letter-spacing: 0.08em !important;
@@ -273,12 +338,146 @@ const App = () => {
               text-align: right !important;
             }
 
-            body.pdf-export [data-pdf-export-id="${marker}"] .print-footer-text {
+            body.pdf-export .print-footer-text {
               font-size: 9px !important;
               font-weight: 800 !important;
               letter-spacing: 0.12em !important;
               text-transform: uppercase !important;
               margin: 0 !important;
+            }
+
+            body.pdf-export .print-identity-block {
+              margin: 0 !important;
+              border-width: 1.5px !important;
+            }
+
+            body.pdf-export .print-identity-block h2 {
+              font-size: 26px !important;
+              line-height: 1.08 !important;
+              margin-top: 0.08cm !important;
+            }
+
+            body.pdf-export .print-identity-block .grade-display {
+              min-width: 5.2cm !important;
+              padding: 0.35cm 0.65cm !important;
+            }
+
+            body.pdf-export .print-identity-block .grade-display p:last-child {
+              font-size: 48px !important;
+              line-height: 1 !important;
+            }
+
+            body.pdf-export .print-spec-grid,
+            body.pdf-export .spec-grid {
+              display: grid !important;
+              grid-template-columns: 10.6cm 1fr !important;
+              gap: 0.5cm !important;
+              margin-top: 0 !important;
+              align-items: start !important;
+            }
+
+            body.pdf-export .print-visual-row,
+            body.pdf-export .visual-row {
+              display: flex !important;
+              flex-direction: row !important;
+              justify-content: space-between !important;
+              align-items: flex-start !important;
+              width: 100% !important;
+              margin: 0 !important;
+              border-bottom: none !important;
+              padding: 0 !important;
+              gap: 0.45cm !important;
+            }
+
+            body.pdf-export .print-chart-panel p.section-header {
+              margin-bottom: 0.25cm !important;
+            }
+
+            body.pdf-export .print-chart-panel .w-full.flex {
+              max-width: 5.4cm !important;
+            }
+
+            body.pdf-export .print-donut-chart {
+              width: 5cm !important;
+              height: 5cm !important;
+            }
+
+            body.pdf-export .print-donut-chart > .absolute:nth-of-type(2) {
+              top: 100% !important;
+              width: 5.6cm !important;
+              gap: 0.1cm 0.2cm !important;
+            }
+
+            body.pdf-export .print-donut-chart > .absolute:nth-of-type(2) span {
+              font-size: 7px !important;
+              letter-spacing: 0.01em !important;
+            }
+
+            body.pdf-export .data-column {
+              gap: 0.45cm !important;
+            }
+
+            body.pdf-export .print-tag-sections {
+              gap: 0.35cm !important;
+            }
+
+            body.pdf-export .print-tag-sections > div {
+              margin: 0 !important;
+              padding-bottom: 0.12cm !important;
+            }
+
+            body.pdf-export .print-tag-sections > div > div {
+              max-height: 1.8cm !important;
+              overflow: hidden !important;
+            }
+
+            body.pdf-export .print-tag-sections span {
+              font-size: 8px !important;
+              padding: 0.05cm 0.18cm !important;
+              line-height: 1.2 !important;
+            }
+
+            body.pdf-export .print-notes-block {
+              margin-top: 0 !important;
+              padding-top: 0.25cm !important;
+            }
+
+            body.pdf-export .print-notes-body {
+              max-height: 3.0cm !important;
+              overflow: hidden !important;
+              font-size: 10px !important;
+              line-height: 1.34 !important;
+              padding-right: 0 !important;
+            }
+
+            body.pdf-export .report-logo,
+            body.pdf-export .report-logo img {
+              display: none !important;
+            }
+
+            body.pdf-export .print-logo {
+              display: flex !important;
+              justify-content: center !important;
+              align-items: center !important;
+              margin-top: 0.2cm !important;
+              width: 100% !important;
+            }
+
+            body.pdf-export .print-logo img {
+              width: 3cm !important;
+              height: auto !important;
+              max-height: 3.6cm !important;
+              object-fit: contain !important;
+              transform: rotate(-90deg) !important;
+              transform-origin: center center !important;
+            }
+
+            body.pdf-export .grade-display {
+              background-color: #1c1917 !important;
+              color: #ffffff !important;
+              border-radius: 0 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
           `;
           doc.head.appendChild(style);
@@ -291,16 +490,20 @@ const App = () => {
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter', compress: true });
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
+    const cmToPt = 72 / 2.54;
+    const pageMargin = 0.45 * cmToPt;
+    const contentWidth = pdfWidth - pageMargin * 2;
+    const contentHeight = pdfHeight - pageMargin * 2;
 
     const imgData = canvas.toDataURL('image/png');
-    let imgWidth = pdfWidth;
+    let imgWidth = contentWidth;
     let imgHeight = (canvas.height * imgWidth) / canvas.width;
-    if (imgHeight > pdfHeight) {
-      imgHeight = pdfHeight;
+    if (imgHeight > contentHeight) {
+      imgHeight = contentHeight;
       imgWidth = (canvas.width * imgHeight) / canvas.height;
     }
-    const x = (pdfWidth - imgWidth) / 2;
-    const y = (pdfHeight - imgHeight) / 2;
+    const x = pageMargin + (contentWidth - imgWidth) / 2;
+    const y = pageMargin + (contentHeight - imgHeight) / 2;
 
     pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
     pdf.save(filename);
