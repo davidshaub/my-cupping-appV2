@@ -10,10 +10,7 @@ const ReportTags = ({ label, tags, alwaysShow = false }) => {
       <div className="flex flex-wrap gap-2">
         {tags.length > 0 ? (
           tags.map((tag) => (
-            <span
-              key={tag}
-              className={`${getTagStyle(tag)} px-3 py-1 rounded text-[10px] font-bold border inline-flex items-center leading-none`}
-            >
+            <span key={tag} className={`${getTagStyle(tag)} px-3 py-1 rounded text-[10px] font-bold border`}>
               {tag}
             </span>
           ))

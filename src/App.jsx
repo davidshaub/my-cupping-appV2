@@ -18,11 +18,8 @@ import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
-  // Pre-rotated asset (avoids html2canvas distortion with CSS transforms).
-  import HandsLogo from '../assets/hands-rotated.png';
+import HandsLogo from '../assets/hands.png';
 import LevelSelector from './components/LevelSelector';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 
 const App = () => {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
@@ -42,10 +39,6 @@ const App = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const importInputRef = useRef(null);
-  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
-  const [isExportingPdfs, setIsExportingPdfs] = useState(false);
-  const [pdfExportProgress, setPdfExportProgress] = useState({ current: 0, total: 0 });
-  const [pdfExportError, setPdfExportError] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('cupping_history');
@@ -74,15 +67,6 @@ const App = () => {
   const confirmAndRun = () => {
     confirmDialog.onConfirm?.();
     closeConfirm();
-  };
-
-  const openPdfDialog = () => {
-    setPdfExportError('');
-    setPdfDialogOpen(true);
-  };
-  const closePdfDialog = () => {
-    if (isExportingPdfs) return;
-    setPdfDialogOpen(false);
   };
 
   const resetToHome = () => {
@@ -168,380 +152,6 @@ const App = () => {
     }
   };
 
-  const toSafeFilenamePart = (value) => {
-    // Keep dots (e.g. 123.26) and other common ID punctuation, but strip anything
-    // that is unsafe/invalid in filenames across platforms.
-    const cleaned = String(value ?? '')
-      .trim()
-      .replace(/[^a-zA-Z0-9 ._-]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      // Windows doesn't like trailing dots/spaces.
-      .replace(/[. ]+$/g, '');
-    return cleaned.slice(0, 60);
-  };
-
-  const makeFilenameStamp = () =>
-    new Date()
-      .toLocaleString()
-      .replace(/[/:]/g, '-')
-      .replace(/,/g, '')
-      .replace(/\s+/g, '_');
-
-  const getIndividualPdfFilename = (sample, index, stamp) => {
-    const safeId = toSafeFilenamePart(sample?.ositoId);
-    if (safeId) return `${safeId}.pdf`;
-    return `Cupping_Report_${stamp}_Coffee_${index + 1}.pdf`;
-  };
-
-  const exportElementToSinglePagePdf = async (element, filename) => {
-    if (!element) throw new Error('Could not find the report page to export.');
-
-    // html2canvas can mis-measure layout if fonts/images are still loading.
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      await document.fonts?.ready;
-    } catch {
-      // Ignore if the browser doesn't support the Font Loading API.
-    }
-
-    const waitForImages = async (root) => {
-      const images = Array.from(root.querySelectorAll('img'));
-      await Promise.all(
-        images.map(async (img) => {
-          if (img.complete && img.naturalWidth) return;
-          if (typeof img.decode === 'function') {
-            try {
-              await img.decode();
-              return;
-            } catch {
-              // Fall back to load/error events.
-            }
-          }
-          await new Promise((resolve) => {
-            img.addEventListener('load', resolve, { once: true });
-            img.addEventListener('error', resolve, { once: true });
-          });
-        })
-      );
-    };
-
-    // eslint-disable-next-line no-await-in-loop
-    await waitForImages(element);
-
-    const marker = `pdf-export-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    element.setAttribute('data-pdf-export-id', marker);
-
-    // Give the browser a beat to flush layout before cloning.
-    await new Promise((r) => setTimeout(r, 30));
-
-    let canvas;
-    try {
-      canvas = await html2canvas(element, {
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        scale: 2,
-        logging: false,
-        // Match the printable content box defined in src/styles.css (@page margin 0.45cm).
-        windowWidth: 1022,
-        windowHeight: 782,
-        scrollX: 0,
-        scrollY: 0,
-        onclone: (doc) => {
-          doc.body.classList.add('pdf-export');
-          const style = doc.createElement('style');
-          // html2canvas does not apply @media print rules, so we mirror the same print
-          // layout here to match the "Print All" PDF exactly.
-          style.textContent = `
-            body.pdf-export { background-color: #ffffff !important; padding: 0 !important; margin: 0 !important; }
-
-            body.pdf-export .print-hidden,
-            body.pdf-export .report-signoff {
-              display: none !important;
-            }
-
-            body.pdf-export .report-title {
-              display: none !important;
-            }
-
-            body.pdf-export .print-only {
-              display: block !important;
-            }
-
-            body.pdf-export .report-container {
-              width: 100% !important;
-              max-width: none !important;
-              padding: 0 !important;
-              margin: 0 !important;
-              box-shadow: none !important;
-              border: none !important;
-            }
-
-            body.pdf-export .sample-spec-sheet {
-              break-before: auto !important;
-              page-break-before: auto !important;
-              break-after: page !important;
-              page-break-after: always !important;
-              break-inside: avoid !important;
-              page-break-inside: avoid !important;
-              border: 1.5px solid #1c1917 !important;
-              padding: 0.55cm !important;
-              margin-bottom: 0 !important;
-              width: 100% !important;
-              height: 18.8cm !important;
-              overflow: hidden !important;
-              position: relative !important;
-              display: grid !important;
-              grid-template-rows: auto auto 1fr auto !important;
-              gap: 0.4cm !important;
-              margin: 0 !important;
-              background: #ffffff !important;
-            }
-
-            body.pdf-export .sample-spec-sheet:first-child {
-              break-before: auto !important;
-              page-break-before: auto !important;
-            }
-
-            body.pdf-export .sample-spec-sheet:last-child {
-              break-after: auto !important;
-              page-break-after: auto !important;
-            }
-
-            body.pdf-export .sample-spec-sheet * {
-              break-inside: avoid !important;
-              page-break-inside: avoid !important;
-            }
-
-            body.pdf-export .print-page-header,
-            body.pdf-export .print-page-footer {
-              width: 100%;
-            }
-
-            body.pdf-export .print-page-header {
-              display: flex !important;
-              justify-content: space-between !important;
-              align-items: flex-start !important;
-              gap: 0.3cm !important;
-              border-bottom: 1.4px solid #1c1917 !important;
-              padding-bottom: 0.2cm !important;
-            }
-
-            body.pdf-export .print-page-footer {
-              display: flex !important;
-              flex-direction: column !important;
-              align-items: center !important;
-              gap: 0.25cm !important;
-              margin-top: 0.45cm !important;
-              text-align: center !important;
-              width: 100% !important;
-              border-top: 1.4px solid #1c1917 !important;
-              padding-top: 0.35cm !important;
-            }
-
-            body.pdf-export .print-page-heading-group {
-              display: flex !important;
-              flex-direction: column !important;
-              gap: 2px !important;
-            }
-
-            body.pdf-export .print-page-title {
-              font-size: 12px !important;
-              font-weight: 800 !important;
-              letter-spacing: 0.14em !important;
-              text-transform: uppercase !important;
-              margin: 0 !important;
-              text-align: left !important;
-            }
-
-            body.pdf-export .print-page-subtitle {
-              margin: 2px 0 0 0 !important;
-              font-size: 9px !important;
-              font-weight: 700 !important;
-              letter-spacing: 0.08em !important;
-              text-transform: uppercase !important;
-              color: #4f4437 !important;
-            }
-
-            body.pdf-export .print-page-date {
-              font-size: 8px !important;
-              font-weight: 700 !important;
-              letter-spacing: 0.08em !important;
-              text-transform: uppercase !important;
-              color: #4f4437 !important;
-              text-align: right !important;
-            }
-
-            body.pdf-export .print-footer-text {
-              font-size: 9px !important;
-              font-weight: 800 !important;
-              letter-spacing: 0.12em !important;
-              text-transform: uppercase !important;
-              margin: 0 !important;
-            }
-
-            body.pdf-export .print-identity-block {
-              margin: 0 !important;
-              border-width: 1.5px !important;
-            }
-
-            body.pdf-export .print-identity-block h2 {
-              font-size: 26px !important;
-              line-height: 1.08 !important;
-              margin-top: 0.08cm !important;
-            }
-
-            body.pdf-export .print-identity-block .grade-display {
-              min-width: 5.2cm !important;
-              padding: 0.35cm 0.65cm !important;
-            }
-
-            body.pdf-export .print-identity-block .grade-display p:last-child {
-              font-size: 48px !important;
-              line-height: 1 !important;
-            }
-
-            body.pdf-export .print-spec-grid,
-            body.pdf-export .spec-grid {
-              display: grid !important;
-              grid-template-columns: 10.6cm 1fr !important;
-              gap: 0.5cm !important;
-              margin-top: 0 !important;
-              align-items: start !important;
-            }
-
-            body.pdf-export .print-visual-row,
-            body.pdf-export .visual-row {
-              display: flex !important;
-              flex-direction: row !important;
-              justify-content: space-between !important;
-              align-items: flex-start !important;
-              width: 100% !important;
-              margin: 0 !important;
-              border-bottom: none !important;
-              padding: 0 !important;
-              gap: 0.45cm !important;
-            }
-
-            body.pdf-export .print-chart-panel p.section-header {
-              margin-bottom: 0.25cm !important;
-            }
-
-            body.pdf-export .print-chart-panel .w-full.flex {
-              max-width: 5.4cm !important;
-            }
-
-            body.pdf-export .print-donut-chart {
-              width: 5cm !important;
-              height: 5cm !important;
-            }
-
-            body.pdf-export .print-donut-chart > .absolute:nth-of-type(2) {
-              top: 100% !important;
-              width: 5.6cm !important;
-              gap: 0.1cm 0.2cm !important;
-            }
-
-            body.pdf-export .print-donut-chart > .absolute:nth-of-type(2) span {
-              font-size: 7px !important;
-              letter-spacing: 0.01em !important;
-            }
-
-            body.pdf-export .data-column {
-              gap: 0.45cm !important;
-            }
-
-            body.pdf-export .print-tag-sections {
-              gap: 0.35cm !important;
-            }
-
-            body.pdf-export .print-tag-sections > div {
-              margin: 0 !important;
-              padding-bottom: 0.12cm !important;
-            }
-
-            body.pdf-export .print-tag-sections > div > div {
-              max-height: 1.8cm !important;
-              overflow: hidden !important;
-            }
-
-            body.pdf-export .print-tag-sections span {
-              font-size: 8px !important;
-              padding: 0.05cm 0.18cm !important;
-              line-height: 1.2 !important;
-            }
-
-            body.pdf-export .print-notes-block {
-              margin-top: 0 !important;
-              padding-top: 0.25cm !important;
-            }
-
-            body.pdf-export .print-notes-body {
-              max-height: 3.0cm !important;
-              overflow: hidden !important;
-              font-size: 10px !important;
-              line-height: 1.34 !important;
-              padding-right: 0 !important;
-            }
-
-            body.pdf-export .report-logo,
-            body.pdf-export .report-logo img {
-              display: none !important;
-            }
-
-            body.pdf-export .print-logo {
-              display: flex !important;
-              justify-content: center !important;
-              align-items: center !important;
-              margin-top: 0.2cm !important;
-              width: 100% !important;
-            }
-
-            body.pdf-export .print-logo img {
-              width: 3cm !important;
-              height: auto !important;
-              max-height: 3.6cm !important;
-              object-fit: contain !important;
-              display: inline-block !important;
-            }
-
-            body.pdf-export .grade-display {
-              background-color: #1c1917 !important;
-              color: #ffffff !important;
-              border-radius: 0 !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-          `;
-          doc.head.appendChild(style);
-        }
-      });
-    } finally {
-      element.removeAttribute('data-pdf-export-id');
-    }
-
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter', compress: true });
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const cmToPt = 72 / 2.54;
-    const pageMargin = 0.45 * cmToPt;
-    const contentWidth = pdfWidth - pageMargin * 2;
-    const contentHeight = pdfHeight - pageMargin * 2;
-
-    const imgData = canvas.toDataURL('image/png');
-    let imgWidth = contentWidth;
-    let imgHeight = (canvas.height * imgWidth) / canvas.width;
-    if (imgHeight > contentHeight) {
-      imgHeight = contentHeight;
-      imgWidth = (canvas.width * imgHeight) / canvas.height;
-    }
-    const x = pageMargin + (contentWidth - imgWidth) / 2;
-    const y = pageMargin + (contentHeight - imgHeight) / 2;
-
-    pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
-    pdf.save(filename);
-  };
-
   const printAllPdf = () => {
     const prev = document.title;
     const stamp = new Date().toLocaleString();
@@ -550,38 +160,6 @@ const App = () => {
     setTimeout(() => {
       document.title = prev;
     }, 500);
-  };
-
-  const exportIndividualPdfs = async () => {
-    if (samples.length === 0) return;
-    const sheets = Array.from(document.querySelectorAll('.sample-spec-sheet'));
-    if (sheets.length === 0) {
-      setPdfExportError('Could not find the report pages to export.');
-      return;
-    }
-
-    setIsExportingPdfs(true);
-    setPdfExportError('');
-    setPdfExportProgress({ current: 0, total: sheets.length });
-    const stamp = makeFilenameStamp();
-
-    try {
-      for (let i = 0; i < sheets.length; i += 1) {
-        setPdfExportProgress({ current: i + 1, total: sheets.length });
-        const filename = getIndividualPdfFilename(samples[i], i, stamp);
-        // eslint-disable-next-line no-await-in-loop
-        await exportElementToSinglePagePdf(sheets[i], filename);
-        // Give the browser a breath between downloads.
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((r) => setTimeout(r, 120));
-      }
-      setPdfDialogOpen(false);
-    } catch (err) {
-      setPdfExportError(err?.message || 'Could not export those PDFs.');
-    } finally {
-      setIsExportingPdfs(false);
-      setPdfExportProgress({ current: 0, total: 0 });
-    }
   };
 
   const renderConfirmModal = () =>
@@ -605,61 +183,6 @@ const App = () => {
               Yes, go back
             </button>
           </div>
-        </div>
-      </div>
-    );
-
-  const renderPdfModal = () =>
-    pdfDialogOpen && (
-      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-stone-900/70 backdrop-blur-sm p-6 print-hidden">
-        <div className="bg-white w-full max-w-md rounded-[1.75rem] p-8 space-y-5 shadow-2xl">
-          <div className="space-y-2">
-            <h3 className="text-xl font-black text-stone-900 leading-tight">Export PDF</h3>
-            <p className="text-sm text-stone-600 leading-relaxed">
-              Choose a single PDF for everything, or download one PDF per coffee (named by Osito ID when available).
-            </p>
-          </div>
-
-          {pdfExportError && <div className="rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-red-700 font-bold text-sm">{pdfExportError}</div>}
-
-          {isExportingPdfs && (
-            <div className="rounded-2xl bg-stone-50 border border-stone-100 px-4 py-3">
-              <p className="text-xs font-black uppercase tracking-widest text-stone-500">Exporting</p>
-              <p className="text-sm font-bold text-stone-800 mt-1">
-                Coffee {pdfExportProgress.current} of {pdfExportProgress.total}
-              </p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-2">
-            <button
-              onClick={() => {
-                closePdfDialog();
-                printAllPdf();
-              }}
-              disabled={isExportingPdfs}
-              className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 border transition ${
-                isExportingPdfs ? 'bg-stone-100 text-stone-300 border-stone-100' : 'bg-white text-stone-800 border-stone-200 hover:bg-stone-50'
-              }`}
-            >
-              <Icon name="printer" size={16} />
-              Print All (One PDF)
-            </button>
-            <button
-              onClick={exportIndividualPdfs}
-              disabled={isExportingPdfs}
-              className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition ${
-                isExportingPdfs ? 'bg-stone-200 text-stone-300' : 'btn-stone-dark text-white hover:opacity-95'
-              }`}
-            >
-              <Icon name="download" size={16} />
-              Download One PDF Per Coffee
-            </button>
-          </div>
-
-          <button onClick={closePdfDialog} disabled={isExportingPdfs} className="w-full py-2 text-stone-400 font-bold text-xs uppercase">
-            Cancel
-          </button>
         </div>
       </div>
     );
@@ -1325,7 +848,6 @@ const App = () => {
 	    return (
 	      <div className="min-h-screen bg-stone-100 p-4 md:p-8 relative">
 	        {renderConfirmModal()}
-	        {renderPdfModal()}
 	        {showSaveModal && (
 	          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
 	            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
@@ -1390,10 +912,10 @@ const App = () => {
                 <Icon name="download" size={16} />
                 CSV
               </button>
-	              <button
-	                onClick={openPdfDialog}
-	                className="flex items-center gap-2 px-6 py-2 btn-stone-dark font-bold shadow-xl active:scale-95 text-xs"
-	              >
+		              <button
+		                onClick={printAllPdf}
+		                className="flex items-center gap-2 px-6 py-2 btn-stone-dark font-bold shadow-xl active:scale-95 text-xs"
+		              >
 	                <Icon name="printer" size={16} />
 	                PRINT PDF
 	              </button>
@@ -1556,10 +1078,10 @@ const App = () => {
               <Icon name="download" size={14} />
               CSV
             </button>
-	            <button
-	              onClick={openPdfDialog}
-	              className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-900 text-white text-[10px] font-black uppercase tracking-wider"
-	            >
+		            <button
+		              onClick={printAllPdf}
+		              className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-900 text-white text-[10px] font-black uppercase tracking-wider"
+		            >
 	              <Icon name="printer" size={14} />
 	              Print
 	            </button>
