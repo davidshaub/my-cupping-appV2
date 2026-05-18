@@ -3,9 +3,10 @@ import { GRAPH_FLOOR, RADAR_LABELS } from '../constants';
 
 const SpiderGraph = ({ scores, size, einkMode = false }) => {
   const center = size / 2;
-  const radius = (size / 2) * 0.72;
-  const labelDistance = radius + (einkMode ? (size <= 190 ? 30 : 38) : size <= 190 ? 20 : 26);
-  const labelFontSize = einkMode ? (size <= 190 ? 7 : 9) : size <= 190 ? 7 : 8;
+  const isCompact = size <= 190;
+  const radius = size * (isCompact ? 0.2 : 0.23);
+  const labelDistance = size * (isCompact ? 0.24 : 0.26);
+  const labelFontSize = isCompact ? 6 : 8;
   const fragAroma = scores.aroma !== null ? (scores.fragrance + scores.aroma) / 2 : scores.fragrance;
   const data = [
     fragAroma,
@@ -34,8 +35,8 @@ const SpiderGraph = ({ scores, size, einkMode = false }) => {
   const pointStroke = einkMode ? '#ffffff' : '#ffffff';
 
   return (
-    <div className="w-full flex items-center justify-center overflow-visible">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible font-sans max-w-full h-auto">
+    <div className="w-full flex items-center justify-center overflow-hidden">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="font-sans max-w-full h-auto">
         {[7.5, 8.5, 9.5].map((v) => (
           <circle
             key={v}
@@ -49,6 +50,7 @@ const SpiderGraph = ({ scores, size, einkMode = false }) => {
           />
         ))}
         {RADAR_LABELS.map((label, i) => {
+          const displayLabel = isCompact && label === 'Consistency' ? 'Consist.' : label;
           const angle = i * ((Math.PI * 2) / 10) - Math.PI / 2;
           const cos = Math.cos(angle);
           const x2 = center + radius * Math.cos(angle);
@@ -75,7 +77,7 @@ const SpiderGraph = ({ scores, size, einkMode = false }) => {
                 fill={einkMode ? '#000000' : undefined}
                 className={`font-black uppercase tracking-tighter ${einkMode ? '' : 'fill-stone-400'}`}
               >
-                {label}
+                {displayLabel}
               </text>
             </g>
           );
