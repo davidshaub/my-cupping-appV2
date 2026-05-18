@@ -590,6 +590,35 @@ h3 {
   letter-spacing: 0.04em;
 }
 
+.home-display-control {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.35rem;
+}
+
+.home-display-toggle,
+.home-display-toggle.is-active {
+  min-height: 2rem;
+  padding: 0.35rem 0.55rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--os-muted);
+  font-size: 0.58rem;
+  box-shadow: none;
+}
+
+.home-display-toggle:hover {
+  border-color: var(--os-line);
+  background: var(--os-bg-soft);
+  color: var(--os-ink);
+}
+
+.home-display-toggle .eink-toggle-state {
+  background: var(--os-bg-soft);
+  border: 1px solid var(--os-line);
+  color: var(--os-muted);
+}
+
 @media (min-width: 768px) {
   .eink-report-mobile-toggle {
     display: none !important;
@@ -714,6 +743,24 @@ h3 {
   :root[data-display-mode='eink'] .grade-display *,
   :root[data-display-mode='eink'] .eink-toggle.is-active * {
     color: #ffffff !important;
+  }
+
+  :root[data-display-mode='eink'] .home-display-toggle,
+  :root[data-display-mode='eink'] .home-display-toggle.is-active {
+    background: #ffffff !important;
+    border-color: transparent !important;
+    color: #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] .home-display-toggle *,
+  :root[data-display-mode='eink'] .home-display-toggle.is-active * {
+    color: #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] .home-display-toggle .eink-toggle-state {
+    background: #ffffff !important;
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
   }
 
   :root[data-display-mode='eink'] .border-stone-50,

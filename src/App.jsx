@@ -406,9 +406,6 @@ const App = () => {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
         <div className="max-w-md w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 text-center border border-stone-200">
-          <div className="flex justify-end mb-4">
-            <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} />
-          </div>
           <div className="inline-flex p-4 rounded-3xl bg-stone-900 text-white mb-6 md:mb-8 shadow-xl">
             <Icon name="coffee" size={28} />
           </div>
@@ -471,8 +468,11 @@ const App = () => {
 		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
 		                  History
 		                </span>
-		              </button>
-		            </div>
+			              </button>
+			            </div>
+            <div className="home-display-control">
+              <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} className="home-display-toggle" />
+            </div>
           </div>
         </div>
       </div>
