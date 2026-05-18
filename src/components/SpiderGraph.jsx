@@ -1,12 +1,23 @@
 import React from 'react';
 import { GRAPH_FLOOR, RADAR_LABELS } from '../constants';
 
+const DISPLAY_LABELS = {
+  'Frag/Aroma': 'Fr/Aroma',
+  Consistency: 'Consist.'
+};
+
 const SpiderGraph = ({ scores, size, einkMode = false }) => {
-  const center = size / 2;
-  const isCompact = size <= 190;
-  const radius = size * (isCompact ? 0.2 : 0.22);
-  const labelDistance = size * (isCompact ? 0.24 : 0.245);
-  const labelFontSize = isCompact ? 6 : 7;
+  const isCompact = size <= 260;
+  const horizontalLabelSpace = isCompact ? 42 : 54;
+  const verticalLabelSpace = isCompact ? 26 : 32;
+  const svgWidth = size + horizontalLabelSpace * 2;
+  const svgHeight = size + verticalLabelSpace * 2;
+  const centerX = svgWidth / 2;
+  const centerY = svgHeight / 2;
+  const radius = size * 0.39;
+  const labelDistance = radius + (isCompact ? 17 : 20);
+  const labelFontSize = isCompact ? 8 : 9;
+  const labelOffset = isCompact ? 3 : 4;
   const fragAroma = scores.aroma !== null ? (scores.fragrance + scores.aroma) / 2 : scores.fragrance;
   const data = [
     fragAroma,
@@ -24,7 +35,7 @@ const SpiderGraph = ({ scores, size, einkMode = false }) => {
   const pts = data.map((v, i) => {
     const r = Math.max(0, (v - GRAPH_FLOOR) / (10 - GRAPH_FLOOR)) * radius;
     const angle = i * ((Math.PI * 2) / 10) - Math.PI / 2;
-    return { x: center + r * Math.cos(angle), y: center + r * Math.sin(angle) };
+    return { x: centerX + r * Math.cos(angle), y: centerY + r * Math.sin(angle) };
   });
 
   const path = `${pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')} Z`;
@@ -33,41 +44,43 @@ const SpiderGraph = ({ scores, size, einkMode = false }) => {
   const dataFill = einkMode ? 'rgba(0, 0, 0, 0.06)' : 'rgba(28, 25, 23, 0.12)';
   const dataStroke = einkMode ? '#000000' : '#1c1917';
   const pointStroke = einkMode ? '#ffffff' : '#ffffff';
+  const gridLevels = [7.5, 8.5, 9.5, 10];
 
   return (
     <div className="w-full flex items-center justify-center overflow-hidden">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="font-sans max-w-full h-auto">
-        {[7.5, 8.5, 9.5].map((v) => (
+      <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="font-sans max-w-full h-auto">
+        {gridLevels.map((v) => (
           <circle
             key={v}
-            cx={center}
-            cy={center}
+            cx={centerX}
+            cy={centerY}
             r={((v - GRAPH_FLOOR) / (10 - GRAPH_FLOOR)) * radius}
             fill="none"
             stroke={gridStroke}
-            strokeWidth="1"
-            strokeDasharray="4,4"
+            strokeWidth={v === 10 ? '1.25' : '1'}
+            strokeDasharray={v === 10 ? undefined : '4,4'}
           />
         ))}
         {RADAR_LABELS.map((label, i) => {
-          const displayLabel = isCompact && label === 'Consistency' ? 'Consist.' : label;
+          const displayLabel = DISPLAY_LABELS[label] ?? label;
           const angle = i * ((Math.PI * 2) / 10) - Math.PI / 2;
           const cos = Math.cos(angle);
-          const x2 = center + radius * Math.cos(angle);
-          const y2 = center + radius * Math.sin(angle);
-          const lp = { x: center + labelDistance * Math.cos(angle), y: center + labelDistance * Math.sin(angle) };
+          const x2 = centerX + radius * Math.cos(angle);
+          const y2 = centerY + radius * Math.sin(angle);
+          const lp = { x: centerX + labelDistance * Math.cos(angle), y: centerY + labelDistance * Math.sin(angle) };
           let textAnchor = 'middle';
           let labelX = lp.x;
+          const estimatedLabelWidth = displayLabel.length * labelFontSize * 0.62;
           if (cos > 0.28) {
             textAnchor = 'start';
-            labelX += 4;
+            labelX = Math.min(labelX + labelOffset, svgWidth - estimatedLabelWidth - 2);
           } else if (cos < -0.28) {
             textAnchor = 'end';
-            labelX -= 4;
+            labelX = Math.max(labelX - labelOffset, estimatedLabelWidth + 2);
           }
           return (
             <g key={label}>
-              <line x1={center} y1={center} x2={x2} y2={y2} stroke={axisStroke} strokeWidth="1.5" />
+              <line x1={centerX} y1={centerY} x2={x2} y2={y2} stroke={axisStroke} strokeWidth="1.5" />
               <text
                 x={labelX}
                 y={lp.y}

@@ -85,8 +85,8 @@ const App = () => {
   const isMobile = viewportWidth < 640;
   const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
   const isEinkMode = displayMode === 'eink';
-  const reportRadarSize = isMobile ? 180 : isTablet ? 220 : 240;
-  const reportDonutSize = isMobile ? 150 : isTablet ? 180 : 200;
+  const reportRadarSize = isMobile ? 260 : isTablet ? 280 : 300;
+  const reportDonutSize = isMobile ? 150 : isTablet ? 170 : 180;
 
   const openConfirm = (action) => setConfirmDialog({ open: true, onConfirm: action });
   const closeConfirm = () => setConfirmDialog({ open: false, onConfirm: null });
@@ -1031,8 +1031,8 @@ const App = () => {
                     </div>
                   </div>
 
-                  <div className="spec-grid print-spec-grid flex flex-col sm:grid sm:grid-cols-[auto_1fr] gap-8 md:gap-12 lg:gap-16">
-                    <div className="print-visual-row flex flex-col sm:flex-row items-center sm:items-start gap-8 md:gap-12 visual-row">
+                  <div className="spec-grid print-spec-grid flex flex-col lg:grid lg:grid-cols-[auto_1fr] gap-8 md:gap-12 lg:gap-16">
+                    <div className="print-visual-row flex flex-col sm:flex-row items-center sm:items-start justify-center lg:justify-start gap-8 md:gap-8 visual-row">
                       <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
                         <p className="section-header mb-6">Attribute Map</p>
                         <SpiderGraph scores={s.scores} size={reportRadarSize} einkMode={isEinkMode} />
