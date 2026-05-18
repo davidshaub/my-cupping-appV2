@@ -29,10 +29,9 @@ const EInkToggle = ({ isActive, onToggle, compact = false, className = '' }) => 
     onClick={onToggle}
     aria-pressed={isActive}
     className={`eink-toggle ${isActive ? 'is-active' : ''} ${compact ? 'eink-toggle-compact' : ''} ${className}`}
-    title={isActive ? 'Switch to standard display' : 'Switch to e-ink display'}
+    title={isActive ? 'Switch to standard display' : 'Switch to B&W display'}
   >
-    <Icon name="book-open" size={compact ? 14 : 16} />
-    <span>E-ink</span>
+    <span>B&W Mode</span>
     {!compact && <span className="eink-toggle-state">{isActive ? 'On' : 'Off'}</span>}
   </button>
 );
