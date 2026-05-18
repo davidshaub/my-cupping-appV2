@@ -4,9 +4,9 @@ import { GRAPH_FLOOR, RADAR_LABELS } from '../constants';
 const SpiderGraph = ({ scores, size, einkMode = false }) => {
   const center = size / 2;
   const isCompact = size <= 190;
-  const radius = size * (isCompact ? 0.2 : 0.23);
-  const labelDistance = size * (isCompact ? 0.24 : 0.26);
-  const labelFontSize = isCompact ? 6 : 8;
+  const radius = size * (isCompact ? 0.2 : 0.22);
+  const labelDistance = size * (isCompact ? 0.24 : 0.245);
+  const labelFontSize = isCompact ? 6 : 7;
   const fragAroma = scores.aroma !== null ? (scores.fragrance + scores.aroma) / 2 : scores.fragrance;
   const data = [
     fragAroma,
