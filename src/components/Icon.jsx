@@ -38,7 +38,8 @@ const Icon = ({ name, size = 20, className = '' }) => {
       </>
     ),
     sparkles: <path d="m12 3 1.912 5.885L21 10.8l-5.176 3.915L17.738 21 12 17.115 6.262 21l1.914-6.285L3 10.8l7.088-1.915L12 3z" />,
-    'clipboard-list': <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 2v4M9 2h6M8 11h.01M8 16h.01M12 11h4M12 16h4" />
+    'clipboard-list': <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 2v4M9 2h6M8 11h.01M8 16h.01M12 11h4M12 16h4" />,
+    'book-open': <path d="M2 4h7a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2zM22 4h-7a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h8z" />
   };
 
   return (

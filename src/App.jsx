@@ -21,8 +21,28 @@ import SpiderGraph from './components/SpiderGraph';
 import HandsLogo from '../assets/hands.png';
 import LevelSelector from './components/LevelSelector';
 
+const DISPLAY_MODE_KEY = 'cupping_display_mode';
+
+const EInkToggle = ({ isActive, onToggle, compact = false, className = '' }) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    aria-pressed={isActive}
+    className={`eink-toggle ${isActive ? 'is-active' : ''} ${compact ? 'eink-toggle-compact' : ''} ${className}`}
+    title={isActive ? 'Switch to standard display' : 'Switch to e-ink display'}
+  >
+    <Icon name="book-open" size={compact ? 14 : 16} />
+    <span>E-ink</span>
+    {!compact && <span className="eink-toggle-state">{isActive ? 'On' : 'Off'}</span>}
+  </button>
+);
+
 const App = () => {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
+  const [displayMode, setDisplayMode] = useState(() => {
+    if (typeof window === 'undefined') return 'standard';
+    return localStorage.getItem(DISPLAY_MODE_KEY) === 'eink' ? 'eink' : 'standard';
+  });
   const [appState, setAppState] = useState('setup');
   const [metadataOrigin, setMetadataOrigin] = useState('setup');
   const [numSamples, setNumSamples] = useState(1);
@@ -39,6 +59,12 @@ const App = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const importInputRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.dataset.displayMode = displayMode;
+    localStorage.setItem(DISPLAY_MODE_KEY, displayMode);
+  }, [displayMode]);
 
   useEffect(() => {
     const saved = localStorage.getItem('cupping_history');
@@ -59,6 +85,7 @@ const App = () => {
 
   const isMobile = viewportWidth < 640;
   const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
+  const isEinkMode = displayMode === 'eink';
   const reportRadarSize = isMobile ? 180 : isTablet ? 220 : 240;
   const reportDonutSize = isMobile ? 150 : isTablet ? 180 : 200;
 
@@ -75,6 +102,10 @@ const App = () => {
     setActiveSampleIndex(0);
     setActiveSessionName('');
     setAppState('setup');
+  };
+
+  const toggleDisplayMode = () => {
+    setDisplayMode((current) => (current === 'eink' ? 'standard' : 'eink'));
   };
 
   const saveSessionLocal = () => {
@@ -376,6 +407,9 @@ const App = () => {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
         <div className="max-w-md w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 text-center border border-stone-200">
+          <div className="flex justify-end mb-4">
+            <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} />
+          </div>
           <div className="inline-flex p-4 rounded-3xl bg-stone-900 text-white mb-6 md:mb-8 shadow-xl">
             <Icon name="coffee" size={28} />
           </div>
@@ -462,13 +496,16 @@ const App = () => {
 	                </p>
 	              </div>
 	            </div>
-	            <button
-	              onClick={() => setAppState('setup')}
-	              className="px-3 py-2 rounded-xl bg-white text-stone-700 border border-stone-200 hover:bg-stone-50 font-black text-[11px] uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
-	            >
-	              <Icon name="chevron-left" size={16} />
-	              Back
-	            </button>
+              <div className="flex flex-col sm:flex-row gap-2 items-end sm:items-center">
+                <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact />
+	              <button
+	                onClick={() => setAppState('setup')}
+	                className="px-3 py-2 rounded-xl bg-white text-stone-700 border border-stone-200 hover:bg-stone-50 font-black text-[11px] uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
+	              >
+	                <Icon name="chevron-left" size={16} />
+	                Back
+	              </button>
+              </div>
 	          </div>
 
 	          <p className="text-sm text-stone-600 font-bold leading-relaxed">
@@ -558,9 +595,12 @@ const App = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">Saved Sessions</h1>
-            <button onClick={() => setAppState('setup')} className="text-stone-400 font-bold hover:text-stone-900 text-sm">
-              Back
-            </button>
+            <div className="flex items-center gap-3">
+              <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact />
+              <button onClick={() => setAppState('setup')} className="text-stone-400 font-bold hover:text-stone-900 text-sm">
+                Back
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {history.length > 0 ? (
@@ -605,6 +645,7 @@ const App = () => {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-2xl font-black text-stone-900 tracking-tight">Lot Information</h1>
             <div className="flex gap-2 flex-wrap">
+              <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact />
               <button
                 onClick={() => setMetadataTableMode(false)}
                 className={`px-4 py-2 rounded-xl font-bold text-xs border ${
@@ -895,8 +936,10 @@ const App = () => {
                 <Icon name="chevron-left" size={16} />
                 Back
               </button>
+              <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact className="flex-1 sm:flex-none eink-report-mobile-toggle" />
             </div>
             <div className="hidden md:flex flex-wrap gap-2">
+              <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact />
               <button
                 onClick={() => setShowSaveModal(true)}
             className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-blue-600 border border-blue-100 active:scale-95 text-xs"
@@ -993,11 +1036,16 @@ const App = () => {
                     <div className="print-visual-row flex flex-col sm:flex-row items-center sm:items-start gap-8 md:gap-12 visual-row">
                       <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
                         <p className="section-header mb-6">Attribute Map</p>
-                        <SpiderGraph scores={s.scores} size={reportRadarSize} />
+                        <SpiderGraph scores={s.scores} size={reportRadarSize} einkMode={isEinkMode} />
                       </div>
                       <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
                         <p className="section-header mb-6">Sensory Balance</p>
-                        <DonutChart tags={[...s.notes.fragAromaTags, ...s.notes.inCupTags]} size={reportDonutSize} className="print-donut-chart" />
+                        <DonutChart
+                          tags={[...s.notes.fragAromaTags, ...s.notes.inCupTags]}
+                          size={reportDonutSize}
+                          className="print-donut-chart"
+                          einkMode={isEinkMode}
+                        />
                       </div>
                     </div>
 
@@ -1129,6 +1177,7 @@ const App = () => {
           >
             Report
           </button>
+          <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact />
         </header>
         <div className="max-w-6xl mx-auto px-4 md:px-12 pb-4 flex justify-between items-end text-stone-900 gap-3">
           <div className="min-w-0 pl-2">

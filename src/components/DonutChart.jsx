@@ -2,7 +2,7 @@ import React from 'react';
 import { CATEGORY_COLORS } from '../constants';
 import { getCategoryForItem } from '../lib/cupping';
 
-const DonutChart = ({ tags, size = 200, className = '' }) => {
+const DonutChart = ({ tags, size = 200, className = '', einkMode = false }) => {
   const counts = { Fruity: 0, Citrus: 0, Floral: 0, Sweet: 0, 'Nutty/Cocoa': 0, Spices: 0 };
 
   tags.forEach((t) => {
@@ -19,7 +19,7 @@ const DonutChart = ({ tags, size = 200, className = '' }) => {
   if (totalWeight === 0) {
     return (
       <div
-        className="flex flex-col items-center justify-center p-4 bg-stone-50 rounded-full border border-dashed border-stone-200"
+        className={`flex flex-col items-center justify-center p-4 bg-stone-50 rounded-full border border-dashed border-stone-200 ${einkMode ? 'eink-chart-empty' : ''}`}
         style={{ width: size, height: size }}
       >
         <span className="text-[8px] font-black text-stone-300 uppercase">Profile N/A</span>
@@ -31,6 +31,30 @@ const DonutChart = ({ tags, size = 200, className = '' }) => {
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
   const sortedEntries = Object.entries(counts).filter(([, weight]) => weight > 0);
+
+  if (einkMode) {
+    return (
+      <div className={`eink-balance-chart ${className}`} style={{ width: size, minHeight: size }}>
+        <div className="eink-chart-title">Balance</div>
+        <div className="eink-balance-list">
+          {sortedEntries.map(([cat, weight]) => {
+            const percentage = Math.round((weight / totalWeight) * 100);
+            return (
+              <div key={cat} className="eink-balance-row">
+                <div className="eink-balance-meta">
+                  <span>{cat}</span>
+                  <strong>{percentage}%</strong>
+                </div>
+                <div className="eink-balance-track" aria-hidden="true">
+                  <span style={{ width: `${percentage}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative flex flex-col items-center justify-center ${className}`} style={{ width: size, height: size }}>
