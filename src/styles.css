@@ -49,6 +49,12 @@ h3 {
   display: none;
 }
 
+.report-balance-align {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--report-balance-offset, 0);
+}
+
 .report-title {
   display: flex;
   justify-content: space-between;
@@ -289,6 +295,10 @@ h3 {
 
   .print-chart-panel p.section-header {
     margin-bottom: 0.25cm !important;
+  }
+
+  .report-balance-align {
+    margin-top: 0.75cm !important;
   }
 
   .print-chart-panel .w-full.flex {

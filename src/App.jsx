@@ -87,6 +87,8 @@ const App = () => {
   const isEinkMode = displayMode === 'eink';
   const reportRadarSize = isMobile ? 260 : isTablet ? 280 : 300;
   const reportDonutSize = isMobile ? 150 : isTablet ? 170 : 180;
+  const reportRadarVerticalLabelSpace = reportRadarSize <= 260 ? 26 : 32;
+  const reportBalanceOffset = isMobile ? 0 : reportRadarVerticalLabelSpace + (reportRadarSize - reportDonutSize) / 2;
 
   const openConfirm = (action) => setConfirmDialog({ open: true, onConfirm: action });
   const closeConfirm = () => setConfirmDialog({ open: false, onConfirm: null });
@@ -1039,12 +1041,14 @@ const App = () => {
                       </div>
                       <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
                         <p className="section-header mb-6">Sensory Balance</p>
-                        <DonutChart
-                          tags={[...s.notes.fragAromaTags, ...s.notes.inCupTags]}
-                          size={reportDonutSize}
-                          className="print-donut-chart"
-                          einkMode={isEinkMode}
-                        />
+                        <div className="report-balance-align" style={{ '--report-balance-offset': `${reportBalanceOffset}px` }}>
+                          <DonutChart
+                            tags={[...s.notes.fragAromaTags, ...s.notes.inCupTags]}
+                            size={reportDonutSize}
+                            className="print-donut-chart"
+                            einkMode={isEinkMode}
+                          />
+                        </div>
                       </div>
                     </div>
 
