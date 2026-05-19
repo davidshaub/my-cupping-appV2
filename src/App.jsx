@@ -21,8 +21,6 @@ import SpiderGraph from './components/SpiderGraph';
 import HandsLogo from '../assets/hands.png';
 import LevelSelector from './components/LevelSelector';
 
-const DISPLAY_MODE_KEY = 'cupping_display_mode';
-
 const EInkToggle = ({ isActive, onToggle, compact = false, className = '' }) => (
   <button
     type="button"
@@ -38,10 +36,7 @@ const EInkToggle = ({ isActive, onToggle, compact = false, className = '' }) => 
 
 const App = () => {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
-  const [displayMode, setDisplayMode] = useState(() => {
-    if (typeof window === 'undefined') return 'standard';
-    return localStorage.getItem(DISPLAY_MODE_KEY) === 'eink' ? 'eink' : 'standard';
-  });
+  const [displayMode, setDisplayMode] = useState('standard');
   const [appState, setAppState] = useState('setup');
   const [metadataOrigin, setMetadataOrigin] = useState('setup');
   const [numSamples, setNumSamples] = useState(1);
@@ -62,7 +57,6 @@ const App = () => {
   useEffect(() => {
     if (typeof document === 'undefined') return;
     document.documentElement.dataset.displayMode = displayMode;
-    localStorage.setItem(DISPLAY_MODE_KEY, displayMode);
   }, [displayMode]);
 
   useEffect(() => {
