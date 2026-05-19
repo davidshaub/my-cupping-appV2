@@ -274,8 +274,8 @@ h3 {
   .print-spec-grid,
   .spec-grid {
     display: grid !important;
-    grid-template-columns: 10.6cm 1fr !important;
-    gap: 0.5cm !important;
+    grid-template-columns: 12.4cm 1fr !important;
+    gap: 0.55cm !important;
     margin-top: 0 !important;
     align-items: start !important;
   }
@@ -284,13 +284,13 @@ h3 {
   .visual-row {
     display: flex !important;
     flex-direction: row !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     align-items: flex-start !important;
     width: 100% !important;
     margin: 0 !important;
     border-bottom: none !important;
     padding: 0 !important;
-    gap: 0.45cm !important;
+    gap: 0.35cm !important;
   }
 
   .print-chart-panel p.section-header {
@@ -298,21 +298,21 @@ h3 {
   }
 
   .report-balance-align {
-    margin-top: 0.75cm !important;
+    margin-top: 0.74cm !important;
   }
 
   .print-chart-panel .w-full.flex {
-    max-width: 5.4cm !important;
+    max-width: 6.6cm !important;
   }
 
   .print-donut-chart {
-    width: 5cm !important;
-    height: 5cm !important;
+    width: 4.4cm !important;
+    height: 4.4cm !important;
   }
 
   .print-donut-chart > .absolute:nth-of-type(2) {
     top: 100% !important;
-    width: 5.6cm !important;
+    width: 4.8cm !important;
     gap: 0.1cm 0.2cm !important;
   }
 
@@ -403,6 +403,158 @@ h3 {
     border-radius: 0 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  :root[data-display-mode='eink'] body,
+  :root[data-display-mode='eink'] .report-container,
+  :root[data-display-mode='eink'] .sample-spec-sheet {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] *,
+  :root[data-display-mode='eink'] *::before,
+  :root[data-display-mode='eink'] *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  :root[data-display-mode='eink'] .section-header,
+  :root[data-display-mode='eink'] .text-stone-900,
+  :root[data-display-mode='eink'] .text-stone-800,
+  :root[data-display-mode='eink'] .text-stone-700,
+  :root[data-display-mode='eink'] .text-stone-600,
+  :root[data-display-mode='eink'] .text-stone-500,
+  :root[data-display-mode='eink'] .text-stone-400,
+  :root[data-display-mode='eink'] .text-stone-300 {
+    color: #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] .bg-white,
+  :root[data-display-mode='eink'] .bg-stone-50,
+  :root[data-display-mode='eink'] .bg-stone-100,
+  :root[data-display-mode='eink'] [class*='bg-stone-50/'] {
+    background: #ffffff !important;
+  }
+
+  :root[data-display-mode='eink'] .grade-display {
+    background: #000000 !important;
+    background-color: #000000 !important;
+    border-color: #000000 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  :root[data-display-mode='eink'] .grade-display *,
+  :root[data-display-mode='eink'] .tag-negative {
+    color: #ffffff !important;
+  }
+
+  :root[data-display-mode='eink'] .tag-fruity,
+  :root[data-display-mode='eink'] .tag-citrus,
+  :root[data-display-mode='eink'] .tag-floral,
+  :root[data-display-mode='eink'] .tag-sweet,
+  :root[data-display-mode='eink'] .tag-nutty,
+  :root[data-display-mode='eink'] .tag-spices,
+  :root[data-display-mode='eink'] .tag-negative {
+    background: #ffffff !important;
+    border: 1.5px solid #000000 !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  :root[data-display-mode='eink'] .tag-citrus,
+  :root[data-display-mode='eink'] .tag-spices {
+    border-style: dashed !important;
+  }
+
+  :root[data-display-mode='eink'] .tag-floral {
+    border-style: dotted !important;
+  }
+
+  :root[data-display-mode='eink'] .tag-sweet {
+    background: #f0f0f0 !important;
+  }
+
+  :root[data-display-mode='eink'] .tag-negative {
+    background: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  :root[data-display-mode='eink'] .eink-chart-empty {
+    background: #ffffff !important;
+    border: 1.5px dashed #000000 !important;
+    color: #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] .eink-chart-empty span {
+    color: #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] .eink-balance-chart {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 0.24cm !important;
+    width: 4.4cm !important;
+    height: 4.4cm !important;
+    min-height: 4.4cm !important;
+    padding: 0.35cm !important;
+    background: #ffffff !important;
+    border: 1.5px solid #000000 !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  :root[data-display-mode='eink'] .eink-chart-title {
+    color: #000000 !important;
+    font-size: 9px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    text-transform: uppercase !important;
+  }
+
+  :root[data-display-mode='eink'] .eink-balance-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.18cm !important;
+    width: 100% !important;
+  }
+
+  :root[data-display-mode='eink'] .eink-balance-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.06cm !important;
+    width: 100% !important;
+  }
+
+  :root[data-display-mode='eink'] .eink-balance-meta {
+    display: flex !important;
+    align-items: baseline !important;
+    justify-content: space-between !important;
+    gap: 0.2cm !important;
+    color: #000000 !important;
+    font-size: 7.5px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    text-transform: uppercase !important;
+  }
+
+  :root[data-display-mode='eink'] .eink-balance-track {
+    width: 100% !important;
+    height: 0.18cm !important;
+    background: #ffffff !important;
+    border: 1px solid #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] .eink-balance-track span {
+    display: block !important;
+    height: 100% !important;
+    background: #000000 !important;
   }
 }
 
