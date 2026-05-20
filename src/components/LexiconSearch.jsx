@@ -95,22 +95,29 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
             {isFocused && searchTerm.length > 0 && (
               <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border-2 border-stone-200 rounded-3xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto p-1">
                 {visibleSuggestions.length > 0 ? (
-                  visibleSuggestions.map((option) => (
-                    <button
-                      key={option}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleSelect(option)}
-                      className={`w-full text-left px-5 py-3.5 text-sm font-bold text-stone-700 rounded-xl transition-colors ${
-                        highlightPool[highlightIndex] === option ? 'bg-stone-100' : 'hover:bg-stone-50'
-                      }`}
-                    >
-                      {option}
-                    </button>
-                  ))
+                  visibleSuggestions.map((option) => {
+                    const isActiveSuggestion = highlightPool[highlightIndex] === option;
+                    return (
+                      <button
+                        key={option}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleSelect(option)}
+                        aria-selected={isActiveSuggestion}
+                        data-suggestion-active={isActiveSuggestion ? 'true' : undefined}
+                        className={`w-full text-left px-5 py-3.5 text-sm font-bold text-stone-700 rounded-xl transition-colors ${
+                          isActiveSuggestion ? 'bg-stone-100' : 'hover:bg-stone-50'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })
                 ) : smartSuggestionFallback.length > 0 ? (
                   <button
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleSelect(smartSuggestionFallback[0])}
+                    aria-selected={highlightPool[highlightIndex] === smartSuggestionFallback[0]}
+                    data-suggestion-active={highlightPool[highlightIndex] === smartSuggestionFallback[0] ? 'true' : undefined}
                     className={`w-full text-left px-5 py-4 bg-stone-900 text-white flex justify-between items-center rounded-xl ${
                       highlightPool[highlightIndex] === smartSuggestionFallback[0]
                         ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-white'

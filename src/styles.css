@@ -957,6 +957,16 @@ h3 {
     outline-offset: 2px !important;
   }
 
+  :root[data-display-mode='eink'] [data-suggestion-active='true'] {
+    background: #000000 !important;
+    border: 2px solid #000000 !important;
+    color: #ffffff !important;
+  }
+
+  :root[data-display-mode='eink'] [data-suggestion-active='true'] * {
+    color: #ffffff !important;
+  }
+
   :root[data-display-mode='eink'] .sticky {
     border-bottom: 2px solid #000000 !important;
   }
