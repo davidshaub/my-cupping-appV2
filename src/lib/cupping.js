@@ -124,6 +124,43 @@ export const getCategoryForItem = (item) => {
   return null;
 };
 
+const normalizeSmartMatch = (value) =>
+  String(value ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+const parseSmartMatch = (value, officialOptions) => {
+  const raw = String(value ?? '').trim();
+  if (!raw || raw.length > 120) return null;
+
+  const optionsByKey = new Map(officialOptions.map((option) => [normalizeSmartMatch(option), option]));
+  const candidates = [];
+
+  candidates.push(raw);
+  candidates.push(raw.replace(/^["'`]+|["'`]+$/g, '').replace(/[.!]+$/g, '').trim());
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'string') {
+      candidates.push(parsed);
+    } else if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
+      candidates.push(parsed[0]);
+    } else if (parsed && typeof parsed === 'object') {
+      candidates.push(parsed.match, parsed.option, parsed.tag);
+    }
+  } catch {
+    // Non-JSON model output is handled by the plain string candidates above.
+  }
+
+  for (const candidate of candidates) {
+    const match = optionsByKey.get(normalizeSmartMatch(candidate));
+    if (match) return match;
+  }
+
+  return null;
+};
+
 export const getTagStyle = (tag) => {
   const cat = getCategoryForItem(tag);
   if (cat === 'Fruity' || cat === 'Structure') return 'tag-fruity';
@@ -135,28 +172,36 @@ export const getTagStyle = (tag) => {
   return 'tag-negative';
 };
 
-export const getSmartMatch = async (userInput, officialOptions) => {
+export const getSmartMatch = async (userInput, officialOptions, signal) => {
   if (!userInput || userInput.length < 3) return null;
   if (!apiKey) return null;
 
-  const systemPrompt = `Coffee expert. Map description to one: ${JSON.stringify(officialOptions)}. Return ONLY the string or "None".`;
+  const systemPrompt = `Coffee expert. Map the user's description to exactly one option from this list, or "None": ${JSON.stringify(
+    officialOptions
+  )}. Return only the option text or "None".`;
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
       {
         method: 'POST',
+        signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: userInput }] }],
-          systemInstruction: { parts: [{ text: systemPrompt }] }
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: 24
+          }
         })
       }
     );
 
     const result = await response.json();
-    return result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    return parseSmartMatch(text, officialOptions);
   } catch {
-    return 'None';
+    return null;
   }
 };
 

@@ -14,21 +14,33 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle }) => {
   const categories = useMemo(() => Object.keys(options), [options]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isCurrent = true;
+
     const timer = setTimeout(async () => {
       if (searchTerm.length >= 3 && !flatOptions.some((o) => o.toLowerCase().includes(searchTerm.toLowerCase()))) {
         setIsLoading(true);
+        setSmartMatch(null);
         const match = await getSmartMatch(
           searchTerm,
-          flatOptions.filter((o) => !tags.some((t) => getBaseTag(t) === o))
+          flatOptions.filter((o) => !tags.some((t) => getBaseTag(t) === o)),
+          controller.signal
         );
-        if (match && match !== 'None') setSmartMatch(match);
-        setIsLoading(false);
+        if (isCurrent) {
+          setSmartMatch(match);
+          setIsLoading(false);
+        }
       } else {
         setSmartMatch(null);
+        setIsLoading(false);
       }
     }, 600);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isCurrent = false;
+      controller.abort();
+      clearTimeout(timer);
+    };
   }, [searchTerm, flatOptions, tags]);
 
   const filtered = flatOptions.filter(
