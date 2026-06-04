@@ -1,11 +1,12 @@
-# Cupping Lab (Modular React App)
+# Osito Cupping Lab
 
-This project was migrated from a single `index.html` file into a standard React app structure.
+React/Vite app for running coffee cupping sessions, scoring samples, keeping session history, and exporting results.
 
 ## What changed
 
 - Moved app code into `src/` modules (components, constants, helpers, styles).
 - Added Vite project setup (`package.json`, `vite.config.js`, `src/main.jsx`).
+- Bundled Tailwind through Vite instead of loading it from a CDN.
 - Preserved the same UI and behavior.
 - Kept recent bug fixes:
   - Safe history parsing from `localStorage`
@@ -23,7 +24,7 @@ This project was migrated from a single `index.html` file into a standard React 
 
 ## Run it locally
 
-1. Install Node.js 18+ (or 20+ recommended).
+1. Install Node.js 22.12+.
 2. In this folder, run:
 
 ```bash
@@ -31,7 +32,19 @@ npm install
 npm run dev
 ```
 
-3. Open the URL shown in terminal (usually `http://localhost:5173`).
+3. Open the URL shown in terminal. With the current Vite base path, the app runs at:
+
+```text
+http://localhost:5173/my-cupping-appV2/
+```
+
+## Local data
+
+Sessions are saved in the browser's `localStorage`, so they stay on the same device/browser and are not sent to a server. Clearing browser site data will remove saved sessions.
+
+## Deployment
+
+The GitHub Pages workflow builds the app with Node.js 22 and publishes the `dist/` output. The Vite base path is configured for `/my-cupping-appV2/`.
 
 ## Optional: enable smart tag mapping
 
