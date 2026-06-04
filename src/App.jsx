@@ -427,45 +427,49 @@ const App = () => {
               Start Session
               <Icon name="chevron-right" />
             </button>
-		            <div className="grid grid-cols-3 gap-3">
-		              <button
-		                onClick={() => {
-		                  setImportError('');
-		                  setAppState('import');
-		                }}
-		                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
-		              >
-		                <span className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-		                  <Icon name="upload" size={18} />
-		                </span>
-		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
-		                  <span className="block">Upload</span>
-		                  <span className="block">Session</span>
-		                </span>
-		              </button>
-		              <button
-		                onClick={() => goToMetadata('setup')}
-		                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
-		              >
-		                <span className="w-9 h-9 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-		                  <Icon name="edit-2" size={18} />
-		                </span>
-		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
-		                  Configure
-		                </span>
-		              </button>
-		              <button
-		                onClick={() => setAppState('history')}
-		                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
-		              >
-		                <span className="w-9 h-9 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-		                  <Icon name="clock" size={18} />
-		                </span>
-		                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
-		                  History
-		                </span>
-			              </button>
-			            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => {
+                  setImportError('');
+                  setAppState('import');
+                }}
+                aria-label="Upload session"
+                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
+              >
+                <span className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                  <Icon name="upload" size={18} />
+                </span>
+                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
+                  <span className="block">Upload</span>
+                  <span className="block">Session</span>
+                </span>
+              </button>
+              <button
+                onClick={() => goToMetadata('setup')}
+                aria-label="Configure lot information"
+                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
+              >
+                <span className="w-9 h-9 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                  <Icon name="edit-2" size={18} />
+                </span>
+                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
+                  <span className="block">Lot</span>
+                  <span className="block">Info</span>
+                </span>
+              </button>
+              <button
+                onClick={() => setAppState('history')}
+                aria-label="View history"
+                className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
+              >
+                <span className="w-9 h-9 rounded-xl bg-stone-100 text-stone-800 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                  <Icon name="clock" size={18} />
+                </span>
+                <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
+                  History
+                </span>
+              </button>
+            </div>
             <div className="home-display-control">
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} className="home-display-toggle" />
             </div>
@@ -475,114 +479,114 @@ const App = () => {
     );
   }
 
-	  if (appState === 'import') {
-	    return (
-	      <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
-	        <div className="max-w-xl w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 border border-stone-200">
-	          <div className="flex items-start justify-between gap-4 mb-6">
-	            <div className="flex items-start gap-3">
-	              <div className="inline-flex p-3 rounded-2xl bg-stone-900 text-white shadow-xl">
-	                <Icon name="upload" size={20} />
-	              </div>
-	              <div className="pt-0.5">
-	                <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">Upload Session</h1>
-	                <p className="text-stone-400 font-black text-[10px] uppercase tracking-widest mt-2">
-	                  Import a CSV exported from Cupping Lab
-	                </p>
-	              </div>
-	            </div>
-              <div className="flex flex-col sm:flex-row gap-2 items-end sm:items-center">
-                <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact />
-	              <button
-	                onClick={() => setAppState('setup')}
-	                className="px-3 py-2 rounded-xl bg-white text-stone-700 border border-stone-200 hover:bg-stone-50 font-black text-[11px] uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
-	              >
-	                <Icon name="chevron-left" size={16} />
-	                Back
-	              </button>
+  if (appState === 'import') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
+        <div className="max-w-xl w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 border border-stone-200">
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="flex items-start gap-3">
+              <div className="inline-flex p-3 rounded-2xl bg-stone-900 text-white shadow-xl">
+                <Icon name="upload" size={20} />
               </div>
-	          </div>
+              <div className="pt-0.5">
+                <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">Upload Session</h1>
+                <p className="text-stone-400 font-black text-[10px] uppercase tracking-widest mt-2">
+                  Import a CSV exported from Cupping Lab
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 items-end sm:items-center">
+              <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact />
+              <button
+                onClick={() => setAppState('setup')}
+                className="px-3 py-2 rounded-xl bg-white text-stone-700 border border-stone-200 hover:bg-stone-50 font-black text-[11px] uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
+              >
+                <Icon name="chevron-left" size={16} />
+                Back
+              </button>
+            </div>
+          </div>
 
-	          <p className="text-sm text-stone-600 font-bold leading-relaxed">
-	            Bring a session from another device. Upload a CSV you exported from Cupping Lab on a different device.
-	          </p>
+          <p className="text-sm text-stone-600 font-bold leading-relaxed">
+            Bring a session from another device. Upload a CSV you exported from Cupping Lab on a different device.
+          </p>
 
-	          {importError && (
-	            <div className="mt-5 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-red-700 font-bold text-sm">{importError}</div>
-	          )}
+          {importError && (
+            <div className="mt-5 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-red-700 font-bold text-sm">{importError}</div>
+          )}
 
-	          <input
-	            ref={importInputRef}
-	            type="file"
-	            accept=".csv,text/csv"
-	            className="hidden"
-	            onChange={(e) => importSessionCsvFile(e.target.files?.[0])}
-	          />
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => importSessionCsvFile(e.target.files?.[0])}
+          />
 
-	          <div
-	            onClick={() => (isImporting ? null : importInputRef.current?.click())}
-	            onDragEnter={(e) => {
-	              e.preventDefault();
-	              e.stopPropagation();
-	              if (!isImporting) setIsDragActive(true);
-	            }}
-	            onDragOver={(e) => {
-	              e.preventDefault();
-	              e.stopPropagation();
-	              if (!isImporting) setIsDragActive(true);
-	            }}
-	            onDragLeave={(e) => {
-	              e.preventDefault();
-	              e.stopPropagation();
-	              setIsDragActive(false);
-	            }}
-	            onDrop={(e) => {
-	              e.preventDefault();
-	              e.stopPropagation();
-	              setIsDragActive(false);
-	              if (isImporting) return;
-	              const file = e.dataTransfer?.files?.[0];
-	              if (file) importSessionCsvFile(file);
-	            }}
-	            className={`mt-6 rounded-[1.75rem] border-2 border-dashed p-8 md:p-10 text-center cursor-pointer select-none transition ${
-	              isImporting
-	                ? 'bg-stone-50 border-stone-100 text-stone-300'
-	                : isDragActive
-	                  ? 'bg-stone-50 border-stone-900 text-stone-900'
-	                  : 'bg-stone-50 border-stone-200 text-stone-700 hover:border-stone-400'
-	            }`}
-	          >
-	            <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-white border border-stone-200 shadow-sm text-stone-900 mb-5">
-	              <Icon name={isImporting ? 'loader-2' : 'upload'} size={22} className={isImporting ? 'animate-spin' : ''} />
-	            </div>
-	            <p className="text-base md:text-lg font-black tracking-tight">{isImporting ? 'Importing…' : 'Drop your CSV here'}</p>
-	            <p className="text-[11px] font-black text-stone-400 uppercase tracking-widest mt-2">or browse your device</p>
+          <div
+            onClick={() => (isImporting ? null : importInputRef.current?.click())}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isImporting) setIsDragActive(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isImporting) setIsDragActive(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragActive(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragActive(false);
+              if (isImporting) return;
+              const file = e.dataTransfer?.files?.[0];
+              if (file) importSessionCsvFile(file);
+            }}
+            className={`mt-6 rounded-[1.75rem] border-2 border-dashed p-8 md:p-10 text-center cursor-pointer select-none transition ${
+              isImporting
+                ? 'bg-stone-50 border-stone-100 text-stone-300'
+                : isDragActive
+                  ? 'bg-stone-50 border-stone-900 text-stone-900'
+                  : 'bg-stone-50 border-stone-200 text-stone-700 hover:border-stone-400'
+            }`}
+          >
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-white border border-stone-200 shadow-sm text-stone-900 mb-5">
+              <Icon name={isImporting ? 'loader-2' : 'upload'} size={22} className={isImporting ? 'animate-spin' : ''} />
+            </div>
+            <p className="text-base md:text-lg font-black tracking-tight">{isImporting ? 'Importing…' : 'Drop your CSV here'}</p>
+            <p className="text-[11px] font-black text-stone-400 uppercase tracking-widest mt-2">or browse your device</p>
 
-	            <div className="mt-6">
-	              <button
-	                type="button"
-	                onClick={(e) => {
-	                  e.stopPropagation();
-	                  if (!isImporting) importInputRef.current?.click();
-	                }}
-	                disabled={isImporting}
-	                className={`px-5 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest inline-flex items-center justify-center gap-2 border transition-colors ${
-	                  isImporting ? 'bg-stone-100 text-stone-300 border-stone-100' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
-	                }`}
-	              >
-	                <Icon name="upload" size={16} />
-	                Browse Files
-	              </button>
-	            </div>
-	          </div>
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isImporting) importInputRef.current?.click();
+                }}
+                disabled={isImporting}
+                className={`px-5 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest inline-flex items-center justify-center gap-2 border transition-colors ${
+                  isImporting ? 'bg-stone-100 text-stone-300 border-stone-100' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
+                }`}
+              >
+                <Icon name="upload" size={16} />
+                Browse Files
+              </button>
+            </div>
+          </div>
 
-	          <div className="mt-5 text-[11px] text-stone-400 font-bold leading-relaxed">
-	            Tip: Export the CSV from the Report screen on your other device.
-	          </div>
-	        </div>
-	      </div>
-	    );
-	  }
+          <div className="mt-5 text-[11px] text-stone-400 font-bold leading-relaxed">
+            Tip: Export the CSV from the Report screen on your other device.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (appState === 'history') {
     return (
@@ -702,30 +706,30 @@ const App = () => {
                           className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                         />
                       </td>
-	                      <td className="px-3 py-2 align-top min-w-[140px]">
-	                        <input
-	                          value={s.processing && s.processing !== 'Select One' ? s.processing : ''}
-	                          onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
-	                          onBlur={(e) => {
-	                            const normalized = normalizeProcessingInput(e.target.value, s.processingOther);
-	                            setSamples((prev) =>
-	                              prev.map((item, sIdx) =>
-	                                sIdx === idx
-	                                  ? {
-	                                      ...item,
-	                                      processing: normalized.processing,
-	                                      processingOther: normalized.processingOther
-	                                    }
-	                                  : item
-	                              )
-	                            );
-	                          }}
-	                          onPaste={(e) => handleTablePaste(idx, 2, tablePasteOrder, e)}
-	                          placeholder="Washed / Natural / Honey / Other"
-	                          list="processing-options"
-	                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
-	                        />
-	                      </td>
+                      <td className="px-3 py-2 align-top min-w-[140px]">
+                        <input
+                          value={s.processing && s.processing !== 'Select One' ? s.processing : ''}
+                          onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
+                          onBlur={(e) => {
+                            const normalized = normalizeProcessingInput(e.target.value, s.processingOther);
+                            setSamples((prev) =>
+                              prev.map((item, sIdx) =>
+                                sIdx === idx
+                                  ? {
+                                      ...item,
+                                      processing: normalized.processing,
+                                      processingOther: normalized.processingOther
+                                    }
+                                  : item
+                              )
+                            );
+                          }}
+                          onPaste={(e) => handleTablePaste(idx, 2, tablePasteOrder, e)}
+                          placeholder="Washed / Natural / Honey / Other"
+                          list="processing-options"
+                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                        />
+                      </td>
                       <td className="px-3 py-2 align-top min-w-[140px]">
                         <input
                           value={s.waterActivity || ''}
@@ -777,16 +781,16 @@ const App = () => {
                       )}
                     </tr>
                   ))}
-	                </tbody>
-	              </table>
-	              <datalist id="processing-options">
-	                <option value="Washed" />
-	                <option value="Natural" />
-	                <option value="Honey" />
-	                <option value="Other" />
-	              </datalist>
-	            </div>
-	          ) : (
+                </tbody>
+              </table>
+              <datalist id="processing-options">
+                <option value="Washed" />
+                <option value="Natural" />
+                <option value="Honey" />
+                <option value="Other" />
+              </datalist>
+            </div>
+          ) : (
             samples.map((s, idx) => (
               <div key={idx} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-stone-50 pb-3">
@@ -886,14 +890,14 @@ const App = () => {
     );
   }
 
-	  if (appState === 'report') {
-	    return (
-	      <div className="min-h-screen bg-stone-100 p-4 md:p-8 relative">
-	        {renderConfirmModal()}
-	        {showSaveModal && (
-	          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
-	            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
-	              <div className="text-center">
+  if (appState === 'report') {
+    return (
+      <div className="min-h-screen bg-stone-100 p-4 md:p-8 relative">
+        {renderConfirmModal()}
+        {showSaveModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
+            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
+              <div className="text-center">
                 <h3 className="text-xl font-black text-stone-900">Name this Session</h3>
                 <p className="text-stone-400 font-bold text-[10px] uppercase tracking-widest mt-1">To save on this device</p>
               </div>
@@ -918,12 +922,12 @@ const App = () => {
           <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
               <button
-              onClick={() => openConfirm(resetToHome)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-stone-100 px-4 md:px-5 py-2 rounded-xl font-bold shadow-sm border border-stone-200 text-stone-600 active:scale-95 transition-all text-xs"
-            >
-              <Icon name="home" size={16} />
-              Reset
-            </button>
+                onClick={() => openConfirm(resetToHome)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-stone-100 px-4 md:px-5 py-2 rounded-xl font-bold shadow-sm border border-stone-200 text-stone-600 active:scale-95 transition-all text-xs"
+              >
+                <Icon name="home" size={16} />
+                Reset
+              </button>
               <button
                 onClick={() => setAppState('cupping')}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white px-4 md:px-5 py-2 rounded-xl font-bold shadow-sm border border-stone-200 text-stone-600 active:scale-95 transition-all text-xs"
@@ -937,11 +941,11 @@ const App = () => {
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} compact />
               <button
                 onClick={() => setShowSaveModal(true)}
-            className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-blue-600 border border-blue-100 active:scale-95 text-xs"
-          >
-            <Icon name="save" size={16} />
-            Save
-          </button>
+                className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-blue-600 border border-blue-100 active:scale-95 text-xs"
+              >
+                <Icon name="save" size={16} />
+                Save
+              </button>
               <button
                 onClick={() => goToMetadata('report')}
                 className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-stone-600 border border-stone-200 active:scale-95 text-xs"
@@ -956,13 +960,13 @@ const App = () => {
                 <Icon name="download" size={16} />
                 CSV
               </button>
-		              <button
-		                onClick={printAllPdf}
-		                className="flex items-center gap-2 px-6 py-2 btn-stone-dark font-bold shadow-xl active:scale-95 text-xs"
-		              >
-	                <Icon name="printer" size={16} />
-	                PRINT PDF
-	              </button>
+              <button
+                onClick={printAllPdf}
+                className="flex items-center gap-2 px-6 py-2 btn-stone-dark font-bold shadow-xl active:scale-95 text-xs"
+              >
+                <Icon name="printer" size={16} />
+                PRINT PDF
+              </button>
             </div>
           </header>
 
@@ -1129,13 +1133,13 @@ const App = () => {
               <Icon name="download" size={14} />
               CSV
             </button>
-		            <button
-		              onClick={printAllPdf}
-		              className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-900 text-white text-[10px] font-black uppercase tracking-wider"
-		            >
-	              <Icon name="printer" size={14} />
-	              Print
-	            </button>
+            <button
+              onClick={printAllPdf}
+              className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-900 text-white text-[10px] font-black uppercase tracking-wider"
+            >
+              <Icon name="printer" size={14} />
+              Print
+            </button>
           </div>
         </div>
       </div>
