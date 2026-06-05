@@ -393,7 +393,7 @@ h3 {
     height: auto !important;
     max-height: 3.6cm !important;
     object-fit: contain !important;
-    transform: rotate(-90deg) !important;
+    transform: rotate(90deg) !important;
     transform-origin: center center !important;
   }
 
@@ -644,7 +644,7 @@ h3 {
   max-width: 140px;
   max-height: 140px;
   height: auto;
-  transform: rotate(-90deg);
+  transform: rotate(90deg);
   transform-origin: center;
   object-fit: contain;
 }
