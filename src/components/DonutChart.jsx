@@ -1,8 +1,9 @@
 import React from 'react';
 import { CATEGORY_COLORS } from '../constants';
 import { getCategoryForItem } from '../lib/cupping';
+import { translateCategory } from '../i18n';
 
-const DonutChart = ({ tags, size = 200, className = '', einkMode = false }) => {
+const DonutChart = ({ tags, size = 200, className = '', einkMode = false, language, t }) => {
   const counts = { Fruity: 0, Citrus: 0, Floral: 0, Sweet: 0, 'Nutty/Cocoa': 0, Spices: 0 };
 
   tags.forEach((t) => {
@@ -22,7 +23,7 @@ const DonutChart = ({ tags, size = 200, className = '', einkMode = false }) => {
         className={`flex flex-col items-center justify-center p-4 bg-stone-50 rounded-full border border-dashed border-stone-200 ${einkMode ? 'eink-chart-empty' : ''}`}
         style={{ width: size, height: size }}
       >
-        <span className="text-[8px] font-black text-stone-300 uppercase">Profile N/A</span>
+        <span className="text-[8px] font-black text-stone-300 uppercase">{t('profileUnavailable')}</span>
       </div>
     );
   }
@@ -35,14 +36,14 @@ const DonutChart = ({ tags, size = 200, className = '', einkMode = false }) => {
   if (einkMode) {
     return (
       <div className={`eink-balance-chart ${className}`} style={{ width: size, minHeight: size }}>
-        <div className="eink-chart-title">Balance</div>
+        <div className="eink-chart-title">{t('balance')}</div>
         <div className="eink-balance-list">
           {sortedEntries.map(([cat, weight]) => {
             const percentage = Math.round((weight / totalWeight) * 100);
             return (
               <div key={cat} className="eink-balance-row">
                 <div className="eink-balance-meta">
-                  <span>{cat}</span>
+                  <span>{translateCategory(language, cat)}</span>
                   <strong>{percentage}%</strong>
                 </div>
                 <div className="eink-balance-track" aria-hidden="true">
@@ -82,13 +83,15 @@ const DonutChart = ({ tags, size = 200, className = '', einkMode = false }) => {
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-[10px] font-black text-stone-900 uppercase tracking-widest">Balance</span>
+        <span className="text-[10px] font-black text-stone-900 uppercase tracking-widest">{t('balance')}</span>
       </div>
       <div className="absolute top-[105%] flex flex-wrap justify-center gap-x-3 gap-y-1 w-[220px] sm:w-[260px]">
         {sortedEntries.map(([cat]) => (
           <div key={cat} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
-            <span className="text-[8px] font-black text-stone-900 uppercase tracking-tighter whitespace-nowrap">{cat}</span>
+            <span className="text-[8px] font-black text-stone-900 uppercase tracking-tighter whitespace-nowrap">
+              {translateCategory(language, cat)}
+            </span>
           </div>
         ))}
       </div>

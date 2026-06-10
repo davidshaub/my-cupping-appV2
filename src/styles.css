@@ -755,6 +755,7 @@ h3 {
 .home-display-control {
   display: flex;
   justify-content: center;
+  gap: 0.35rem;
   padding-top: 0.35rem;
 }
 

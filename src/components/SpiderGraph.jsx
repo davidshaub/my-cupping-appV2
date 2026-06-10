@@ -1,12 +1,13 @@
 import React from 'react';
 import { GRAPH_FLOOR, RADAR_LABELS } from '../constants';
+import { translateRadarLabel } from '../i18n';
 
 const DISPLAY_LABELS = {
   'Frag/Aroma': 'Fr/Aroma',
   Consistency: 'Consist.'
 };
 
-const SpiderGraph = ({ scores, size, einkMode = false }) => {
+const SpiderGraph = ({ scores, size, einkMode = false, language }) => {
   const isCompact = size <= 260;
   const horizontalLabelSpace = isCompact ? 42 : 54;
   const verticalLabelSpace = isCompact ? 26 : 32;
@@ -62,7 +63,7 @@ const SpiderGraph = ({ scores, size, einkMode = false }) => {
           />
         ))}
         {RADAR_LABELS.map((label, i) => {
-          const displayLabel = DISPLAY_LABELS[label] ?? label;
+          const displayLabel = language === 'es' ? translateRadarLabel(language, label) : DISPLAY_LABELS[label] ?? label;
           const angle = i * ((Math.PI * 2) / 10) - Math.PI / 2;
           const cos = Math.cos(angle);
           const x2 = centerX + radius * Math.cos(angle);

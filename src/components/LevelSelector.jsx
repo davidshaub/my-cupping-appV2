@@ -1,4 +1,5 @@
 import React from 'react';
+import { translateLevel } from '../i18n';
 
 const LEVELS = [
   { label: 'Low', short: 'L' },
@@ -8,8 +9,8 @@ const LEVELS = [
   { label: 'High', short: 'H' }
 ];
 
-const LevelSelector = ({ label, value, onSelect }) => (
-  <div className="grid grid-cols-5 gap-1.5 sm:gap-2 mt-2 w-full" aria-label={`${label} intensity`}>
+const LevelSelector = ({ label, value, onSelect, language, t }) => (
+  <div className="grid grid-cols-5 gap-1.5 sm:gap-2 mt-2 w-full" aria-label={`${label} ${t('intensity')}`}>
     {LEVELS.map((level) => {
       const active = value === level.label;
       return (
@@ -24,7 +25,7 @@ const LevelSelector = ({ label, value, onSelect }) => (
           }`}
         >
           <span className="sm:hidden">{level.short}</span>
-          <span className="hidden sm:inline">{level.label}</span>
+          <span className="hidden sm:inline">{translateLevel(language, level.label)}</span>
         </button>
       );
     })}
