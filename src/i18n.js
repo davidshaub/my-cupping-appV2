@@ -202,7 +202,7 @@ const UI_TEXT = {
     search: 'Buscar...',
     mapping: 'Asignación',
     noMatches: 'Sin coincidencias. Asignar al grupo:',
-    cycleTitle: 'Haz clic para cambiar: normal -> Leve -> Intenso',
+    cycleTitle: 'Haz clic para cambiar: normal -> Ligero/a(s) -> Intenso/a(s)',
     remove: 'Eliminar',
     intensity: 'intensidad',
     processingPlaceholder: 'Lavado / Natural / Honey / Otro',
@@ -360,6 +360,78 @@ const TAG_TRANSLATIONS_ES = {
   'Olive Brine': 'Salmuera de Aceituna'
 };
 
+const TAG_AGREEMENT_ES = {
+  Structure: 'fs',
+  Spices: 'fp',
+  'Nutty/Cocoa': 'fp',
+  'Red Fruit': 'fs',
+  'Red Currant': 'fs',
+  Berries: 'fp',
+  'Dark Berries': 'fp',
+  Raspberry: 'fs',
+  Strawberry: 'fs',
+  'Cooked Fruit': 'fs',
+  'Stone Fruit': 'fs',
+  'Orchard Fruit (Apple, Pear)': 'fs',
+  Grape: 'fs',
+  Plum: 'fs',
+  Cherry: 'fs',
+  Jammy: 'fs',
+  Orange: 'fs',
+  Bergamot: 'fs',
+  'Browning Sugars': 'mp',
+  Vanilla: 'fs',
+  Molasses: 'fs',
+  Sugarcane: 'fs',
+  Panela: 'fs',
+  Honey: 'fs',
+  'Graham Cracker': 'fs',
+  Cola: 'fs',
+  'Brown Fruit: Raisin/Date': 'fs',
+  Nuts: 'fp',
+  Almond: 'fs',
+  Hazelnut: 'fs',
+  'Wafer Cookie': 'fs',
+  Terracotta: 'fs',
+  'Baking Spices': 'fp',
+  Cinnamon: 'fs',
+  Mint: 'fs',
+  'Nice Structure': 'fs',
+  'Artificial Grape': 'fs',
+  'Hard Cups': 'fp',
+  Potato: 'fs',
+  Wood: 'fs',
+  Nutty: 'fs',
+  Popcorn: 'fp',
+  Onion: 'fs',
+  Pepper: 'fs',
+  'Olive Brine': 'fs'
+};
+
+const MODIFIER_FORMS_ES = {
+  Slight: {
+    ms: 'Ligero',
+    fs: 'Ligera',
+    mp: 'Ligeros',
+    fp: 'Ligeras'
+  },
+  Intense: {
+    ms: 'Intenso',
+    fs: 'Intensa',
+    mp: 'Intensos',
+    fp: 'Intensas'
+  }
+};
+
+const MODIFIER_OVERRIDES_ES = {
+  Slight: {
+    Thin: 'Apenas Ligero'
+  },
+  Intense: {
+    Thin: 'Muy Ligero'
+  }
+};
+
 const LEVEL_KEYS = {
   Low: 'low',
   'Med-': 'medMinus',
@@ -390,17 +462,24 @@ export const translateCategory = (language, category) =>
 export const translateTag = (language, tag) => {
   if (language !== 'es') return tag;
 
-  let modifier = '';
+  let modifierKey = '';
   let base = tag;
   if (tag.startsWith('Slight ')) {
-    modifier = 'Leve ';
+    modifierKey = 'Slight';
     base = tag.slice('Slight '.length);
   } else if (tag.startsWith('Intense ')) {
-    modifier = 'Intenso ';
+    modifierKey = 'Intense';
     base = tag.slice('Intense '.length);
   }
 
-  return `${modifier}${TAG_TRANSLATIONS_ES[base] ?? CATEGORY_TRANSLATIONS_ES[base] ?? base}`;
+  const translatedBase = TAG_TRANSLATIONS_ES[base] ?? CATEGORY_TRANSLATIONS_ES[base] ?? base;
+  if (!modifierKey) return translatedBase;
+
+  const override = MODIFIER_OVERRIDES_ES[modifierKey]?.[base];
+  if (override) return override;
+
+  const agreement = TAG_AGREEMENT_ES[base] ?? 'ms';
+  return `${MODIFIER_FORMS_ES[modifierKey][agreement]} ${translatedBase}`;
 };
 
 export const translateLevel = (language, level) =>
