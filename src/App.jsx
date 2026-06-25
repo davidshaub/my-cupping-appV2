@@ -19,7 +19,7 @@ import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
 import HandsLogo from '../assets/hands.png';
-import HandsPrintLogo from '../assets/hands-print.png';
+import HandsPrintLogo from '../assets/hands-print-clean.png';
 import LevelSelector from './components/LevelSelector';
 import {
   translate,
@@ -302,7 +302,7 @@ const App = () => {
       height: 6.85in !important;
       min-height: 6.85in !important;
       max-height: 6.85in !important;
-      padding: 0 !important;
+      padding: 0 0 0.16in 0 !important;
       margin: 0 !important;
       overflow: hidden !important;
       border: 0 !important;
@@ -342,12 +342,26 @@ const App = () => {
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
-      gap: 0.06in !important;
+      gap: 0.03in !important;
       width: 100% !important;
-      margin-top: 0.08in !important;
-      padding-top: 0.1in !important;
+      margin-top: 0.02in !important;
+      padding-top: 0.07in !important;
       border-top: 1.4px solid #1c1917 !important;
       text-align: center !important;
+    }
+
+    .print-footer-text {
+      max-width: 100% !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      color: #1f2b23 !important;
+      font-size: 8.5px !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.08em !important;
+      line-height: 1.2 !important;
+      text-align: center !important;
+      text-transform: uppercase !important;
+      white-space: nowrap !important;
     }
 
     .print-identity-block {
@@ -410,14 +424,17 @@ const App = () => {
       align-items: center !important;
       justify-content: center !important;
       width: 100% !important;
+      height: 0.86in !important;
       margin-top: 0 !important;
+      overflow: hidden !important;
     }
 
     .print-logo img {
+      display: block !important;
       width: auto !important;
-      height: 0.82in !important;
-      max-width: 0.72in !important;
-      max-height: 0.82in !important;
+      height: 0.78in !important;
+      max-width: none !important;
+      max-height: none !important;
       object-fit: contain !important;
       transform: none !important;
       transform-origin: center center !important;
