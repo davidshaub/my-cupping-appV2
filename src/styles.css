@@ -1147,3 +1147,105 @@ h3 {
     background: #000000;
   }
 }
+
+:root.printing-report,
+:root.printing-report body,
+:root.printing-report #root,
+:root.printing-report .report-screen {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+:root.printing-report .print-hidden,
+:root.printing-report .report-signoff {
+  display: none !important;
+}
+
+:root.printing-report .print-only {
+  display: block !important;
+}
+
+:root.printing-report .report-container {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+:root.printing-report .report-surface {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+}
+
+:root.printing-report .sample-spec-sheet {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 7.65in !important;
+  min-height: 7.65in !important;
+  max-height: 7.65in !important;
+  padding: 0.2in !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  border: 1.5px solid #1c1917 !important;
+  display: grid !important;
+  grid-template-rows: auto auto 1fr auto !important;
+  gap: 0.16in !important;
+}
+
+@media print {
+  html,
+  body,
+  #root,
+  .report-screen {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
+  .report-container {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .report-surface {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  .sample-spec-sheet {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}

@@ -211,11 +211,24 @@ const App = () => {
   const printAllPdf = () => {
     const prev = document.title;
     const stamp = new Date().toLocaleString();
-    document.title = `${t('report')} ${stamp}`;
-    window.print();
-    setTimeout(() => {
+    const root = document.documentElement;
+
+    const cleanupPrintState = () => {
+      root.classList.remove('printing-report');
       document.title = prev;
-    }, 500);
+      window.removeEventListener('afterprint', cleanupPrintState);
+    };
+
+    document.title = `${t('report')} ${stamp}`;
+    root.classList.add('printing-report');
+    window.addEventListener('afterprint', cleanupPrintState, { once: true });
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+        setTimeout(cleanupPrintState, 1500);
+      });
+    });
   };
 
   const renderConfirmModal = () =>
@@ -926,7 +939,7 @@ const App = () => {
 
   if (appState === 'report') {
     return (
-      <div className="min-h-screen bg-stone-100 p-4 md:p-8 relative">
+      <div className="report-screen min-h-screen bg-stone-100 p-4 md:p-8 relative">
         {renderConfirmModal()}
         {showSaveModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
@@ -1006,7 +1019,7 @@ const App = () => {
             </div>
           </header>
 
-          <div className="bg-white p-4 md:p-10 rounded-3xl shadow-sm border border-stone-200 print:p-0 print:border-none print:shadow-none">
+          <div className="report-surface bg-white p-4 md:p-10 rounded-3xl shadow-sm border border-stone-200 print:p-0 print:border-none print:shadow-none">
             <div className="report-title print-hidden">
               <div>
                 <h1>{t('labSummary')}</h1>
