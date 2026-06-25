@@ -109,7 +109,19 @@ h3 {
   }
 }
 
+@page {
+  size: landscape;
+  size: letter landscape;
+  size: 11in 8.5in;
+  margin: 0.25in;
+}
+
 @media print {
+  :root {
+    --print-sheet-width: 10in;
+    --print-sheet-height: 7.35in;
+  }
+
   .print-hidden,
   .report-signoff {
     display: none !important;
@@ -123,6 +135,17 @@ h3 {
     display: block !important;
   }
 
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
   body {
     background-color: white !important;
     padding: 0 !important;
@@ -130,43 +153,68 @@ h3 {
   }
 
   @page {
+    size: landscape;
     size: letter landscape;
-    margin: 0.45cm;
+    size: 11in 8.5in;
+    margin: 0.25in;
   }
 
   .report-container {
-    width: 100% !important;
-    max-width: none !important;
+    width: var(--print-sheet-width) !important;
+    max-width: var(--print-sheet-width) !important;
+    min-width: var(--print-sheet-width) !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     box-shadow: none !important;
     border: none !important;
+    overflow: visible !important;
+  }
+
+  .report-container > .bg-white {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  .report-container .space-y-0 {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .sample-spec-sheet {
     break-before: auto !important;
     page-break-before: auto !important;
-    break-after: page !important;
-    page-break-after: always !important;
     break-inside: avoid !important;
+    break-inside: avoid-page !important;
+    -webkit-column-break-inside: avoid !important;
     page-break-inside: avoid !important;
     border: 1.5px solid #1c1917 !important;
-    padding: 0.55cm !important;
+    padding: 0.2in !important;
     margin-bottom: 0 !important;
-    width: 100% !important;
-    height: 18.8cm !important;
+    width: var(--print-sheet-width) !important;
+    min-width: var(--print-sheet-width) !important;
+    max-width: var(--print-sheet-width) !important;
+    height: var(--print-sheet-height) !important;
+    min-height: var(--print-sheet-height) !important;
+    max-height: var(--print-sheet-height) !important;
     overflow: hidden !important;
     position: relative !important;
     display: grid !important;
     grid-template-rows: auto auto 1fr auto !important;
-    gap: 0.4cm !important;
+    gap: 0.16in !important;
     margin: 0 !important;
     background: white !important;
   }
 
-  .sample-spec-sheet:first-child {
-    break-before: auto !important;
-    page-break-before: auto !important;
+  .sample-spec-sheet:not(:last-child) {
+    break-after: page !important;
+    break-after: always !important;
+    -webkit-column-break-after: always !important;
+    page-break-after: always !important;
   }
 
   .sample-spec-sheet:last-child {
@@ -174,8 +222,15 @@ h3 {
     page-break-after: auto !important;
   }
 
+  .sample-spec-sheet > * {
+    min-width: 0 !important;
+    min-height: 0 !important;
+  }
+
   .sample-spec-sheet * {
     break-inside: avoid !important;
+    break-inside: avoid-page !important;
+    -webkit-column-break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
