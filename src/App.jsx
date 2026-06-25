@@ -52,6 +52,13 @@ const LanguageToggle = ({ language, onToggle, t, compact = false, className = ''
   </button>
 );
 
+const escapeHtml = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
 const App = () => {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
   const [displayMode, setDisplayMode] = useState('standard');
@@ -209,28 +216,235 @@ const App = () => {
   };
 
   const printAllPdf = () => {
-    const prev = document.title;
     const stamp = new Date().toLocaleString();
-    const root = document.documentElement;
-    let cleanupTimer;
+    const title = `${t('report')} ${stamp}`;
+    const pages = Array.from(document.querySelectorAll('.report-pages .sample-spec-sheet'));
+    const printWindow = window.open('', '_blank');
 
-    const cleanupPrintState = () => {
-      if (cleanupTimer) window.clearTimeout(cleanupTimer);
-      root.classList.remove('printing-report');
-      document.title = prev;
-      window.removeEventListener('afterprint', cleanupPrintState);
-    };
+    if (!printWindow || pages.length === 0) {
+      const prev = document.title;
+      document.title = title;
+      window.print();
+      setTimeout(() => {
+        document.title = prev;
+      }, 500);
+      return;
+    }
 
-    document.title = `${t('report')} ${stamp}`;
-    root.classList.add('printing-report');
-    window.addEventListener('afterprint', cleanupPrintState, { once: true });
+    const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((node) => (node.tagName === 'LINK' ? `<link rel="stylesheet" href="${escapeHtml(node.href)}">` : node.outerHTML))
+      .join('\n');
+    const displayModeAttr = document.documentElement.dataset.displayMode ? ` data-display-mode="${escapeHtml(document.documentElement.dataset.displayMode)}"` : '';
+    const pageMarkup = pages.map((page) => page.outerHTML).join('\n');
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+<html lang="${escapeHtml(language)}"${displayModeAttr}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="${escapeHtml(window.location.href)}">
+  <title>${escapeHtml(title)}</title>
+  ${styleTags}
+  <style>
+    @page {
+      size: letter landscape;
+      margin: 0.3in;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    html,
+    body {
+      width: auto;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      margin: 0;
+      overflow: visible;
+      background: #ffffff;
+    }
+
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #1f2b23;
+    }
+
+    .print-document {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+
+    .print-hidden,
+    .report-title,
+    .report-signoff,
+    .report-logo {
+      display: none !important;
+    }
+
+    .print-only {
+      display: block !important;
+    }
+
+    .sample-spec-sheet {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      height: 7in !important;
+      min-height: 7in !important;
+      max-height: 7in !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      border: 0 !important;
+      background: #ffffff !important;
+      box-shadow: none !important;
+      display: grid !important;
+      grid-template-rows: auto auto 1fr auto !important;
+      gap: 0.14in !important;
+      break-before: auto !important;
+      break-after: auto !important;
+      break-inside: avoid !important;
+      page-break-before: auto !important;
+      page-break-after: auto !important;
+      page-break-inside: avoid !important;
+    }
+
+    .sample-spec-sheet + .sample-spec-sheet {
+      break-before: page !important;
+      page-break-before: always !important;
+    }
+
+    .sample-spec-sheet * {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+
+    .print-page-header {
+      display: flex !important;
+      align-items: flex-start !important;
+      justify-content: space-between !important;
+      gap: 0.24in !important;
+      border-bottom: 1.4px solid #1c1917 !important;
+      padding-bottom: 0.12in !important;
+    }
+
+    .print-page-footer {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 0.12in !important;
+      width: 100% !important;
+      margin-top: 0.18in !important;
+      padding-top: 0.16in !important;
+      border-top: 1.4px solid #1c1917 !important;
+      text-align: center !important;
+    }
+
+    .print-identity-block {
+      margin: 0 !important;
+    }
+
+    .print-spec-grid,
+    .spec-grid {
+      display: grid !important;
+      grid-template-columns: 4.85in 1fr !important;
+      gap: 0.25in !important;
+      margin-top: 0 !important;
+      align-items: start !important;
+    }
+
+    .print-visual-row,
+    .visual-row {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: flex-start !important;
+      justify-content: flex-start !important;
+      gap: 0.16in !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-bottom: none !important;
+    }
+
+    .data-column {
+      gap: 0.18in !important;
+    }
+
+    .print-tag-sections {
+      gap: 0.14in !important;
+    }
+
+    .print-tag-sections > div {
+      margin: 0 !important;
+      padding-bottom: 0.03in !important;
+    }
+
+    .print-tag-sections > div > div {
+      max-height: 0.72in !important;
+      overflow: hidden !important;
+    }
+
+    .print-notes-block {
+      margin-top: 0 !important;
+      padding-top: 0.1in !important;
+    }
+
+    .print-notes-body {
+      max-height: 1.05in !important;
+      overflow: hidden !important;
+      padding-right: 0 !important;
+    }
+
+    .print-logo {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100% !important;
+      margin-top: 0 !important;
+    }
+
+    .print-logo img {
+      width: 0.82in !important;
+      height: auto !important;
+      max-height: 0.95in !important;
+      object-fit: contain !important;
+      transform: rotate(90deg) !important;
+      transform-origin: center center !important;
+    }
+  </style>
+</head>
+<body>
+  <main class="print-document">
+    ${pageMarkup}
+  </main>
+  <script>
+    const waitForImages = () => Promise.all(Array.from(document.images).map((img) => (
+      img.complete ? Promise.resolve() : new Promise((resolve) => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      })
+    )));
+    const waitForFonts = document.fonts ? document.fonts.ready : Promise.resolve();
+    Promise.all([waitForImages(), waitForFonts]).then(() => {
+      setTimeout(() => {
+        window.focus();
         window.print();
-        cleanupTimer = window.setTimeout(cleanupPrintState, 60000);
-      });
+      }, 250);
     });
+    window.addEventListener('afterprint', () => {
+      setTimeout(() => window.close(), 500);
+    });
+  </script>
+</body>
+</html>`);
+    printWindow.document.close();
   };
 
   const renderConfirmModal = () =>
@@ -1029,7 +1243,7 @@ const App = () => {
               </div>
               <div className="report-title-date">{sessionStartTime}</div>
             </div>
-            <div className="space-y-0">
+            <div className="report-pages space-y-0">
               {samples.map((s) => (
                 <div
                   key={s.id}
