@@ -118,7 +118,7 @@ h3 {
 
 @media print {
   :root {
-    --print-sheet-height: 7.65in;
+    --print-sheet-height: 7.35in;
   }
 
   .print-hidden,
@@ -191,6 +191,8 @@ h3 {
   .sample-spec-sheet {
     break-before: auto !important;
     page-break-before: auto !important;
+    break-after: auto !important;
+    page-break-after: auto !important;
     break-inside: avoid !important;
     break-inside: avoid-page !important;
     -webkit-column-break-inside: avoid !important;
@@ -213,16 +215,11 @@ h3 {
     background: white !important;
   }
 
-  .sample-spec-sheet:not(:last-child) {
-    break-after: page !important;
-    break-after: always !important;
-    -webkit-column-break-after: always !important;
-    page-break-after: always !important;
-  }
-
-  .sample-spec-sheet:last-child {
-    break-after: auto !important;
-    page-break-after: auto !important;
+  .sample-spec-sheet + .sample-spec-sheet {
+    break-before: page !important;
+    break-before: always !important;
+    -webkit-column-break-before: always !important;
+    page-break-before: always !important;
   }
 
   .sample-spec-sheet > * {
@@ -1195,17 +1192,28 @@ h3 {
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
-  height: 7.65in !important;
-  min-height: 7.65in !important;
-  max-height: 7.65in !important;
+  height: 7.35in !important;
+  min-height: 7.35in !important;
+  max-height: 7.35in !important;
   padding: 0.2in !important;
   margin: 0 !important;
+  break-before: auto !important;
+  page-break-before: auto !important;
+  break-after: auto !important;
+  page-break-after: auto !important;
   overflow: hidden !important;
   background: #ffffff !important;
   border: 1.5px solid #1c1917 !important;
   display: grid !important;
   grid-template-rows: auto auto 1fr auto !important;
   gap: 0.16in !important;
+}
+
+:root.printing-report .sample-spec-sheet + .sample-spec-sheet {
+  break-before: page !important;
+  break-before: always !important;
+  -webkit-column-break-before: always !important;
+  page-break-before: always !important;
 }
 
 @media print {
@@ -1247,5 +1255,14 @@ h3 {
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  .sample-spec-sheet + .sample-spec-sheet {
+    break-before: page !important;
+    break-before: always !important;
+    -webkit-column-break-before: always !important;
+    page-break-before: always !important;
   }
 }
