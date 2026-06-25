@@ -118,7 +118,7 @@ h3 {
 
 @media print {
   :root {
-    --print-sheet-height: 7.35in;
+    --print-sheet-height: 6.9in;
   }
 
   .print-hidden,
@@ -1192,9 +1192,9 @@ h3 {
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
-  height: 7.35in !important;
-  min-height: 7.35in !important;
-  max-height: 7.35in !important;
+  height: 6.9in !important;
+  min-height: 6.9in !important;
+  max-height: 6.9in !important;
   padding: 0.2in !important;
   margin: 0 !important;
   break-before: auto !important;
