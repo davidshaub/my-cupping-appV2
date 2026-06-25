@@ -235,7 +235,9 @@ const App = () => {
       .map((node) => (node.tagName === 'LINK' ? `<link rel="stylesheet" href="${escapeHtml(node.href)}">` : node.outerHTML))
       .join('\n');
     const displayModeAttr = document.documentElement.dataset.displayMode ? ` data-display-mode="${escapeHtml(document.documentElement.dataset.displayMode)}"` : '';
-    const pageMarkup = pages.map((page) => page.outerHTML).join('\n');
+    const pageMarkup = pages
+      .map((page) => page.outerHTML.replace(/<img([^>]*?)src="[^"]*"([^>]*?)>/g, `<img$1src="${escapeHtml(HandsLogo)}"$2>`))
+      .join('\n');
 
     printWindow.document.open();
     printWindow.document.write(`<!doctype html>
@@ -296,9 +298,9 @@ const App = () => {
       width: 100% !important;
       max-width: none !important;
       min-width: 0 !important;
-      height: 7in !important;
-      min-height: 7in !important;
-      max-height: 7in !important;
+      height: 6.85in !important;
+      min-height: 6.85in !important;
+      max-height: 6.85in !important;
       padding: 0 !important;
       margin: 0 !important;
       overflow: hidden !important;
@@ -307,7 +309,7 @@ const App = () => {
       box-shadow: none !important;
       display: grid !important;
       grid-template-rows: auto auto 1fr auto !important;
-      gap: 0.14in !important;
+      gap: 0.12in !important;
       break-before: auto !important;
       break-after: auto !important;
       break-inside: avoid !important;
@@ -339,10 +341,10 @@ const App = () => {
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
-      gap: 0.12in !important;
+      gap: 0.06in !important;
       width: 100% !important;
-      margin-top: 0.18in !important;
-      padding-top: 0.16in !important;
+      margin-top: 0.08in !important;
+      padding-top: 0.1in !important;
       border-top: 1.4px solid #1c1917 !important;
       text-align: center !important;
     }
@@ -411,12 +413,13 @@ const App = () => {
     }
 
     .print-logo img {
-      width: 0.82in !important;
+      width: 0.66in !important;
       height: auto !important;
-      max-height: 0.95in !important;
+      max-height: 0.78in !important;
       object-fit: contain !important;
       transform: rotate(90deg) !important;
       transform-origin: center center !important;
+      image-rendering: auto !important;
     }
   </style>
 </head>
