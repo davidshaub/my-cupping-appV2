@@ -118,7 +118,7 @@ h3 {
 
 @media print {
   :root {
-    --print-sheet-height: 6.9in;
+    --print-sheet-height: auto;
   }
 
   .print-hidden,
@@ -203,10 +203,10 @@ h3 {
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
-    height: var(--print-sheet-height) !important;
-    min-height: var(--print-sheet-height) !important;
-    max-height: var(--print-sheet-height) !important;
-    overflow: hidden !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
     position: relative !important;
     display: grid !important;
     grid-template-rows: auto auto 1fr auto !important;
@@ -1192,16 +1192,16 @@ h3 {
   width: 100% !important;
   min-width: 0 !important;
   max-width: none !important;
-  height: 6.9in !important;
-  min-height: 6.9in !important;
-  max-height: 6.9in !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
   padding: 0.2in !important;
   margin: 0 !important;
   break-before: auto !important;
   page-break-before: auto !important;
   break-after: auto !important;
   page-break-after: auto !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   background: #ffffff !important;
   border: 1.5px solid #1c1917 !important;
   display: grid !important;
@@ -1255,6 +1255,10 @@ h3 {
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
     break-after: auto !important;
     page-break-after: auto !important;
   }

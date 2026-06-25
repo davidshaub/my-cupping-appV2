@@ -212,8 +212,10 @@ const App = () => {
     const prev = document.title;
     const stamp = new Date().toLocaleString();
     const root = document.documentElement;
+    let cleanupTimer;
 
     const cleanupPrintState = () => {
+      if (cleanupTimer) window.clearTimeout(cleanupTimer);
       root.classList.remove('printing-report');
       document.title = prev;
       window.removeEventListener('afterprint', cleanupPrintState);
@@ -226,7 +228,7 @@ const App = () => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         window.print();
-        setTimeout(cleanupPrintState, 1500);
+        cleanupTimer = window.setTimeout(cleanupPrintState, 60000);
       });
     });
   };
