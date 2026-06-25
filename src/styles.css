@@ -118,8 +118,7 @@ h3 {
 
 @media print {
   :root {
-    --print-sheet-width: 10in;
-    --print-sheet-height: 7.35in;
+    --print-sheet-height: 7.65in;
   }
 
   .print-hidden,
@@ -137,17 +136,21 @@ h3 {
 
   html,
   body,
-  #root {
-    width: 100% !important;
+  #root,
+  #root > .min-h-screen {
+    width: auto !important;
     min-width: 0 !important;
     min-height: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
+    background: #ffffff !important;
+    background-image: none !important;
     overflow: visible !important;
   }
 
   body {
-    background-color: white !important;
+    background: #ffffff !important;
+    background-image: none !important;
     padding: 0 !important;
     margin: 0 !important;
   }
@@ -160,11 +163,11 @@ h3 {
   }
 
   .report-container {
-    width: var(--print-sheet-width) !important;
-    max-width: var(--print-sheet-width) !important;
-    min-width: var(--print-sheet-width) !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
     padding: 0 !important;
-    margin: 0 auto !important;
+    margin: 0 !important;
     box-shadow: none !important;
     border: none !important;
     overflow: visible !important;
@@ -195,9 +198,9 @@ h3 {
     border: 1.5px solid #1c1917 !important;
     padding: 0.2in !important;
     margin-bottom: 0 !important;
-    width: var(--print-sheet-width) !important;
-    min-width: var(--print-sheet-width) !important;
-    max-width: var(--print-sheet-width) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
     height: var(--print-sheet-height) !important;
     min-height: var(--print-sheet-height) !important;
     max-height: var(--print-sheet-height) !important;
