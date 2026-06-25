@@ -19,6 +19,7 @@ import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
 import HandsLogo from '../assets/hands.png';
+import HandsPrintLogo from '../assets/hands-print.png';
 import LevelSelector from './components/LevelSelector';
 import {
   translate,
@@ -236,7 +237,7 @@ const App = () => {
       .join('\n');
     const displayModeAttr = document.documentElement.dataset.displayMode ? ` data-display-mode="${escapeHtml(document.documentElement.dataset.displayMode)}"` : '';
     const pageMarkup = pages
-      .map((page) => page.outerHTML.replace(/<img([^>]*?)src="[^"]*"([^>]*?)>/g, `<img$1src="${escapeHtml(HandsLogo)}"$2>`))
+      .map((page) => page.outerHTML.replace(/<img([^>]*?)src="[^"]*"([^>]*?)>/g, `<img$1src="${escapeHtml(HandsPrintLogo)}"$2>`))
       .join('\n');
 
     printWindow.document.open();
@@ -413,11 +414,12 @@ const App = () => {
     }
 
     .print-logo img {
-      width: 0.66in !important;
-      height: auto !important;
-      max-height: 0.78in !important;
+      width: auto !important;
+      height: 0.82in !important;
+      max-width: 0.72in !important;
+      max-height: 0.82in !important;
       object-fit: contain !important;
-      transform: rotate(90deg) !important;
+      transform: none !important;
       transform-origin: center center !important;
       image-rendering: auto !important;
     }
