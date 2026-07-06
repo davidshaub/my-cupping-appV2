@@ -322,8 +322,11 @@ h3 {
   }
 
   .print-identity-block .grade-display p:last-child {
+    display: inline-block !important;
     font-size: 48px !important;
     line-height: 1 !important;
+    overflow: visible !important;
+    padding: 0 0.08em !important;
   }
 
   .print-spec-grid,
