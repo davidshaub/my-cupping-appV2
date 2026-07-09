@@ -49,6 +49,13 @@ h3 {
   display: none;
 }
 
+.score-value {
+  display: inline-block;
+  box-sizing: content-box;
+  overflow: visible;
+  padding-inline: 0.08em;
+}
+
 .report-balance-align {
   display: flex;
   justify-content: center;
