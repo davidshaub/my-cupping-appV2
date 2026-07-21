@@ -291,11 +291,11 @@ export const downloadCSV = (samples, sessionStartTime, sessionName) => {
     'Session Start Time'
   ];
 
-  const rows = samples.map((s) => {
+  const rows = samples.map((s, idx) => {
     const proc = s.processing === 'Select One' ? 'N/A' : s.processing;
     const procDetails = s.processing === 'Other' ? s.processingOther : '';
     return [
-      s.id,
+      idx + 1,
       csvEscape(s.ositoId),
       csvEscape(s.lotName),
       csvEscape(proc),

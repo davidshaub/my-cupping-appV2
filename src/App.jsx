@@ -1255,7 +1255,7 @@ const App = () => {
             samples.map((s, idx) => (
               <div key={idx} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-stone-50 pb-3">
-                  <span className="w-6 h-6 rounded-full bg-stone-900 text-white flex items-center justify-center font-black text-[10px]">#{s.id}</span>
+                  <span className="w-6 h-6 rounded-full bg-stone-900 text-white flex items-center justify-center font-black text-[10px]">#{idx + 1}</span>
                   <h3 className="font-black text-stone-800 uppercase tracking-widest text-[10px]">{t('lotData')}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1442,7 +1442,7 @@ const App = () => {
               <div className="report-title-date">{sessionStartTime}</div>
             </div>
             <div className="report-pages space-y-0">
-              {samples.map((s) => (
+              {samples.map((s, idx) => (
                 <div
                   key={s.id}
                   className="sample-spec-sheet mb-14 md:mb-32 border-b-2 border-stone-100 pb-10 md:pb-16 last:border-0 last:mb-0 last:pb-0 print:border-stone-900 print:border-2 print:p-[0.8cm] print:mb-0 print:pb-0"
@@ -1458,14 +1458,14 @@ const App = () => {
                     <div className="flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
                       <div className="flex items-center gap-3 mb-1">
                         {!s.lotName && (
-                          <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">{t('sample')} 0{s.id}</span>
+                          <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">{t('sample')} 0{idx + 1}</span>
                         )}
                         <span className="inline-flex items-center gap-2 text-base font-black text-stone-900 uppercase tracking-tight px-2 py-1 rounded-xl bg-stone-100 border border-stone-200">
                           {s.ositoId || t('noId')}
                         </span>
                       </div>
                       <h2 className="text-xl sm:text-2xl md:text-4xl font-black text-stone-900 tracking-tighter uppercase leading-tight">
-                        {s.lotName ? s.lotName : `${t('sample')} 0${s.id}`}
+                        {s.lotName ? s.lotName : `${t('sample')} 0${idx + 1}`}
                       </h2>
                       <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-2">
                         <div className="flex flex-col">
@@ -1637,7 +1637,7 @@ const App = () => {
                   activeSampleIndex === idx ? 'bg-stone-800 text-white shadow-lg scale-105' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
                 }`}
               >
-                {s.id}
+                {idx + 1}
               </button>
             ))}
           </div>
@@ -1655,7 +1655,9 @@ const App = () => {
         <div className="max-w-6xl mx-auto px-4 md:px-12 pb-4 flex justify-between items-end text-stone-900 gap-3">
           <div className="min-w-0 pl-2">
             <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] leading-none block mb-1">{t('analyzingLot')}</span>
-            <h2 className="text-base md:text-xl font-black tracking-tight leading-none truncate">{currentSample.lotName || `${t('coffee')} ${currentSample.id}`}</h2>
+            <h2 className="text-base md:text-xl font-black tracking-tight leading-none truncate">
+              {currentSample.lotName || `${t('coffee')} ${activeSampleIndex + 1}`}
+            </h2>
           </div>
           <div className="text-right leading-none shrink-0 pl-4 pr-2">
             <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t('liveScore')}</span>
