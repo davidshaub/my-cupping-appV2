@@ -56,6 +56,16 @@ h3 {
   padding-inline: 0.08em;
 }
 
+.sample-reorder-handle {
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.sample-reorder-handle:active {
+  cursor: grabbing;
+}
+
 .report-balance-align {
   display: flex;
   justify-content: center;

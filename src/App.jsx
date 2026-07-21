@@ -82,7 +82,10 @@ const App = () => {
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [sampleDrag, setSampleDrag] = useState(null);
   const importInputRef = useRef(null);
+  const metadataTableBodyRef = useRef(null);
+  const sampleDragRef = useRef(null);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -537,6 +540,148 @@ const App = () => {
     setSamples((prev) => prev.map((item, idx) => (idx === sampleIdx ? { ...item, [field]: value } : item)));
   };
 
+  const getActiveIndexAfterReorder = (currentIndex, fromIndex, toIndex) => {
+    if (currentIndex === fromIndex) return toIndex;
+    if (fromIndex < toIndex && currentIndex > fromIndex && currentIndex <= toIndex) return currentIndex - 1;
+    if (fromIndex > toIndex && currentIndex >= toIndex && currentIndex < fromIndex) return currentIndex + 1;
+    return currentIndex;
+  };
+
+  const reorderSamples = (fromIndex, toIndex) => {
+    if (
+      !Number.isInteger(fromIndex) ||
+      !Number.isInteger(toIndex) ||
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= samples.length ||
+      toIndex >= samples.length
+    ) {
+      return;
+    }
+
+    setSamples((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+    setActiveSampleIndex((current) => getActiveIndexAfterReorder(current, fromIndex, toIndex));
+  };
+
+  const getTableReorderTargetIndex = (clientY) => {
+    const rows = Array.from(metadataTableBodyRef.current?.querySelectorAll('[data-sample-row-index]') ?? []);
+    if (rows.length === 0) return null;
+
+    return rows.reduce(
+      (closest, row) => {
+        const rect = row.getBoundingClientRect();
+        const index = Number(row.dataset.sampleRowIndex);
+        const distance = Math.abs(clientY - (rect.top + rect.height / 2));
+        return distance < closest.distance ? { index, distance } : closest;
+      },
+      { index: Number(rows[0].dataset.sampleRowIndex), distance: Infinity }
+    ).index;
+  };
+
+  const startSampleReorder = (idx, e) => {
+    if (samples.length < 2) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const dragState = { fromIndex: idx, overIndex: idx, pointerId: e.pointerId };
+    sampleDragRef.current = dragState;
+    setSampleDrag(dragState);
+  };
+
+  const updateSampleReorderTarget = (e) => {
+    e.preventDefault();
+    updateSampleReorderTargetFromClientY(e.clientY);
+  };
+
+  const updateSampleReorderTargetFromClientY = (clientY) => {
+    const dragState = sampleDragRef.current;
+    if (!dragState) return;
+    const overIndex = getTableReorderTargetIndex(clientY);
+    if (overIndex === null || overIndex === dragState.overIndex) return;
+
+    const nextDragState = { ...dragState, overIndex };
+    sampleDragRef.current = nextDragState;
+    setSampleDrag(nextDragState);
+  };
+
+  const completeSampleReorder = () => {
+    const dragState = sampleDragRef.current;
+    if (!dragState) return;
+    sampleDragRef.current = null;
+    setSampleDrag(null);
+    reorderSamples(dragState.fromIndex, dragState.overIndex);
+  };
+
+  const finishSampleReorder = (e) => {
+    const dragState = sampleDragRef.current;
+    if (!dragState) return;
+    e.preventDefault();
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    completeSampleReorder();
+  };
+
+  const cancelSampleReorder = (e) => {
+    if (!sampleDragRef.current) return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    sampleDragRef.current = null;
+    setSampleDrag(null);
+  };
+
+  const handleSampleReorderKeyDown = (idx, e) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      reorderSamples(idx, Math.max(0, idx - 1));
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      reorderSamples(idx, Math.min(samples.length - 1, idx + 1));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      reorderSamples(idx, 0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      reorderSamples(idx, samples.length - 1);
+    }
+  };
+
+  const isSampleReordering = sampleDrag !== null;
+
+  useEffect(() => {
+    if (!isSampleReordering) return undefined;
+
+    const handleWindowPointerMove = (event) => {
+      if (sampleDragRef.current?.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      updateSampleReorderTargetFromClientY(event.clientY);
+    };
+
+    const handleWindowPointerUp = (event) => {
+      if (sampleDragRef.current?.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      completeSampleReorder();
+    };
+
+    const handleWindowPointerCancel = (event) => {
+      if (sampleDragRef.current?.pointerId !== event.pointerId) return;
+      sampleDragRef.current = null;
+      setSampleDrag(null);
+    };
+
+    window.addEventListener('pointermove', handleWindowPointerMove, { passive: false });
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    window.addEventListener('pointercancel', handleWindowPointerCancel);
+
+    return () => {
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+      window.removeEventListener('pointercancel', handleWindowPointerCancel);
+    };
+  }, [isSampleReordering]);
+
   const formatWaterActivity = (value) => {
     const raw = String(value ?? '').trim();
     if (!raw) return '';
@@ -960,6 +1105,9 @@ const App = () => {
               <table className="min-w-full text-left text-sm border-collapse">
                 <thead className="bg-stone-50 border-b border-stone-100 text-[11px] font-black uppercase tracking-widest text-stone-500">
                   <tr>
+                    <th className="px-2 py-2 w-10 text-center">
+                      <span className="sr-only">{t('reorder')}</span>
+                    </th>
                     <th className="px-3 py-2 w-12 text-center">#</th>
                     <th className="px-3 py-2">{t('ositoId')}</th>
                     <th className="px-3 py-2">{t('lotName')}</th>
@@ -969,103 +1117,131 @@ const App = () => {
                     {tableColumns.includes('processingOther') && <th className="px-3 py-2 whitespace-nowrap">{t('processingDetails')}</th>}
                   </tr>
                 </thead>
-                <tbody>
-                  {samples.map((s, idx) => (
-                    <tr key={idx} className="border-b border-stone-100 last:border-0 hover:bg-stone-50/60">
-                      <td className="px-3 py-2 align-top text-center text-xs font-black text-stone-500">{idx + 1}</td>
-                      <td className="px-3 py-2 align-top">
-                        <input
-                          value={s.ositoId || ''}
-                          onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 0, tablePasteOrder, e)}
-                          placeholder="OS-ID..."
-                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <input
-                          value={s.lotName || ''}
-                          onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
-                          onPaste={(e) => handleTablePaste(idx, 1, tablePasteOrder, e)}
-                          placeholder={`${t('lotName')}...`}
-                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top min-w-[140px]">
-                        <input
-                          value={s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : ''}
-                          onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
-                          onBlur={(e) => {
-                            const normalized = normalizeProcessingInput(e.target.value, s.processingOther);
-                            setSamples((prev) =>
-                              prev.map((item, sIdx) =>
-                                sIdx === idx
-                                  ? {
-                                      ...item,
-                                      processing: normalized.processing,
-                                      processingOther: normalized.processingOther
-                                    }
-                                  : item
-                              )
-                            );
-                          }}
-                          onPaste={(e) => handleTablePaste(idx, 2, tablePasteOrder, e)}
-                          placeholder={t('processingPlaceholder')}
-                          list="processing-options"
-                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top min-w-[140px]">
-                        <input
-                          value={s.waterActivity || ''}
-                          onChange={(e) => updateMetadata(idx, 'waterActivity', e.target.value)}
-                          onBlur={(e) => updateMetadata(idx, 'waterActivity', formatWaterActivity(e.target.value))}
-                          onPaste={(e) => handleTablePaste(idx, 3, tablePasteOrder, e)}
-                          placeholder="0.00"
-                          inputMode="decimal"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="0.99"
-                          className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm tabular-nums"
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top min-w-[120px]">
-                        <div className="relative">
+                <tbody ref={metadataTableBodyRef}>
+                  {samples.map((s, idx) => {
+                    const isDraggingRow = sampleDrag?.fromIndex === idx;
+                    const isDropTarget = sampleDrag?.overIndex === idx && sampleDrag?.fromIndex !== idx;
+                    return (
+                      <tr
+                        key={s.id}
+                        data-sample-row-index={idx}
+                        className={`border-b border-stone-100 last:border-0 transition-colors ${
+                          isDropTarget ? 'bg-amber-50 ring-2 ring-inset ring-amber-300' : 'hover:bg-stone-50/60'
+                        } ${isDraggingRow ? 'opacity-60' : ''}`}
+                      >
+                        <td className="px-2 py-2 align-top text-center">
+                          <button
+                            type="button"
+                            disabled={samples.length < 2}
+                            onPointerDown={(e) => startSampleReorder(idx, e)}
+                            onPointerMove={updateSampleReorderTarget}
+                            onPointerUp={finishSampleReorder}
+                            onPointerCancel={cancelSampleReorder}
+                            onKeyDown={(e) => handleSampleReorderKeyDown(idx, e)}
+                            aria-label={`${t('reorderLot')} ${idx + 1}`}
+                            title={t('reorderLot')}
+                            className={`sample-reorder-handle inline-flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-stone-400 transition ${
+                              samples.length < 2 ? 'opacity-40' : 'hover:bg-white hover:text-stone-700 active:scale-95'
+                            }`}
+                          >
+                            <Icon name="grip-vertical" size={16} />
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 align-top text-center text-xs font-black text-stone-500">{idx + 1}</td>
+                        <td className="px-3 py-2 align-top">
                           <input
-                            value={s.moisture || ''}
-                            onChange={(e) => updateMetadata(idx, 'moisture', e.target.value)}
-                            onBlur={(e) => updateMetadata(idx, 'moisture', formatMoisture(e.target.value))}
-                            onPaste={(e) => handleTablePaste(idx, 4, tablePasteOrder, e)}
-                            placeholder="0.0"
-                            inputMode="decimal"
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="100"
-                            className="w-full bg-transparent p-2 pr-7 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm tabular-nums"
-                          />
-                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs font-black text-stone-400">%</span>
-                        </div>
-                      </td>
-                      {tableColumns.includes('processingOther') && (
-                        <td className="px-3 py-2 align-top min-w-[160px]">
-                          <input
-                            value={s.processingOther || ''}
-                            onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
-                            onPaste={(e) => handleTablePaste(idx, 5, tablePasteOrder, e)}
-                            placeholder={s.processing === 'Other' ? t('processingDetailsPlaceholder') : '—'}
-                            disabled={s.processing !== 'Other'}
-                            className={`w-full p-2 rounded-lg border ${
-                              s.processing === 'Other'
-                                ? 'bg-transparent border-stone-200 focus:bg-white focus:border-stone-300'
-                                : 'bg-stone-50 text-stone-300 border-stone-100'
-                            } outline-none font-bold text-stone-800 text-sm`}
+                            value={s.ositoId || ''}
+                            onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
+                            onPaste={(e) => handleTablePaste(idx, 0, tablePasteOrder, e)}
+                            placeholder="OS-ID..."
+                            className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
                           />
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td className="px-3 py-2 align-top">
+                          <input
+                            value={s.lotName || ''}
+                            onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
+                            onPaste={(e) => handleTablePaste(idx, 1, tablePasteOrder, e)}
+                            placeholder={`${t('lotName')}...`}
+                            className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top min-w-[140px]">
+                          <input
+                            value={s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : ''}
+                            onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
+                            onBlur={(e) => {
+                              const normalized = normalizeProcessingInput(e.target.value, s.processingOther);
+                              setSamples((prev) =>
+                                prev.map((item, sIdx) =>
+                                  sIdx === idx
+                                    ? {
+                                        ...item,
+                                        processing: normalized.processing,
+                                        processingOther: normalized.processingOther
+                                      }
+                                    : item
+                                )
+                              );
+                            }}
+                            onPaste={(e) => handleTablePaste(idx, 2, tablePasteOrder, e)}
+                            placeholder={t('processingPlaceholder')}
+                            list="processing-options"
+                            className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top min-w-[140px]">
+                          <input
+                            value={s.waterActivity || ''}
+                            onChange={(e) => updateMetadata(idx, 'waterActivity', e.target.value)}
+                            onBlur={(e) => updateMetadata(idx, 'waterActivity', formatWaterActivity(e.target.value))}
+                            onPaste={(e) => handleTablePaste(idx, 3, tablePasteOrder, e)}
+                            placeholder="0.00"
+                            inputMode="decimal"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="0.99"
+                            className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm tabular-nums"
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-top min-w-[120px]">
+                          <div className="relative">
+                            <input
+                              value={s.moisture || ''}
+                              onChange={(e) => updateMetadata(idx, 'moisture', e.target.value)}
+                              onBlur={(e) => updateMetadata(idx, 'moisture', formatMoisture(e.target.value))}
+                              onPaste={(e) => handleTablePaste(idx, 4, tablePasteOrder, e)}
+                              placeholder="0.0"
+                              inputMode="decimal"
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              className="w-full bg-transparent p-2 pr-7 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm tabular-nums"
+                            />
+                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs font-black text-stone-400">%</span>
+                          </div>
+                        </td>
+                        {tableColumns.includes('processingOther') && (
+                          <td className="px-3 py-2 align-top min-w-[160px]">
+                            <input
+                              value={s.processingOther || ''}
+                              onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
+                              onPaste={(e) => handleTablePaste(idx, 5, tablePasteOrder, e)}
+                              placeholder={s.processing === 'Other' ? t('processingDetailsPlaceholder') : '—'}
+                              disabled={s.processing !== 'Other'}
+                              className={`w-full p-2 rounded-lg border ${
+                                s.processing === 'Other'
+                                  ? 'bg-transparent border-stone-200 focus:bg-white focus:border-stone-300'
+                                  : 'bg-stone-50 text-stone-300 border-stone-100'
+                              } outline-none font-bold text-stone-800 text-sm`}
+                            />
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               <datalist id="processing-options">
