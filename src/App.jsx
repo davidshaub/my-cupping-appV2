@@ -77,6 +77,8 @@ const App = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [sessionName, setSessionName] = useState('');
   const [activeSessionName, setActiveSessionName] = useState('');
+  const [activeSavedSessionId, setActiveSavedSessionId] = useState(null);
+  const [historySearch, setHistorySearch] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ open: false, onConfirm: null });
   const [metadataTableMode, setMetadataTableMode] = useState(false);
   const [importError, setImportError] = useState('');
@@ -136,6 +138,8 @@ const App = () => {
     setSessionStartTime(null);
     setActiveSampleIndex(0);
     setActiveSessionName('');
+    setActiveSavedSessionId(null);
+    setSessionName('');
     setAppState('setup');
   };
 
@@ -144,24 +148,64 @@ const App = () => {
   };
   const toggleLanguage = () => setLanguage((current) => (current === 'en' ? 'es' : 'en'));
 
-  const saveSessionLocal = () => {
-    if (!sessionName) return;
+  const cloneSamplesForSave = () =>
+    samples.map((sample) => ({
+      ...sample,
+      scores: { ...(sample.scores ?? {}) },
+      notes: {
+        ...(sample.notes ?? {}),
+        fragAromaTags: [...(sample.notes?.fragAromaTags ?? [])],
+        inCupTags: [...(sample.notes?.inCupTags ?? [])],
+        negativeTags: [...(sample.notes?.negativeTags ?? [])]
+      }
+    }));
+
+  const buildSessionEntry = (id, name, existingEntry = {}) => ({
+    ...existingEntry,
+    id,
+    name,
+    date: new Date().toLocaleDateString(),
+    startTime: sessionStartTime,
+    samples: cloneSamplesForSave(),
+    count: samples.length
+  });
+
+  const openSaveSessionModal = () => {
+    setSessionName(activeSessionName || sessionName);
+    setShowSaveModal(true);
+  };
+
+  const closeSaveSessionModal = () => {
+    setShowSaveModal(false);
+  };
+
+  const saveSessionLocal = (mode = 'new') => {
+    const trimmedName = sessionName.trim();
+    if (!trimmedName) return;
+
+    if (mode === 'overwrite' && activeSavedSessionId !== null) {
+      const existingEntry = history.find((item) => item.id === activeSavedSessionId);
+      if (existingEntry) {
+        const updatedEntry = buildSessionEntry(activeSavedSessionId, trimmedName, existingEntry);
+        const updatedHistory = history.map((item) => (item.id === activeSavedSessionId ? updatedEntry : item));
+        setHistory(updatedHistory);
+        localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+        setActiveSessionName(trimmedName);
+        closeSaveSessionModal();
+        return;
+      }
+    }
 
     const newEntry = {
-      id: Date.now(),
-      name: sessionName,
-      date: new Date().toLocaleDateString(),
-      startTime: sessionStartTime,
-      samples,
-      count: samples.length
+      ...buildSessionEntry(Date.now(), trimmedName)
     };
 
     const updatedHistory = [newEntry, ...history];
     setHistory(updatedHistory);
     localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
-    setActiveSessionName(sessionName);
-    setShowSaveModal(false);
-    setSessionName('');
+    setActiveSavedSessionId(newEntry.id);
+    setActiveSessionName(trimmedName);
+    closeSaveSessionModal();
   };
 
   const deleteSession = (id, e) => {
@@ -169,19 +213,27 @@ const App = () => {
     const updated = history.filter((h) => h.id !== id);
     setHistory(updated);
     localStorage.setItem('cupping_history', JSON.stringify(updated));
+    if (activeSavedSessionId === id) setActiveSavedSessionId(null);
   };
 
   const loadSession = (session) => {
-    setSamples(session.samples);
+    const sessionSamples = Array.isArray(session.samples) ? session.samples : [];
+    setSamples(sessionSamples);
+    setNumSamples(sessionSamples.length || 1);
+    setActiveSampleIndex(0);
     setSessionStartTime(session.startTime);
     setActiveSessionName(session.name || '');
+    setActiveSavedSessionId(session.id ?? null);
+    setSessionName(session.name || '');
     setAppState('report');
   };
 
   const startSession = () => {
     if (!sessionStartTime) setSessionStartTime(new Date().toLocaleString());
     setSamples(initializeSamples(numSamples));
+    setActiveSavedSessionId(null);
     setActiveSessionName('');
+    setSessionName('');
     setAppState('cupping');
   };
 
@@ -208,8 +260,9 @@ const App = () => {
       setNumSamples(imported.samples.length);
       setActiveSampleIndex(0);
       setSessionStartTime(imported.sessionStartTime);
+      setActiveSavedSessionId(null);
       setActiveSessionName(imported.sessionName || '');
-      if (imported.sessionName) setSessionName(imported.sessionName);
+      setSessionName(imported.sessionName || '');
       setAppState('report');
     } catch (err) {
       setImportError(language === 'es' ? t('csvImportError') : err?.message || t('csvImportError'));
@@ -824,6 +877,28 @@ const App = () => {
     });
   };
 
+  const normalizeSearchValue = (value) => String(value ?? '').toLowerCase();
+  const getSessionCoffeeMatches = (session, query) => {
+    if (!query) return [];
+
+    return (session.samples ?? [])
+      .map((sample, idx) => ({ sample, idx }))
+      .filter(({ sample }) =>
+        [sample.ositoId, sample.lotName].some((value) => normalizeSearchValue(value).includes(query))
+      );
+  };
+
+  const historySearchTerm = historySearch.trim().toLowerCase();
+  const filteredHistory = historySearchTerm
+    ? history.filter(
+        (item) =>
+          normalizeSearchValue(item.name).includes(historySearchTerm) ||
+          getSessionCoffeeMatches(item, historySearchTerm).length > 0
+      )
+    : history;
+  const activeSavedSession =
+    activeSavedSessionId === null ? null : history.find((item) => item.id === activeSavedSessionId) ?? null;
+
   if (appState === 'setup') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
@@ -1020,7 +1095,7 @@ const App = () => {
     return (
       <div className="min-h-screen bg-stone-100 p-6 md:p-12">
         <div className="max-w-4xl mx-auto space-y-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">{t('savedSessions')}</h1>
             <div className="flex items-center gap-3">
               <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact />
@@ -1030,26 +1105,67 @@ const App = () => {
               </button>
             </div>
           </div>
+          <div className="relative">
+            <Icon name="search" size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
+            <input
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              placeholder={t('searchSavedSessions')}
+              className="w-full bg-white rounded-2xl border border-stone-200 shadow-sm py-4 pl-11 pr-12 outline-none font-bold text-stone-800 placeholder:text-stone-300 focus:border-stone-300 focus:shadow-md"
+            />
+            {historySearch && (
+              <button
+                type="button"
+                onClick={() => setHistorySearch('')}
+                aria-label={t('clearSearch')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl text-stone-300 hover:text-stone-700 hover:bg-stone-100"
+              >
+                <Icon name="x" size={16} />
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {history.length > 0 ? (
-              history.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => loadSession(item)}
-                  className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow relative group"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-black text-stone-300 uppercase tracking-widest">{item.date}</span>
-                    <button onClick={(e) => deleteSession(item.id, e)} className="p-2 text-stone-200 hover:text-red-500 transition-colors">
-                      <Icon name="trash" size={14} />
-                    </button>
+            {filteredHistory.length > 0 ? (
+              filteredHistory.map((item) => {
+                const coffeeMatches = getSessionCoffeeMatches(item, historySearchTerm);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => loadSession(item)}
+                    className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow relative group"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[10px] font-black text-stone-300 uppercase tracking-widest">{item.date}</span>
+                      <button onClick={(e) => deleteSession(item.id, e)} className="p-2 text-stone-200 hover:text-red-500 transition-colors">
+                        <Icon name="trash" size={14} />
+                      </button>
+                    </div>
+                    <h3 className="text-lg font-black text-stone-900 leading-tight pr-4">{item.name}</h3>
+                    <p className="text-xs font-bold text-stone-400 uppercase mt-2">{item.count} {t('samples')}</p>
+                    {coffeeMatches.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {coffeeMatches.slice(0, 3).map(({ sample, idx }) => (
+                          <span
+                            key={`${item.id}-${idx}`}
+                            className="inline-flex items-center rounded-full bg-stone-100 border border-stone-200 px-3 py-1 text-[10px] font-black text-stone-600 uppercase tracking-wider"
+                          >
+                            #{idx + 1} {sample.lotName || t('coffee')}{sample.ositoId ? ` · ${sample.ositoId}` : ''}
+                          </span>
+                        ))}
+                        {coffeeMatches.length > 3 && (
+                          <span className="inline-flex items-center rounded-full bg-stone-900 px-3 py-1 text-[10px] font-black text-white uppercase tracking-wider">
+                            +{coffeeMatches.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-lg font-black text-stone-900 leading-tight pr-4">{item.name}</h3>
-                  <p className="text-xs font-bold text-stone-400 uppercase mt-2">{item.count} {t('samples')}</p>
-                </div>
-              ))
+                );
+              })
             ) : (
-              <div className="col-span-full py-20 text-center text-stone-400 font-bold italic">{t('noSessions')}</div>
+              <div className="col-span-full py-20 text-center text-stone-400 font-bold italic">
+                {history.length > 0 ? t('noMatchingSessions') : t('noSessions')}
+              </div>
             )}
           </div>
         </div>
@@ -1359,7 +1475,9 @@ const App = () => {
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
             <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
               <div className="text-center">
-                <h3 className="text-xl font-black text-stone-900">{t('nameSession')}</h3>
+                <h3 className="text-xl font-black text-stone-900">
+                  {activeSavedSession ? t('saveSessionChanges') : t('nameSession')}
+                </h3>
                 <p className="text-stone-400 font-bold text-[10px] uppercase tracking-widest mt-1">{t('saveOnDevice')}</p>
               </div>
               <input
@@ -1369,10 +1487,24 @@ const App = () => {
                 className="w-full bg-stone-50 p-4 rounded-2xl border border-stone-200 outline-none font-bold text-sm"
               />
               <div className="flex flex-col gap-2">
-                <button onClick={saveSessionLocal} className="w-full py-4 btn-stone-dark font-black text-sm uppercase tracking-widest">
-                  {t('saveSession')}
-                </button>
-                <button onClick={() => setShowSaveModal(false)} className="w-full py-2 text-stone-400 font-bold text-xs uppercase">
+                {activeSavedSession ? (
+                  <>
+                    <button onClick={() => saveSessionLocal('overwrite')} className="w-full py-4 btn-stone-dark font-black text-sm uppercase tracking-widest">
+                      {t('saveOverCurrent')}
+                    </button>
+                    <button
+                      onClick={() => saveSessionLocal('new')}
+                      className="w-full py-4 rounded-xl bg-white text-stone-700 border border-stone-200 font-black text-sm uppercase tracking-widest active:scale-95"
+                    >
+                      {t('saveAsNewSession')}
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => saveSessionLocal('new')} className="w-full py-4 btn-stone-dark font-black text-sm uppercase tracking-widest">
+                    {t('saveSession')}
+                  </button>
+                )}
+                <button onClick={closeSaveSessionModal} className="w-full py-2 text-stone-400 font-bold text-xs uppercase">
                   {t('cancel')}
                 </button>
               </div>
@@ -1403,7 +1535,7 @@ const App = () => {
               <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact />
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact />
               <button
-                onClick={() => setShowSaveModal(true)}
+                onClick={openSaveSessionModal}
                 className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-blue-600 border border-blue-100 active:scale-95 text-xs"
               >
                 <Icon name="save" size={16} />
@@ -1589,7 +1721,7 @@ const App = () => {
               {t('lots')}
             </button>
             <button
-              onClick={() => setShowSaveModal(true)}
+              onClick={openSaveSessionModal}
               className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-white text-blue-700 border border-blue-100 text-[10px] font-black uppercase tracking-wider"
             >
               <Icon name="save" size={14} />
