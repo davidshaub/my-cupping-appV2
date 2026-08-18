@@ -95,6 +95,7 @@ export const NEGATIVE_LEXICON = [
   'Astringent',
   'Artificial Grape',
   'Artificial/Process',
+  'Dusty/Concrete',
   'Earthy',
   'Drying',
   'Flabby',
