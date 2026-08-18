@@ -40,6 +40,7 @@ export const CATEGORISED_LEXICON = {
     'Blueberry',
     'Lychee',
     'Cooked Fruit',
+    'Yellow Fruit',
     'Melon',
     'Stone Fruit',
     'Orchard Fruit (Apple, Pear)',
