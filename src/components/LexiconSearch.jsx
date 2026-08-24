@@ -66,6 +66,17 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
+  const selectHighlightedSuggestion = () => {
+    if (highlightPool.length === 0) return false;
+    handleSelect(highlightPool[highlightIndex] ?? highlightPool[0]);
+    return true;
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    selectHighlightedSuggestion();
+  };
+
   const handleKeyDown = (e) => {
     if (highlightPool.length === 0) return;
 
@@ -77,14 +88,14 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
       setHighlightIndex((prev) => (prev - 1 + highlightPool.length) % highlightPool.length);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      handleSelect(highlightPool[highlightIndex]);
+      selectHighlightedSuggestion();
     }
   };
 
   return (
     <div className="space-y-3 relative">
       <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest block leading-none">{label}</label>
-          <div className="relative">
+          <form className="relative" onSubmit={handleSearchSubmit}>
             <div
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all shadow-inner ${
                 isFocused ? 'bg-white border-stone-300' : 'bg-stone-50 border-transparent'
@@ -99,6 +110,9 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 250)}
                 onKeyDown={handleKeyDown}
+                enterKeyHint="search"
+                inputMode="search"
+                autoComplete="off"
                 placeholder={t('search')}
                 className="bg-transparent border-none p-0 text-sm font-bold text-stone-800 focus:ring-0 w-full placeholder:text-stone-300 outline-none"
               />
@@ -165,7 +179,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                 )}
               </div>
             )}
-          </div>
+          </form>
         <div className="flex flex-wrap gap-2 min-h-[30px]">
           {tags.map((tag) => (
             <span
