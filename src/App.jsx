@@ -148,8 +148,8 @@ const App = () => {
   };
   const toggleLanguage = () => setLanguage((current) => (current === 'en' ? 'es' : 'en'));
 
-  const cloneSamplesForSave = () =>
-    samples.map((sample) => ({
+  const cloneSamplesForSave = (sourceSamples = samples) =>
+    sourceSamples.map((sample) => ({
       ...sample,
       scores: { ...(sample.scores ?? {}) },
       notes: {
@@ -160,15 +160,52 @@ const App = () => {
       }
     }));
 
-  const buildSessionEntry = (id, name, existingEntry = {}) => ({
+  const buildSessionEntry = (id, name, existingEntry = {}, sourceSamples = samples, startTime = sessionStartTime) => ({
     ...existingEntry,
     id,
     name,
     date: new Date().toLocaleDateString(),
-    startTime: sessionStartTime,
-    samples: cloneSamplesForSave(),
-    count: samples.length
+    startTime,
+    samples: cloneSamplesForSave(sourceSamples),
+    count: sourceSamples.length
   });
+
+  const persistHistory = (updatedHistory) => {
+    setHistory(updatedHistory);
+    localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+  };
+
+  const createAutosavedSession = (sourceSamples, startTime) => {
+    const autosaveName = startTime || new Date().toLocaleString();
+    const newEntry = buildSessionEntry(Date.now(), autosaveName, {}, sourceSamples, autosaveName);
+    const updatedHistory = [newEntry, ...history];
+    persistHistory(updatedHistory);
+    setActiveSavedSessionId(newEntry.id);
+    setActiveSessionName(newEntry.name);
+    setSessionName(newEntry.name);
+    return newEntry;
+  };
+
+  useEffect(() => {
+    if (activeSavedSessionId === null || !sessionStartTime || samples.length === 0) return;
+
+    setHistory((currentHistory) => {
+      const existingIndex = currentHistory.findIndex((item) => item.id === activeSavedSessionId);
+      if (existingIndex === -1) return currentHistory;
+
+      const existingEntry = currentHistory[existingIndex];
+      const updatedEntry = buildSessionEntry(
+        activeSavedSessionId,
+        activeSessionName || existingEntry.name || sessionStartTime,
+        existingEntry,
+        samples,
+        sessionStartTime
+      );
+      const updatedHistory = currentHistory.map((item, idx) => (idx === existingIndex ? updatedEntry : item));
+      localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+      return updatedHistory;
+    });
+  }, [samples, sessionStartTime, activeSavedSessionId, activeSessionName]);
 
   const openSaveSessionModal = () => {
     setSessionName(activeSessionName || sessionName);
@@ -188,8 +225,7 @@ const App = () => {
       if (existingEntry) {
         const updatedEntry = buildSessionEntry(activeSavedSessionId, trimmedName, existingEntry);
         const updatedHistory = history.map((item) => (item.id === activeSavedSessionId ? updatedEntry : item));
-        setHistory(updatedHistory);
-        localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+        persistHistory(updatedHistory);
         setActiveSessionName(trimmedName);
         closeSaveSessionModal();
         return;
@@ -201,8 +237,7 @@ const App = () => {
     };
 
     const updatedHistory = [newEntry, ...history];
-    setHistory(updatedHistory);
-    localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+    persistHistory(updatedHistory);
     setActiveSavedSessionId(newEntry.id);
     setActiveSessionName(trimmedName);
     closeSaveSessionModal();
@@ -211,17 +246,17 @@ const App = () => {
   const deleteSession = (id, e) => {
     e.stopPropagation();
     const updated = history.filter((h) => h.id !== id);
-    setHistory(updated);
-    localStorage.setItem('cupping_history', JSON.stringify(updated));
+    persistHistory(updated);
     if (activeSavedSessionId === id) setActiveSavedSessionId(null);
   };
 
   const loadSession = (session) => {
     const sessionSamples = Array.isArray(session.samples) ? session.samples : [];
+    const loadedStartTime = session.startTime || new Date().toLocaleString();
     setSamples(sessionSamples);
     setNumSamples(sessionSamples.length || 1);
     setActiveSampleIndex(0);
-    setSessionStartTime(session.startTime);
+    setSessionStartTime(loadedStartTime);
     setActiveSessionName(session.name || '');
     setActiveSavedSessionId(session.id ?? null);
     setSessionName(session.name || '');
@@ -229,17 +264,21 @@ const App = () => {
   };
 
   const startSession = () => {
-    if (!sessionStartTime) setSessionStartTime(new Date().toLocaleString());
-    setSamples(initializeSamples(numSamples));
-    setActiveSavedSessionId(null);
-    setActiveSessionName('');
-    setSessionName('');
+    const startedAt = new Date().toLocaleString();
+    const nextSamples = initializeSamples(numSamples);
+    setSessionStartTime(startedAt);
+    setSamples(nextSamples);
+    setActiveSampleIndex(0);
+    createAutosavedSession(nextSamples, startedAt);
     setAppState('cupping');
   };
 
   const goToMetadata = (origin) => {
-    if (!sessionStartTime) setSessionStartTime(new Date().toLocaleString());
-    if (samples.length === 0) setSamples(initializeSamples(numSamples));
+    const nextStartTime = sessionStartTime || new Date().toLocaleString();
+    const nextSamples = samples.length === 0 ? initializeSamples(numSamples) : samples;
+    if (!sessionStartTime) setSessionStartTime(nextStartTime);
+    if (samples.length === 0) setSamples(nextSamples);
+    if (activeSavedSessionId === null && nextSamples.length > 0) createAutosavedSession(nextSamples, nextStartTime);
     setMetadataOrigin(origin);
     setAppState('metadata');
   };
@@ -256,10 +295,11 @@ const App = () => {
       }
       const text = await file.text();
       const imported = importSessionFromCSV(text, file.name);
+      const importedStartTime = imported.sessionStartTime || new Date().toLocaleString();
       setSamples(imported.samples);
       setNumSamples(imported.samples.length);
       setActiveSampleIndex(0);
-      setSessionStartTime(imported.sessionStartTime);
+      setSessionStartTime(importedStartTime);
       setActiveSavedSessionId(null);
       setActiveSessionName(imported.sessionName || '');
       setSessionName(imported.sessionName || '');
@@ -899,6 +939,48 @@ const App = () => {
   const activeSavedSession =
     activeSavedSessionId === null ? null : history.find((item) => item.id === activeSavedSessionId) ?? null;
 
+  const renderSaveSessionModal = () =>
+    showSaveModal && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
+        <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
+          <div className="text-center">
+            <h3 className="text-xl font-black text-stone-900">
+              {activeSavedSession ? t('saveSessionChanges') : t('nameSession')}
+            </h3>
+            <p className="text-stone-400 font-bold text-[10px] uppercase tracking-widest mt-1">{t('saveOnDevice')}</p>
+          </div>
+          <input
+            value={sessionName}
+            onChange={(e) => setSessionName(e.target.value)}
+            placeholder={t('sessionNamePlaceholder')}
+            className="w-full bg-stone-50 p-4 rounded-2xl border border-stone-200 outline-none font-bold text-sm"
+          />
+          <div className="flex flex-col gap-2">
+            {activeSavedSession ? (
+              <>
+                <button onClick={() => saveSessionLocal('overwrite')} className="w-full py-4 btn-stone-dark font-black text-sm uppercase tracking-widest">
+                  {t('saveOverCurrent')}
+                </button>
+                <button
+                  onClick={() => saveSessionLocal('new')}
+                  className="w-full py-4 rounded-xl bg-white text-stone-700 border border-stone-200 font-black text-sm uppercase tracking-widest active:scale-95"
+                >
+                  {t('saveAsNewSession')}
+                </button>
+              </>
+            ) : (
+              <button onClick={() => saveSessionLocal('new')} className="w-full py-4 btn-stone-dark font-black text-sm uppercase tracking-widest">
+                {t('saveSession')}
+              </button>
+            )}
+            <button onClick={closeSaveSessionModal} className="w-full py-2 text-stone-400 font-bold text-xs uppercase">
+              {t('cancel')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+
   if (appState === 'setup') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
@@ -1471,46 +1553,7 @@ const App = () => {
     return (
       <div className="report-screen min-h-screen bg-stone-100 p-4 md:p-8 relative">
         {renderConfirmModal()}
-        {showSaveModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
-            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
-              <div className="text-center">
-                <h3 className="text-xl font-black text-stone-900">
-                  {activeSavedSession ? t('saveSessionChanges') : t('nameSession')}
-                </h3>
-                <p className="text-stone-400 font-bold text-[10px] uppercase tracking-widest mt-1">{t('saveOnDevice')}</p>
-              </div>
-              <input
-                value={sessionName}
-                onChange={(e) => setSessionName(e.target.value)}
-                placeholder={t('sessionNamePlaceholder')}
-                className="w-full bg-stone-50 p-4 rounded-2xl border border-stone-200 outline-none font-bold text-sm"
-              />
-              <div className="flex flex-col gap-2">
-                {activeSavedSession ? (
-                  <>
-                    <button onClick={() => saveSessionLocal('overwrite')} className="w-full py-4 btn-stone-dark font-black text-sm uppercase tracking-widest">
-                      {t('saveOverCurrent')}
-                    </button>
-                    <button
-                      onClick={() => saveSessionLocal('new')}
-                      className="w-full py-4 rounded-xl bg-white text-stone-700 border border-stone-200 font-black text-sm uppercase tracking-widest active:scale-95"
-                    >
-                      {t('saveAsNewSession')}
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => saveSessionLocal('new')} className="w-full py-4 btn-stone-dark font-black text-sm uppercase tracking-widest">
-                    {t('saveSession')}
-                  </button>
-                )}
-                <button onClick={closeSaveSessionModal} className="w-full py-2 text-stone-400 font-bold text-xs uppercase">
-                  {t('cancel')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {renderSaveSessionModal()}
         <div className="max-w-[1400px] mx-auto space-y-4 pb-28 md:pb-20 report-container">
           <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
@@ -1752,6 +1795,7 @@ const App = () => {
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 pb-24 md:pb-40">
       {renderConfirmModal()}
+      {renderSaveSessionModal()}
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
         <header className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <button
@@ -1773,6 +1817,15 @@ const App = () => {
               </button>
             ))}
           </div>
+          <button
+            onClick={openSaveSessionModal}
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white text-blue-700 border border-blue-100 shadow-sm font-black text-[10px] uppercase tracking-widest active:scale-95 shrink-0 transition-transform"
+            title={t('save')}
+            aria-label={t('save')}
+          >
+            <Icon name="save" size={16} />
+            <span className="hidden sm:inline">{t('save')}</span>
+          </button>
           <button
             onClick={() => setAppState('report')}
             className="px-4 sm:px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl btn-stone-dark active:scale-95 shrink-0 transition-transform"
