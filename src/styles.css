@@ -975,6 +975,16 @@ h3 {
     color: #000000 !important;
   }
 
+  :root[data-display-mode='eink'] .history-delete-button {
+    background: #ffffff !important;
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] .history-delete-button svg {
+    stroke-width: 2.75;
+  }
+
   :root[data-display-mode='eink'] .bg-stone-800 *,
   :root[data-display-mode='eink'] .bg-stone-900 *,
   :root[data-display-mode='eink'] .btn-stone-dark *,

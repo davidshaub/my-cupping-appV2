@@ -1218,7 +1218,7 @@ const App = () => {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-[10px] font-black text-stone-300 uppercase tracking-widest">{item.date}</span>
-                      <button onClick={(e) => deleteSession(item.id, e)} className="p-2 text-stone-200 hover:text-red-500 transition-colors">
+                      <button onClick={(e) => deleteSession(item.id, e)} className="history-delete-button p-2 text-stone-200 hover:text-red-500 transition-colors">
                         <Icon name="trash" size={14} />
                       </button>
                     </div>
