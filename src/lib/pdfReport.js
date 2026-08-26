@@ -866,12 +866,30 @@ const drawIdentity = (pdf, sample, index, language) => {
   const waterActivity = formatWaterActivity(sample.waterActivity);
   const moisture = formatMoisture(sample.moisture);
   if (waterActivity) {
-    pdf.text(translate(language, 'waterActivity').toUpperCase(), x + 264, metaY, { size: 6, font: 'bold', color: COLORS.muted });
-    pdf.text(waterActivity, x + 350, metaY, { size: 7, font: 'bold', color: COLORS.ink });
+    pdf.text(translate(language, 'waterActivity').toUpperCase(), x + 85, metaY, {
+      size: 6,
+      font: 'black',
+      color: '#a8a29e',
+      letterSpacing: 0.6
+    });
+    pdf.text(waterActivity, x + 85, metaY + 14, {
+      size: 9,
+      font: 'bold',
+      color: '#57534e'
+    });
   }
   if (moisture) {
-    pdf.text(translate(language, 'moisture').toUpperCase(), x + 398, metaY, { size: 6, font: 'bold', color: COLORS.muted });
-    pdf.text(`${moisture}%`, x + 452, metaY, { size: 7, font: 'bold', color: COLORS.ink });
+    pdf.text(translate(language, 'moisture').toUpperCase(), x + 169, metaY, {
+      size: 6,
+      font: 'black',
+      color: '#a8a29e',
+      letterSpacing: 0.6
+    });
+    pdf.text(`${moisture}%`, x + 169, metaY + 14, {
+      size: 9,
+      font: 'bold',
+      color: '#57534e'
+    });
   }
 
   pdf.text(translate(language, 'finalScore').toUpperCase(), x + leftWidth + scoreWidth / 2, y + 41, {
