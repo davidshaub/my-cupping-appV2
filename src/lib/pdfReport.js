@@ -367,6 +367,156 @@ class PdfPainter {
   }
 }
 
+const CANVAS_FONT = {
+  regular: (size) => `400 ${size}px Inter, sans-serif`,
+  bold: (size) => `800 ${size}px Inter, sans-serif`,
+  italic: (size) => `italic 400 ${size}px Inter, sans-serif`,
+  serif: (size) => `500 ${size}px Fraunces, serif`,
+  serifBold: (size) => `900 ${size}px Fraunces, serif`
+};
+
+class CanvasPainter {
+  constructor(canvas, scale, images = {}) {
+    this.canvas = canvas;
+    this.scale = scale;
+    this.images = images;
+    this.ctx = canvas.getContext('2d');
+    this.ctx.scale(scale, scale);
+    this.ctx.lineJoin = 'round';
+    this.ctx.lineCap = 'round';
+  }
+
+  pathPaint({ fill = null, stroke = null, lineWidth = 1 } = {}) {
+    if (fill) {
+      this.ctx.fillStyle = fill;
+      this.ctx.fill();
+    }
+    if (stroke) {
+      this.ctx.strokeStyle = stroke;
+      this.ctx.lineWidth = lineWidth;
+      this.ctx.stroke();
+    }
+  }
+
+  fillRect(x, y, width, height, color) {
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x, y, width, height);
+  }
+
+  strokeRect(x, y, width, height, color = COLORS.line, lineWidth = 1) {
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = lineWidth;
+    this.ctx.strokeRect(x, y, width, height);
+  }
+
+  roundedRect(x, y, width, height, radius, options = {}) {
+    const r = Math.min(radius, width / 2, height / 2);
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + r, y);
+    this.ctx.lineTo(x + width - r, y);
+    this.ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    this.ctx.lineTo(x + width, y + height - r);
+    this.ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    this.ctx.lineTo(x + r, y + height);
+    this.ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    this.ctx.lineTo(x, y + r);
+    this.ctx.quadraticCurveTo(x, y, x + r, y);
+    this.ctx.closePath();
+    this.pathPaint(options);
+  }
+
+  line(x1, y1, x2, y2, color = COLORS.line, lineWidth = 1) {
+    this.ctx.beginPath();
+    this.ctx.moveTo(x1, y1);
+    this.ctx.lineTo(x2, y2);
+    this.pathPaint({ stroke: color, lineWidth });
+  }
+
+  circle(x, y, radius, options = {}) {
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+    this.ctx.closePath();
+    this.pathPaint(options);
+  }
+
+  arc(cx, cy, radius, startAngle, endAngle, color, lineWidth) {
+    this.ctx.beginPath();
+    this.ctx.arc(cx, cy, radius, startAngle, endAngle);
+    this.pathPaint({ stroke: color, lineWidth });
+  }
+
+  image(name, x, y, width, height) {
+    const source = this.images[name];
+    if (source) this.ctx.drawImage(source, x, y, width, height);
+  }
+
+  polygon(points, options = {}) {
+    if (!points.length) return;
+    this.ctx.beginPath();
+    this.ctx.moveTo(points[0].x, points[0].y);
+    points.slice(1).forEach((point) => this.ctx.lineTo(point.x, point.y));
+    this.ctx.closePath();
+    this.pathPaint(options);
+  }
+
+  font(size, font) {
+    this.ctx.font = (CANVAS_FONT[font] || CANVAS_FONT.regular)(size);
+  }
+
+  truncate(value, maxWidth, size, font) {
+    let printable = String(value ?? '').replace(/\s+/g, ' ').trim();
+    this.font(size, font);
+    if (this.ctx.measureText(printable).width <= maxWidth) return printable;
+    while (printable && this.ctx.measureText(`${printable}...`).width > maxWidth) {
+      printable = printable.slice(0, -1).trimEnd();
+    }
+    return printable ? `${printable}...` : '...';
+  }
+
+  text(value, x, y, {
+    size = 10,
+    font = 'regular',
+    color = COLORS.ink,
+    align = 'left',
+    maxWidth = null
+  } = {}) {
+    let printable = String(value ?? '').replace(/\s+/g, ' ').trim();
+    if (!printable) return;
+    if (maxWidth) printable = this.truncate(printable, maxWidth, size, font);
+    this.font(size, font);
+    this.ctx.fillStyle = color;
+    this.ctx.textAlign = align;
+    this.ctx.textBaseline = 'alphabetic';
+    this.ctx.fillText(printable, x, y);
+  }
+
+  multilineText(value, x, y, width, {
+    size = 9,
+    font = 'regular',
+    color = COLORS.ink,
+    lineHeight = size * 1.35,
+    maxLines = 4
+  } = {}) {
+    this.font(size, font);
+    const words = String(value ?? '').trim().split(/\s+/).filter(Boolean);
+    const lines = [];
+    let line = '';
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (this.ctx.measureText(candidate).width <= width) {
+        line = candidate;
+      } else {
+        if (line) lines.push(line);
+        line = this.truncate(word, width, size, font);
+      }
+      if (lines.length >= maxLines) break;
+    }
+    if (line && lines.length < maxLines) lines.push(line);
+    lines.forEach((text, index) => this.text(text, x, y + index * lineHeight, { size, font, color, maxWidth: width }));
+    return y + lines.length * lineHeight;
+  }
+}
+
 const drawSectionTitle = (pdf, title, x, y, width) => {
   pdf.text(title.toUpperCase(), x, y, { size: 6.4, font: 'bold', color: COLORS.ink, maxWidth: width });
   pdf.line(x, y + 7, x + width, y + 7, COLORS.softLine, 0.9);
@@ -438,14 +588,14 @@ const drawIdentity = (pdf, sample, index, language) => {
     maxWidth: idWidth - 12
   });
 
-  pdf.text(name.toUpperCase(), x + 18, y + 69, {
+  pdf.text(name.toUpperCase(), x + 18, y + 67, {
     size: name.length > 36 ? 19 : 21,
     font: 'serifBold',
     color: COLORS.ink,
     maxWidth: leftWidth - 36
   });
 
-  const metaY = y + 91;
+  const metaY = y + 89;
   pdf.text(translate(language, 'processing').toUpperCase(), x + 18, metaY, { size: 6, font: 'bold', color: COLORS.muted });
   pdf.text(processingLabel(sample, language).toUpperCase(), x + 18, metaY + 14, { size: 7, font: 'bold', color: COLORS.ink, maxWidth: 188 });
 
@@ -483,7 +633,7 @@ const radarPoint = (centerX, centerY, radius, index, count) => {
 };
 
 const drawRadar = (pdf, sample, language, x, y) => {
-  pdf.text(translate(language, 'attributeMap').toUpperCase(), x + 82, y, {
+  pdf.text(translate(language, 'attributeMap').toUpperCase(), x + 96, y, {
     size: 6.4,
     font: 'bold',
     color: COLORS.muted,
@@ -739,9 +889,9 @@ const drawFooter = (pdf, language, logoImage) => {
   });
 
   if (logoImage) {
-    const height = 48;
+    const height = 56;
     const width = height * (logoImage.width / logoImage.height);
-    pdf.image(logoImage.name, PAGE.width / 2 - width / 2, 478, width, height);
+    pdf.image(logoImage.name, PAGE.width / 2 - width / 2, 475, width, height);
     return;
   }
 
@@ -753,13 +903,11 @@ const drawFooter = (pdf, language, logoImage) => {
   });
 };
 
-export const createSampleReportPdf = (sample, index, {
+const paintSampleReport = (pdf, sample, index, {
   sessionStartTime = '',
   language = 'en',
   logoImage = null
 } = {}) => {
-  const pdf = new PdfPainter();
-
   pdf.fillRect(0, 0, PAGE.width, PAGE.height, COLORS.white);
   drawHeader(pdf, sessionStartTime, language);
   drawIdentity(pdf, sample, index, language);
@@ -769,7 +917,7 @@ export const createSampleReportPdf = (sample, index, {
   const bodyY = 206;
 
   drawRadar(pdf, sample, language, leftX, bodyY);
-  drawBalance(pdf, sample, language, leftX + 210, bodyY);
+  drawBalance(pdf, sample, language, leftX + 204, bodyY);
 
   let tagY = bodyY;
   tagY = drawTagSection(pdf, translate(language, 'fragranceAroma'), sample.notes?.fragAromaTags ?? [], language, rightX, tagY, 358, 2);
@@ -786,8 +934,13 @@ export const createSampleReportPdf = (sample, index, {
   );
   drawNotes(pdf, sample, language, rightX, Math.max(316, negativeEndY + 4), 358);
   drawFooter(pdf, language, logoImage);
+};
 
-  return createPdfBytes(pdf.content(), logoImage ? [logoImage] : []);
+export const createSampleReportPdf = (sample, index, options = {}) => {
+  const pdf = new PdfPainter();
+  paintSampleReport(pdf, sample, index, options);
+
+  return createPdfBytes(pdf.content(), options.logoImage ? [options.logoImage] : []);
 };
 
 const asBytes = (value) => encoder.encode(value);
@@ -845,6 +998,55 @@ const createPdfBytes = (content, images = []) => {
   ].join('');
 
   return concatBytes([...parts, asBytes(xref)]);
+};
+
+const createJpegPagePdf = (jpegBytes, pixelWidth, pixelHeight) => {
+  const content = asBytes(`q ${PAGE.width} 0 0 ${PAGE.height} 0 0 cm /Im1 Do Q`);
+  const objects = [
+    asBytes('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n'),
+    asBytes('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n'),
+    asBytes(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE.width} ${PAGE.height}] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`),
+    streamObject(4, `/Type /XObject /Subtype /Image /Width ${pixelWidth} /Height ${pixelHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode`, jpegBytes),
+    streamObject(5, '', content)
+  ];
+  const parts = [asBytes('%PDF-1.4\n')];
+  const offsets = [0];
+  let byteOffset = parts[0].length;
+  objects.forEach((object) => {
+    offsets.push(byteOffset);
+    parts.push(object);
+    byteOffset += object.length;
+  });
+  const xrefOffset = byteOffset;
+  const xref = [
+    `xref\n0 ${objects.length + 1}\n`,
+    '0000000000 65535 f \n',
+    ...offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`),
+    `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`
+  ].join('');
+  return concatBytes([...parts, asBytes(xref)]);
+};
+
+const canvasToJpeg = (canvas) => new Promise((resolve, reject) => {
+  canvas.toBlob(async (blob) => {
+    if (!blob) {
+      reject(new Error('Unable to render PDF page image.'));
+      return;
+    }
+    resolve(new Uint8Array(await blob.arrayBuffer()));
+  }, 'image/jpeg', 0.96);
+});
+
+const createRasterSampleReportPdf = async (sample, index, options = {}) => {
+  const scale = 3;
+  const canvas = document.createElement('canvas');
+  canvas.width = PAGE.width * scale;
+  canvas.height = PAGE.height * scale;
+  const images = options.logoImage?.source ? { [options.logoImage.name]: options.logoImage.source } : {};
+  const painter = new CanvasPainter(canvas, scale, images);
+  paintSampleReport(painter, sample, index, options);
+  const jpegBytes = await canvasToJpeg(canvas);
+  return createJpegPagePdf(jpegBytes, canvas.width, canvas.height);
 };
 
 const safeFilenamePart = (value, fallback) => {
@@ -1004,7 +1206,7 @@ export const buildReportPdfSet = (samples, {
   };
 };
 
-const loadLogoImageData = async (src) => {
+const loadLogoImage = async (src) => {
   if (!src || typeof Image === 'undefined' || typeof document === 'undefined') return null;
 
   const img = new Image();
@@ -1023,67 +1225,39 @@ const loadLogoImageData = async (src) => {
     return null;
   }
 
-  const source = document.createElement('canvas');
-  source.width = img.naturalWidth || img.width;
-  source.height = img.naturalHeight || img.height;
-  const sourceCtx = source.getContext('2d', { willReadFrequently: true });
-  if (!sourceCtx || source.width === 0 || source.height === 0) return null;
-  sourceCtx.drawImage(img, 0, 0);
-  const sourcePixels = sourceCtx.getImageData(0, 0, source.width, source.height);
-  let minX = source.width;
-  let minY = source.height;
-  let maxX = 0;
-  let maxY = 0;
-
-  for (let y = 0; y < source.height; y += 1) {
-    for (let x = 0; x < source.width; x += 1) {
-      const offset = (y * source.width + x) * 4;
-      const alpha = sourcePixels.data[offset + 3];
-      const darkness = 255 - Math.min(sourcePixels.data[offset], sourcePixels.data[offset + 1], sourcePixels.data[offset + 2]);
-      if (alpha > 24 && darkness > 12) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-    }
-  }
-
-  if (minX > maxX || minY > maxY) return null;
-
-  const cropWidth = maxX - minX + 1;
-  const cropHeight = maxY - minY + 1;
-  const targetHeight = 96;
-  const targetWidth = Math.max(1, Math.round((cropWidth / cropHeight) * targetHeight));
-  const canvas = document.createElement('canvas');
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return null;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, targetWidth, targetHeight);
-  ctx.drawImage(source, minX, minY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
-
-  const pixels = ctx.getImageData(0, 0, targetWidth, targetHeight).data;
-  const rgb = new Uint8Array(targetWidth * targetHeight * 3);
-  for (let i = 0, j = 0; i < pixels.length; i += 4, j += 3) {
-    const alpha = pixels[i + 3] / 255;
-    rgb[j] = Math.round(pixels[i] * alpha + 255 * (1 - alpha));
-    rgb[j + 1] = Math.round(pixels[i + 1] * alpha + 255 * (1 - alpha));
-    rgb[j + 2] = Math.round(pixels[i + 2] * alpha + 255 * (1 - alpha));
-  }
-
   return {
     name: 'Im1',
-    width: targetWidth,
-    height: targetHeight,
-    data: rgb
+    width: img.naturalWidth || img.width,
+    height: img.naturalHeight || img.height,
+    source: img
+  };
+};
+
+const buildRasterReportPdfSet = async (samples, {
+  sessionStartTime = '',
+  sessionName = '',
+  language = 'en',
+  logoImage = null
+} = {}) => {
+  const usedNames = new Map();
+  const files = [];
+  for (let index = 0; index < samples.length; index += 1) {
+    files.push({
+      name: uniquePdfFilename(samples[index], index, usedNames),
+      data: await createRasterSampleReportPdf(samples[index], index, { sessionStartTime, language, logoImage })
+    });
+  }
+  return {
+    files,
+    zipFilename: zipFilename(sessionName),
+    zipBytes: createZipBytes(files)
   };
 };
 
 export const downloadReportPdfZip = async (samples, options = {}) => {
-  const logoImage = await loadLogoImageData(options.logoSrc);
-  const { zipBytes, zipFilename: downloadName, files } = buildReportPdfSet(samples, { ...options, logoImage });
+  if (document.fonts?.ready) await document.fonts.ready;
+  const logoImage = await loadLogoImage(options.logoSrc);
+  const { zipBytes, zipFilename: downloadName, files } = await buildRasterReportPdfSet(samples, { ...options, logoImage });
   const blob = new Blob([zipBytes], { type: 'application/zip' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
