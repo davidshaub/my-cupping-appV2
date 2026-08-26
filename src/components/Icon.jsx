@@ -21,6 +21,7 @@ const Icon = ({ name, size = 20, className = '' }) => {
     'grip-vertical': <path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" />,
     x: <path d="M18 6 6 18M6 6l12 12" />,
     download: <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />,
+    'file-archive': <path d="M14 2v6h6M16 13h-1M15 16h2M16 19h-1M20 8v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8l6 6zM10 12h1M10 15h2M10 18h1" />,
     upload: <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />,
     printer: <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z" />,
     history: <path d="M12 8v4l3 3m6-3a9 9 0 1 1-9-9c2.5 0 4.7 1 6.3 2.7L21 6v6h-6" />,

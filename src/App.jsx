@@ -12,6 +12,7 @@ import {
   importSessionFromCSV,
   initializeSamples
 } from './lib/cupping';
+import { downloadReportPdfZip } from './lib/pdfReport';
 import DonutChart from './components/DonutChart';
 import Icon from './components/Icon';
 import LexiconSearch from './components/LexiconSearch';
@@ -83,6 +84,7 @@ const App = () => {
   const [metadataTableMode, setMetadataTableMode] = useState(false);
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [isExportingPdfs, setIsExportingPdfs] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [sampleDrag, setSampleDrag] = useState(null);
   const importInputRef = useRef(null);
@@ -563,6 +565,25 @@ const App = () => {
 </body>
 </html>`);
     printWindow.document.close();
+  };
+
+  const downloadPdfSet = async () => {
+    if (isExportingPdfs || samples.length === 0) return;
+
+    setIsExportingPdfs(true);
+    try {
+      await downloadReportPdfZip(samples, {
+        sessionStartTime,
+        sessionName: activeSessionName,
+        language,
+        logoSrc: HandsPrintLogo
+      });
+    } catch (err) {
+      console.error(err);
+      window.alert(t('pdfExportError'));
+    } finally {
+      setIsExportingPdfs(false);
+    }
   };
 
   const renderConfirmModal = () =>
@@ -1599,6 +1620,14 @@ const App = () => {
                 CSV
               </button>
               <button
+                onClick={downloadPdfSet}
+                disabled={isExportingPdfs}
+                className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-stone-800 border border-stone-200 active:scale-95 disabled:opacity-60 disabled:active:scale-100 text-xs"
+              >
+                <Icon name="file-archive" size={16} />
+                {isExportingPdfs ? t('exportingPdfs') : t('downloadPdfSet')}
+              </button>
+              <button
                 onClick={printAllPdf}
                 className="flex items-center gap-2 px-6 py-2 btn-stone-dark font-bold shadow-xl active:scale-95 text-xs"
               >
@@ -1748,7 +1777,7 @@ const App = () => {
         </div>
 
         <div className="fixed md:hidden bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200 px-3 pt-2 pb-safe print-hidden">
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-6 gap-2">
             <button
               onClick={() => setAppState('cupping')}
               className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-100 text-stone-700 text-[10px] font-black uppercase tracking-wider"
@@ -1776,6 +1805,14 @@ const App = () => {
             >
               <Icon name="download" size={14} />
               CSV
+            </button>
+            <button
+              onClick={downloadPdfSet}
+              disabled={isExportingPdfs}
+              className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-white text-stone-800 border border-stone-200 text-[10px] font-black uppercase tracking-wider disabled:opacity-60"
+            >
+              <Icon name="file-archive" size={14} />
+              {isExportingPdfs ? '...' : t('pdfs')}
             </button>
             <button
               onClick={printAllPdf}

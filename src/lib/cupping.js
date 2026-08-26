@@ -1,6 +1,6 @@
-import { CATEGORISED_LEXICON, INITIAL_SCORE } from '../constants';
+import { CATEGORISED_LEXICON, INITIAL_SCORE } from '../constants.js';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || '';
 
 export const csvEscape = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
