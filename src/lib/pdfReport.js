@@ -44,14 +44,14 @@ const BALANCE_COLORS = {
 };
 
 const TAG_STYLES = {
-  Fruity: { fill: '#fee2e2', stroke: '#fecaca', text: '#991b1b' },
-  Citrus: { fill: '#fef3c7', stroke: '#fde68a', text: '#854d0e' },
-  Floral: { fill: '#fce7f3', stroke: '#fbcfe8', text: '#9d174d' },
-  Sweet: { fill: '#ffedd5', stroke: '#fed7aa', text: '#9a3412' },
-  'Nutty/Cocoa': { fill: '#f5f5f4', stroke: '#d6d3d1', text: '#44403c' },
-  Spices: { fill: '#fae8ff', stroke: '#f5d0fe', text: '#86198f' },
-  Structure: { fill: '#dcfce7', stroke: '#bbf7d0', text: '#166534' },
-  Negative: { fill: '#f1f5f9', stroke: '#cbd5e1', text: '#334155' }
+  Fruity: { fill: '#fceee8', stroke: '#eec5b5', text: '#8f412f' },
+  Citrus: { fill: '#fff3dc', stroke: '#efcf95', text: '#946022' },
+  Floral: { fill: '#f7eef4', stroke: '#ddc0d0', text: '#7b3d5f' },
+  Sweet: { fill: '#fbefdf', stroke: '#eecda8', text: '#995a1f' },
+  'Nutty/Cocoa': { fill: '#f1ebe1', stroke: '#d8cabc', text: '#574839' },
+  Spices: { fill: '#f5ecf7', stroke: '#d8bfde', text: '#69417e' },
+  Structure: { fill: '#fceee8', stroke: '#eec5b5', text: '#8f412f' },
+  Negative: { fill: '#eceff2', stroke: '#d4dde5', text: '#4a5760' }
 };
 
 const RADAR_SCORE_IDS = [
@@ -69,7 +69,11 @@ const RADAR_SCORE_IDS = [
 
 const FONT_IDS = {
   regular: 'F1',
+  medium: 'F1',
+  semibold: 'F2',
   bold: 'F2',
+  extraBold: 'F2',
+  black: 'F2',
   italic: 'F3',
   serif: 'F4',
   serifBold: 'F5'
@@ -329,6 +333,11 @@ class PdfPainter {
     this.push(`q ${colorCommands} ${path} ${paint} Q`);
   }
 
+  measureText(value, size, font = 'regular', letterSpacing = 0) {
+    const printable = toAscii(value);
+    return estimateTextWidth(printable, size, font) + Math.max(0, printable.length - 1) * letterSpacing;
+  }
+
   text(value, x, y, {
     size = 10,
     font = 'regular',
@@ -369,7 +378,11 @@ class PdfPainter {
 
 const CANVAS_FONT = {
   regular: (size) => `400 ${size}px Inter, sans-serif`,
-  bold: (size) => `800 ${size}px Inter, sans-serif`,
+  medium: (size) => `500 ${size}px Inter, sans-serif`,
+  semibold: (size) => `600 ${size}px Inter, sans-serif`,
+  bold: (size) => `700 ${size}px Inter, sans-serif`,
+  extraBold: (size) => `800 ${size}px Inter, sans-serif`,
+  black: (size) => `900 ${size}px Inter, sans-serif`,
   italic: (size) => `italic 400 ${size}px Inter, sans-serif`,
   serif: (size) => `500 ${size}px Fraunces, serif`,
   serifBold: (size) => `900 ${size}px Fraunces, serif`
@@ -384,9 +397,11 @@ class CanvasPainter {
     this.ctx.scale(scale, scale);
     this.ctx.lineJoin = 'round';
     this.ctx.lineCap = 'round';
+    this.ctx.fontKerning = 'normal';
+    this.ctx.textRendering = 'optimizeLegibility';
   }
 
-  pathPaint({ fill = null, stroke = null, lineWidth = 1 } = {}) {
+  pathPaint({ fill = null, stroke = null, lineWidth = 1, dash = [] } = {}) {
     if (fill) {
       this.ctx.fillStyle = fill;
       this.ctx.fill();
@@ -394,7 +409,9 @@ class CanvasPainter {
     if (stroke) {
       this.ctx.strokeStyle = stroke;
       this.ctx.lineWidth = lineWidth;
+      this.ctx.setLineDash(dash);
       this.ctx.stroke();
+      this.ctx.setLineDash([]);
     }
   }
 
@@ -463,6 +480,18 @@ class CanvasPainter {
     this.ctx.font = (CANVAS_FONT[font] || CANVAS_FONT.regular)(size);
   }
 
+  measureText(value, size, font = 'regular', letterSpacing = 0) {
+    this.font(size, font);
+    const printable = String(value ?? '');
+    if ('letterSpacing' in this.ctx) {
+      this.ctx.letterSpacing = `${letterSpacing}px`;
+      const width = this.ctx.measureText(printable).width;
+      this.ctx.letterSpacing = '0px';
+      return width;
+    }
+    return this.ctx.measureText(printable).width + Math.max(0, printable.length - 1) * letterSpacing;
+  }
+
   truncate(value, maxWidth, size, font) {
     let printable = String(value ?? '').replace(/\s+/g, ' ').trim();
     this.font(size, font);
@@ -478,16 +507,31 @@ class CanvasPainter {
     font = 'regular',
     color = COLORS.ink,
     align = 'left',
-    maxWidth = null
+    maxWidth = null,
+    letterSpacing = 0,
+    baseline = 'alphabetic'
   } = {}) {
     let printable = String(value ?? '').replace(/\s+/g, ' ').trim();
     if (!printable) return;
     if (maxWidth) printable = this.truncate(printable, maxWidth, size, font);
     this.font(size, font);
     this.ctx.fillStyle = color;
-    this.ctx.textAlign = align;
-    this.ctx.textBaseline = 'alphabetic';
-    this.ctx.fillText(printable, x, y);
+    this.ctx.textBaseline = baseline;
+    if (!letterSpacing || 'letterSpacing' in this.ctx) {
+      if ('letterSpacing' in this.ctx) this.ctx.letterSpacing = `${letterSpacing}px`;
+      this.ctx.textAlign = align;
+      this.ctx.fillText(printable, x, y);
+      if ('letterSpacing' in this.ctx) this.ctx.letterSpacing = '0px';
+      return;
+    }
+
+    const width = this.measureText(printable, size, font, letterSpacing);
+    let cursorX = align === 'center' ? x - width / 2 : align === 'right' ? x - width : x;
+    this.ctx.textAlign = 'left';
+    for (const character of printable) {
+      this.ctx.fillText(character, cursorX, y);
+      cursorX += this.ctx.measureText(character).width + letterSpacing;
+    }
   }
 
   multilineText(value, x, y, width, {
@@ -518,27 +562,36 @@ class CanvasPainter {
 }
 
 const drawSectionTitle = (pdf, title, x, y, width) => {
-  pdf.text(title.toUpperCase(), x, y, { size: 6.4, font: 'bold', color: COLORS.ink, maxWidth: width });
+  pdf.text(title.toUpperCase(), x, y, {
+    size: 6.75,
+    font: 'black',
+    color: '#8e7f6d',
+    maxWidth: width,
+    letterSpacing: 1.35
+  });
   pdf.line(x, y + 7, x + width, y + 7, COLORS.softLine, 0.9);
 };
 
 const drawHeader = (pdf, sessionStartTime, language) => {
   pdf.text(translate(language, 'labSummary').toUpperCase(), PAGE.margin, 32, {
-    size: 11,
-    font: 'bold',
-    color: COLORS.ink
+    size: 9.7,
+    font: 'extraBold',
+    color: COLORS.ink,
+    letterSpacing: 1.26
   });
   pdf.text(translate(language, 'qualityControl').toUpperCase(), PAGE.margin, 47, {
-    size: 6.2,
+    size: 6.75,
     font: 'bold',
-    color: COLORS.ink
+    color: '#4f4437',
+    letterSpacing: 0.54
   });
   pdf.text(sessionStartTime || '', PAGE.width - PAGE.margin, 31, {
-    size: 6.2,
+    size: 6,
     font: 'bold',
     color: COLORS.ink,
     align: 'right',
-    maxWidth: 230
+    maxWidth: 230,
+    letterSpacing: 0.48
   });
   pdf.line(PAGE.margin, 60, PAGE.width - PAGE.margin, 60, '#7a7a7a', 0.9);
   pdf.line(PAGE.margin, 68, PAGE.width - PAGE.margin, 68, COLORS.ink, 1);
@@ -578,26 +631,37 @@ const drawIdentity = (pdf, sample, index, language) => {
   }
 
   const idLabel = sampleDisplayId(sample, language).toUpperCase();
-  const idWidth = Math.min(120, Math.max(54, estimateTextWidth(idLabel, 10, 'bold') + 22));
+  const idWidth = Math.min(120, Math.max(54, pdf.measureText(idLabel, 11, 'black') + 16));
   pdf.roundedRect(x + 17, y + 17, idWidth, 27, 8, { fill: '#fffaf3', stroke: COLORS.line, lineWidth: 0.7 });
-  pdf.text(idLabel, x + 17 + idWidth / 2, y + 35, {
-    size: 10,
-    font: 'bold',
+  pdf.text(idLabel, x + 17 + idWidth / 2, y + 31, {
+    size: 11,
+    font: 'black',
     color: COLORS.ink,
     align: 'center',
+    baseline: 'middle',
     maxWidth: idWidth - 12
   });
 
   pdf.text(name.toUpperCase(), x + 18, y + 67, {
-    size: name.length > 36 ? 19 : 21,
+    size: name.length > 36 ? 18.7 : 20.3,
     font: 'serifBold',
     color: COLORS.ink,
     maxWidth: leftWidth - 36
   });
 
   const metaY = y + 89;
-  pdf.text(translate(language, 'processing').toUpperCase(), x + 18, metaY, { size: 6, font: 'bold', color: COLORS.muted });
-  pdf.text(processingLabel(sample, language).toUpperCase(), x + 18, metaY + 14, { size: 7, font: 'bold', color: COLORS.ink, maxWidth: 188 });
+  pdf.text(translate(language, 'processing').toUpperCase(), x + 18, metaY, {
+    size: 6,
+    font: 'black',
+    color: '#a8a29e',
+    letterSpacing: 0.6
+  });
+  pdf.text(processingLabel(sample, language).toUpperCase(), x + 18, metaY + 14, {
+    size: 9,
+    font: 'bold',
+    color: '#57534e',
+    maxWidth: 188
+  });
 
   const waterActivity = formatWaterActivity(sample.waterActivity);
   const moisture = formatMoisture(sample.moisture);
@@ -611,14 +675,15 @@ const drawIdentity = (pdf, sample, index, language) => {
   }
 
   pdf.text(translate(language, 'finalScore').toUpperCase(), x + leftWidth + scoreWidth / 2, y + 41, {
-    size: 6.8,
-    font: 'bold',
+    size: 6.75,
+    font: 'black',
     color: '#c6a17a',
-    align: 'center'
+    align: 'center',
+    letterSpacing: 2.7
   });
   pdf.text(calculateTotal(sample), x + leftWidth + scoreWidth / 2, y + 79, {
-    size: 38,
-    font: 'bold',
+    size: 37,
+    font: 'black',
     color: COLORS.white,
     align: 'center'
   });
@@ -634,10 +699,11 @@ const radarPoint = (centerX, centerY, radius, index, count) => {
 
 const drawRadar = (pdf, sample, language, x, y) => {
   pdf.text(translate(language, 'attributeMap').toUpperCase(), x + 96, y, {
-    size: 6.4,
-    font: 'bold',
+    size: 6.75,
+    font: 'black',
     color: COLORS.muted,
-    align: 'center'
+    align: 'center',
+    letterSpacing: 1.35
   });
 
   const centerX = x + 96;
@@ -646,15 +712,18 @@ const drawRadar = (pdf, sample, language, x, y) => {
   const scores = scoreValues(sample);
   const values = RADAR_SCORE_IDS.map((id) => scores[id]);
 
-  [7.5, 8, 8.5, 9, 9.5, 10].forEach((level) => {
+  [7.5, 8.5, 9.5, 10].forEach((level) => {
     const levelRadius = ((level - GRAPH_FLOOR) / (GRAPH_CEILING - GRAPH_FLOOR)) * radius;
-    const points = values.map((_, index) => radarPoint(centerX, centerY, levelRadius, index, values.length));
-    pdf.polygon(points, { stroke: level === 10 ? COLORS.stone : '#eeeeee', lineWidth: 0.55 });
+    pdf.circle(centerX, centerY, levelRadius, {
+      stroke: '#e7e5e4',
+      lineWidth: level === 10 ? 0.78 : 0.62,
+      dash: level === 10 ? [] : [2.4, 2.4]
+    });
   });
 
   values.forEach((_, index) => {
     const endpoint = radarPoint(centerX, centerY, radius, index, values.length);
-    pdf.line(centerX, centerY, endpoint.x, endpoint.y, '#eeeeee', 0.45);
+    pdf.line(centerX, centerY, endpoint.x, endpoint.y, '#f5f5f4', 0.9);
   });
 
   const dataPoints = values.map((value, index) => {
@@ -662,26 +731,36 @@ const drawRadar = (pdf, sample, language, x, y) => {
     const valueRadius = ((clamped - GRAPH_FLOOR) / (GRAPH_CEILING - GRAPH_FLOOR)) * radius;
     return radarPoint(centerX, centerY, valueRadius, index, values.length);
   });
-  pdf.polygon(dataPoints, { stroke: COLORS.ink, lineWidth: 1.2 });
-  dataPoints.forEach((point) => pdf.circle(point.x, point.y, 2, { fill: COLORS.ink }));
+  pdf.polygon(dataPoints, { fill: '#e4e3e3', stroke: '#1c1917', lineWidth: 1.5 });
+  dataPoints.forEach((point) => pdf.circle(point.x, point.y, 2.7, {
+    fill: '#1c1917',
+    stroke: '#ffffff',
+    lineWidth: 1.5
+  }));
 
   RADAR_LABELS.forEach((label, index) => {
-    const point = radarPoint(centerX, centerY, radius + 16, index, RADAR_LABELS.length);
+    const displayLabel = language === 'es'
+      ? translateRadarLabel(language, label)
+      : ({ 'Frag/Aroma': 'Fr/Aroma', Consistency: 'Consist.' }[label] ?? label);
+    const point = radarPoint(centerX, centerY, radius + 14, index, RADAR_LABELS.length);
     let align = 'center';
     if (point.x < centerX - 16) align = 'right';
     if (point.x > centerX + 16) align = 'left';
     const labelX = Math.min(Math.max(point.x, x + 28), x + 168);
-    pdf.text(translateRadarLabel(language, label), labelX, point.y + 2, {
-      size: 4.2,
-      font: 'bold',
-      color: COLORS.muted,
+    pdf.text(displayLabel.toUpperCase(), labelX, point.y, {
+      size: 4.1,
+      font: 'black',
+      color: '#a8a29e',
       align,
-      maxWidth: 46
+      maxWidth: 46,
+      baseline: 'middle',
+      letterSpacing: -0.18
     });
   });
 };
 
 const getBalanceSegments = (sample) => {
+  const categoryOrder = ['Fruity', 'Citrus', 'Sweet', 'Floral', 'Nutty/Cocoa', 'Spices', 'Structure', 'Negative'];
   const tags = [
     ...(sample.notes?.fragAromaTags ?? []),
     ...(sample.notes?.inCupTags ?? [])
@@ -694,15 +773,16 @@ const getBalanceSegments = (sample) => {
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
   return Object.entries(counts)
     .map(([category, count]) => ({ category, count, pct: total ? count / total : 0 }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => b.count - a.count || categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category));
 };
 
 const drawBalance = (pdf, sample, language, x, y) => {
   pdf.text(translate(language, 'sensoryBalance').toUpperCase(), x + 74, y, {
-    size: 6.4,
-    font: 'bold',
+    size: 6.75,
+    font: 'black',
     color: COLORS.muted,
-    align: 'center'
+    align: 'center',
+    letterSpacing: 1.35
   });
   const segments = getBalanceSegments(sample);
 
@@ -710,7 +790,7 @@ const drawBalance = (pdf, sample, language, x, y) => {
     pdf.circle(x + 74, y + 99, 43, { stroke: COLORS.stone, lineWidth: 12 });
     pdf.text(translate(language, 'profileUnavailable'), x + 74, y + 103, {
       size: 8,
-      font: 'bold',
+      font: 'black',
       color: COLORS.muted,
       align: 'center'
     });
@@ -734,7 +814,7 @@ const drawBalance = (pdf, sample, language, x, y) => {
   pdf.circle(centerX, centerY, 30, { fill: COLORS.white });
   pdf.text(translate(language, 'balance').toUpperCase(), centerX, centerY + 3, {
     size: 8,
-    font: 'bold',
+    font: 'black',
     color: COLORS.ink,
     align: 'center'
   });
@@ -742,17 +822,18 @@ const drawBalance = (pdf, sample, language, x, y) => {
   const legendY = y + 172;
   const legendWidth = 145;
   const shown = segments.slice(0, 4);
-  const totalLabelWidth = shown.reduce((sum, { category }) => sum + estimateTextWidth(category.toUpperCase(), 5, 'bold') + 13, 0);
+  const totalLabelWidth = shown.reduce((sum, { category }) => sum + pdf.measureText(category.toUpperCase(), 5, 'black', 0.05) + 13, 0);
   let legendX = x + Math.max(0, (legendWidth - totalLabelWidth) / 2);
   shown.forEach(({ category }) => {
     pdf.circle(legendX + 3, legendY - 1.5, 3, { fill: BALANCE_COLORS[category] || BALANCE_COLORS.Structure });
     pdf.text(category.toUpperCase(), legendX + 10, legendY, {
       size: 5,
-      font: 'bold',
+      font: 'black',
       color: COLORS.ink,
-      maxWidth: 46
+      maxWidth: 46,
+      letterSpacing: 0.05
     });
-    legendX += estimateTextWidth(category.toUpperCase(), 5, 'bold') + 18;
+    legendX += pdf.measureText(category.toUpperCase(), 5, 'black', 0.05) + 18;
   });
 };
 
@@ -788,16 +869,17 @@ const tagStyle = (tag) => TAG_STYLES[getCategoryForItem(tag) || 'Negative'] || T
 
 const drawTagSection = (pdf, label, tags, language, x, y, width, maxRows = 2) => {
   pdf.text(label.toUpperCase(), x, y, {
-    size: 6.4,
-    font: 'bold',
-    color: COLORS.ink,
-    maxWidth: width
+    size: 6.75,
+    font: 'black',
+    color: '#8e7f6d',
+    maxWidth: width,
+    letterSpacing: 1.35
   });
   pdf.line(x, y + 8, x + width, y + 8, COLORS.softLine, 0.9);
 
   if (!tags.length) {
-    pdf.text(translate(language, 'noneRecorded'), x, y + 24, {
-      size: 6.8,
+    pdf.text(translate(language, 'noneRecorded'), x, y + 23, {
+      size: 6,
       font: 'italic',
       color: '#b6aea2'
     });
@@ -810,8 +892,8 @@ const drawTagSection = (pdf, label, tags, language, x, y, width, maxRows = 2) =>
 
   for (let index = 0; index < tags.length; index += 1) {
     const tag = tags[index];
-    const text = truncateToWidth(translateTag(language, tag), 78, 5.8, 'bold');
-    const chipWidth = Math.min(90, Math.max(28, estimateTextWidth(text, 5.8, 'bold') + 15));
+    const text = translateTag(language, tag);
+    const chipWidth = Math.min(100, Math.max(28, pdf.measureText(text, 6, 'bold') + 11.7));
 
     if (cursorX + chipWidth > x + width) {
       row += 1;
@@ -822,23 +904,26 @@ const drawTagSection = (pdf, label, tags, language, x, y, width, maxRows = 2) =>
     if (row >= maxRows) {
       const remaining = tags.length - index;
       const moreText = `+${remaining} more`;
-      pdf.roundedRect(cursorX, cursorY - 10, 42, 13, 3, { fill: COLORS.surfaceSoft, stroke: COLORS.line, lineWidth: 0.5 });
-      pdf.text(moreText, cursorX + 25, cursorY, {
+      pdf.roundedRect(cursorX, cursorY - 9.25, 42, 11.5, 3, { fill: COLORS.surfaceSoft, stroke: COLORS.line, lineWidth: 0.5 });
+      pdf.text(moreText, cursorX + 21, cursorY - 3.5, {
         size: 5.6,
         font: 'bold',
         color: COLORS.muted,
-        align: 'center'
+        align: 'center',
+        baseline: 'middle'
       });
       return cursorY + 17;
     }
 
     const style = tagStyle(tag);
-    pdf.roundedRect(cursorX, cursorY - 10, chipWidth, 13, 3, { fill: style.fill, stroke: style.stroke, lineWidth: 0.5 });
-    pdf.text(text, cursorX + 6, cursorY - 1, {
-      size: 5.8,
+    pdf.roundedRect(cursorX, cursorY - 9.25, chipWidth, 11.5, 3, { fill: style.fill, stroke: style.stroke, lineWidth: 0.5 });
+    pdf.text(text, cursorX + chipWidth / 2, cursorY - 3.5, {
+      size: 6,
       font: 'bold',
       color: style.text,
-      maxWidth: chipWidth - 14
+      align: 'center',
+      baseline: 'middle',
+      maxWidth: chipWidth - 10
     });
     cursorX += chipWidth + 5;
   }
@@ -858,10 +943,16 @@ const drawNotes = (pdf, sample, language, x, y, width) => {
   if (badges.length) {
     let badgeX = x;
     badges.forEach((badge) => {
-      const label = truncateToWidth(badge, 104, 6.2, 'bold');
-      const badgeWidth = estimateTextWidth(label, 6.2, 'bold') + 17;
+      const label = truncateToWidth(badge, 104, 7.5, 'black');
+      const badgeWidth = pdf.measureText(label, 7.5, 'black') + 18;
       pdf.roundedRect(badgeX, cursorY - 10, badgeWidth, 15, 6, { fill: COLORS.surfaceSoft, stroke: COLORS.line, lineWidth: 0.6 });
-      pdf.text(label, badgeX + 8, cursorY, { size: 6.2, font: 'bold', color: COLORS.ink });
+      pdf.text(label, badgeX + badgeWidth / 2, cursorY - 2.5, {
+        size: 7.5,
+        font: 'black',
+        color: COLORS.ink,
+        align: 'center',
+        baseline: 'middle'
+      });
       badgeX += badgeWidth + 8;
     });
     cursorY += 24;
@@ -881,11 +972,12 @@ const drawNotes = (pdf, sample, language, x, y, width) => {
 
 const drawFooter = (pdf, language, logoImage) => {
   pdf.line(PAGE.margin, 454, PAGE.width - PAGE.margin, 454, '#777777', 0.9);
-  pdf.text(`${translate(language, 'authorizedAnalysis')} | ${translate(language, 'protocol')}`.toUpperCase(), PAGE.width / 2, 467, {
-    size: 5.8,
-    font: 'bold',
+  pdf.text(`${translate(language, 'authorizedAnalysis')} • ${translate(language, 'protocol')}`.toUpperCase(), PAGE.width / 2, 467, {
+    size: 6.7,
+    font: 'extraBold',
     color: COLORS.ink,
-    align: 'center'
+    align: 'center',
+    letterSpacing: 0.51
   });
 
   if (logoImage) {
