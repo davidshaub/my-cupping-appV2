@@ -12,7 +12,6 @@ import {
   importSessionFromCSV,
   initializeSamples
 } from './lib/cupping';
-import { downloadReportPdfZip } from './lib/pdfReport';
 import DonutChart from './components/DonutChart';
 import Icon from './components/Icon';
 import LexiconSearch from './components/LexiconSearch';
@@ -572,6 +571,7 @@ const App = () => {
 
     setIsExportingPdfs(true);
     try {
+      const { downloadReportPdfZip } = await import('./lib/pdfReport');
       await downloadReportPdfZip(samples, {
         sessionStartTime,
         sessionName: activeSessionName,

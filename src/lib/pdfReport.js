@@ -10,6 +10,17 @@ import {
   translateRadarLabel,
   translateTag
 } from '../i18n.js';
+import { LineCapStyle, PDFDocument, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import inter400Url from '@fontsource/inter/files/inter-latin-400-normal.woff?url';
+import inter400ItalicUrl from '@fontsource/inter/files/inter-latin-400-italic.woff?url';
+import inter500Url from '@fontsource/inter/files/inter-latin-500-normal.woff?url';
+import inter600Url from '@fontsource/inter/files/inter-latin-600-normal.woff?url';
+import inter700Url from '@fontsource/inter/files/inter-latin-700-normal.woff?url';
+import inter800Url from '@fontsource/inter/files/inter-latin-800-normal.woff?url';
+import inter900Url from '@fontsource/inter/files/inter-latin-900-normal.woff?url';
+import fraunces500Url from '@fontsource/fraunces/files/fraunces-latin-500-normal.woff?url';
+import fraunces900Url from '@fontsource/fraunces/files/fraunces-latin-900-normal.woff?url';
 
 const PAGE = {
   width: 792,
@@ -561,6 +572,195 @@ class CanvasPainter {
   }
 }
 
+const pdfColor = (hex) => {
+  const [r, g, b] = hexToRgb(hex);
+  return rgb(r, g, b);
+};
+
+class VectorPdfPainter {
+  constructor(page, fonts, images = {}) {
+    this.page = page;
+    this.fonts = fonts;
+    this.images = images;
+  }
+
+  y(value) {
+    return PAGE.height - value;
+  }
+
+  font(font) {
+    return this.fonts[font] || this.fonts.regular;
+  }
+
+  measureText(value, size, font = 'regular', letterSpacing = 0) {
+    const printable = String(value ?? '');
+    return this.font(font).widthOfTextAtSize(printable, size) + Math.max(0, printable.length - 1) * letterSpacing;
+  }
+
+  fillRect(x, y, width, height, color) {
+    this.page.drawRectangle({ x, y: this.y(y + height), width, height, color: pdfColor(color) });
+  }
+
+  strokeRect(x, y, width, height, color = COLORS.line, lineWidth = 1) {
+    this.page.drawRectangle({
+      x,
+      y: this.y(y + height),
+      width,
+      height,
+      borderColor: pdfColor(color),
+      borderWidth: lineWidth
+    });
+  }
+
+  roundedRect(x, y, width, height, radius, { fill = null, stroke = COLORS.line, lineWidth = 1 } = {}) {
+    const r = Math.min(radius, width / 2, height / 2);
+    const k = 0.5522847498;
+    const right = x + width;
+    const bottom = y + height;
+    const path = [
+      `M ${x + r} ${y}`,
+      `L ${right - r} ${y}`,
+      `C ${right - r + r * k} ${y} ${right} ${y + r - r * k} ${right} ${y + r}`,
+      `L ${right} ${bottom - r}`,
+      `C ${right} ${bottom - r + r * k} ${right - r + r * k} ${bottom} ${right - r} ${bottom}`,
+      `L ${x + r} ${bottom}`,
+      `C ${x + r - r * k} ${bottom} ${x} ${bottom - r + r * k} ${x} ${bottom - r}`,
+      `L ${x} ${y + r}`,
+      `C ${x} ${y + r - r * k} ${x + r - r * k} ${y} ${x + r} ${y}`,
+      'Z'
+    ].join(' ');
+    this.page.drawSvgPath(path, {
+      x: 0,
+      y: PAGE.height,
+      color: fill ? pdfColor(fill) : undefined,
+      borderColor: stroke ? pdfColor(stroke) : undefined,
+      borderWidth: stroke ? lineWidth : undefined
+    });
+  }
+
+  line(x1, y1, x2, y2, color = COLORS.line, lineWidth = 1, dash = []) {
+    this.page.drawLine({
+      start: { x: x1, y: this.y(y1) },
+      end: { x: x2, y: this.y(y2) },
+      color: pdfColor(color),
+      thickness: lineWidth,
+      dashArray: dash
+    });
+  }
+
+  circle(x, y, radius, { fill = null, stroke = null, lineWidth = 1, dash = [] } = {}) {
+    this.page.drawCircle({
+      x,
+      y: this.y(y),
+      size: radius,
+      color: fill ? pdfColor(fill) : undefined,
+      borderColor: stroke ? pdfColor(stroke) : undefined,
+      borderWidth: stroke ? lineWidth : undefined,
+      borderDashArray: dash
+    });
+  }
+
+  arc(cx, cy, radius, startAngle, endAngle, color, lineWidth) {
+    const points = [];
+    const steps = Math.max(8, Math.ceil(Math.abs(endAngle - startAngle) * radius / 4));
+    for (let index = 0; index <= steps; index += 1) {
+      const angle = startAngle + ((endAngle - startAngle) * index) / steps;
+      points.push({ x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
+    }
+    const path = points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
+    this.page.drawSvgPath(path, {
+      x: 0,
+      y: PAGE.height,
+      borderColor: pdfColor(color),
+      borderWidth: lineWidth,
+      borderLineCap: LineCapStyle.Round
+    });
+  }
+
+  image(name, x, y, width, height) {
+    const image = this.images[name];
+    if (image) this.page.drawImage(image, { x, y: this.y(y + height), width, height });
+  }
+
+  polygon(points, { fill = null, stroke = COLORS.line, lineWidth = 1, opacity = 1 } = {}) {
+    if (!points.length) return;
+    const path = `${points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ')} Z`;
+    this.page.drawSvgPath(path, {
+      x: 0,
+      y: PAGE.height,
+      color: fill ? pdfColor(fill) : undefined,
+      opacity: fill ? opacity : undefined,
+      borderColor: stroke ? pdfColor(stroke) : undefined,
+      borderWidth: stroke ? lineWidth : undefined,
+      borderOpacity: stroke ? 1 : undefined
+    });
+  }
+
+  truncate(value, maxWidth, size, font, letterSpacing = 0) {
+    let printable = String(value ?? '').replace(/\s+/g, ' ').trim();
+    if (this.measureText(printable, size, font, letterSpacing) <= maxWidth) return printable;
+    while (printable && this.measureText(`${printable}...`, size, font, letterSpacing) > maxWidth) {
+      printable = printable.slice(0, -1).trimEnd();
+    }
+    return printable ? `${printable}...` : '...';
+  }
+
+  text(value, x, y, {
+    size = 10,
+    font = 'regular',
+    color = COLORS.ink,
+    align = 'left',
+    maxWidth = null,
+    letterSpacing = 0,
+    baseline = 'alphabetic'
+  } = {}) {
+    let printable = String(value ?? '').replace(/\s+/g, ' ').trim();
+    if (!printable) return;
+    if (maxWidth) printable = this.truncate(printable, maxWidth, size, font, letterSpacing);
+    const embeddedFont = this.font(font);
+    const width = this.measureText(printable, size, font, letterSpacing);
+    let cursorX = align === 'center' ? x - width / 2 : align === 'right' ? x - width : x;
+    const baselineY = this.y(y) - (baseline === 'middle' ? size * 0.35 : 0);
+
+    if (!letterSpacing) {
+      this.page.drawText(printable, { x: cursorX, y: baselineY, size, font: embeddedFont, color: pdfColor(color) });
+      return;
+    }
+
+    let previous = '';
+    for (const character of printable) {
+      this.page.drawText(character, { x: cursorX, y: baselineY, size, font: embeddedFont, color: pdfColor(color) });
+      const current = `${previous}${character}`;
+      cursorX += embeddedFont.widthOfTextAtSize(current, size) - embeddedFont.widthOfTextAtSize(previous, size) + letterSpacing;
+      previous = current;
+    }
+  }
+
+  multilineText(value, x, y, width, {
+    size = 9,
+    font = 'regular',
+    color = COLORS.ink,
+    lineHeight = size * 1.35,
+    maxLines = 4
+  } = {}) {
+    const words = String(value ?? '').trim().split(/\s+/).filter(Boolean);
+    const lines = [];
+    let line = '';
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (this.measureText(candidate, size, font) <= width) line = candidate;
+      else {
+        if (line) lines.push(line);
+        line = this.truncate(word, width, size, font);
+      }
+      if (lines.length >= maxLines) break;
+    }
+    if (line && lines.length < maxLines) lines.push(line);
+    lines.forEach((text, index) => this.text(text, x, y + index * lineHeight, { size, font, color, maxWidth: width }));
+    return y + lines.length * lineHeight;
+  }
+}
+
 const drawSectionTitle = (pdf, title, x, y, width) => {
   pdf.text(title.toUpperCase(), x, y, {
     size: 6.75,
@@ -731,7 +931,7 @@ const drawRadar = (pdf, sample, language, x, y) => {
     const valueRadius = ((clamped - GRAPH_FLOOR) / (GRAPH_CEILING - GRAPH_FLOOR)) * radius;
     return radarPoint(centerX, centerY, valueRadius, index, values.length);
   });
-  pdf.polygon(dataPoints, { fill: '#e4e3e3', stroke: '#1c1917', lineWidth: 1.5 });
+  pdf.polygon(dataPoints, { fill: '#1c1917', stroke: '#1c1917', lineWidth: 1.5, opacity: 0.12 });
   dataPoints.forEach((point) => pdf.circle(point.x, point.y, 2.7, {
     fill: '#1c1917',
     stroke: '#ffffff',
@@ -1141,6 +1341,50 @@ const createRasterSampleReportPdf = async (sample, index, options = {}) => {
   return createJpegPagePdf(jpegBytes, canvas.width, canvas.height);
 };
 
+const FONT_ASSET_URLS = {
+  regular: inter400Url,
+  medium: inter500Url,
+  semibold: inter600Url,
+  bold: inter700Url,
+  extraBold: inter800Url,
+  black: inter900Url,
+  italic: inter400ItalicUrl,
+  serif: fraunces500Url,
+  serifBold: fraunces900Url
+};
+
+let vectorAssetPromise;
+
+const loadVectorAssets = (logoSrc) => {
+  if (!vectorAssetPromise) {
+    vectorAssetPromise = Promise.all([
+      Promise.all(Object.entries(FONT_ASSET_URLS).map(async ([name, url]) => [name, new Uint8Array(await (await fetch(url)).arrayBuffer())])),
+      logoSrc ? fetch(logoSrc).then((response) => response.arrayBuffer()).then((bytes) => new Uint8Array(bytes)) : null
+    ]).then(([fontEntries, logoBytes]) => ({ fontBytes: Object.fromEntries(fontEntries), logoBytes }));
+  }
+  return vectorAssetPromise;
+};
+
+const createVectorSampleReportPdf = async (sample, index, options, assets) => {
+  const document = await PDFDocument.create();
+  document.registerFontkit(fontkit);
+  const fonts = {};
+  for (const [name, bytes] of Object.entries(assets.fontBytes)) {
+    fonts[name] = await document.embedFont(bytes, { subset: true });
+  }
+  const images = {};
+  let logoImage = null;
+  if (assets.logoBytes) {
+    const embeddedLogo = await document.embedPng(assets.logoBytes);
+    images.Im1 = embeddedLogo;
+    logoImage = { name: 'Im1', width: embeddedLogo.width, height: embeddedLogo.height };
+  }
+  const page = document.addPage([PAGE.width, PAGE.height]);
+  const painter = new VectorPdfPainter(page, fonts, images);
+  paintSampleReport(painter, sample, index, { ...options, logoImage });
+  return new Uint8Array(await document.save());
+};
+
 const safeFilenamePart = (value, fallback) => {
   const cleaned = toAscii(value || fallback)
     .replace(/[<>:"/\\|?*]+/g, '')
@@ -1346,10 +1590,30 @@ const buildRasterReportPdfSet = async (samples, {
   };
 };
 
+const buildVectorReportPdfSet = async (samples, {
+  sessionStartTime = '',
+  sessionName = '',
+  language = 'en',
+  logoSrc = null
+} = {}) => {
+  const assets = await loadVectorAssets(logoSrc);
+  const usedNames = new Map();
+  const files = [];
+  for (let index = 0; index < samples.length; index += 1) {
+    files.push({
+      name: uniquePdfFilename(samples[index], index, usedNames),
+      data: await createVectorSampleReportPdf(samples[index], index, { sessionStartTime, language }, assets)
+    });
+  }
+  return {
+    files,
+    zipFilename: zipFilename(sessionName),
+    zipBytes: createZipBytes(files)
+  };
+};
+
 export const downloadReportPdfZip = async (samples, options = {}) => {
-  if (document.fonts?.ready) await document.fonts.ready;
-  const logoImage = await loadLogoImage(options.logoSrc);
-  const { zipBytes, zipFilename: downloadName, files } = await buildRasterReportPdfSet(samples, { ...options, logoImage });
+  const { zipBytes, zipFilename: downloadName, files } = await buildVectorReportPdfSet(samples, options);
   const blob = new Blob([zipBytes], { type: 'application/zip' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
