@@ -978,14 +978,20 @@ const drawRadar = (pdf, sample, language, x, y) => {
 };
 
 const getBalanceSegments = (sample) => {
-  const categoryOrder = ['Fruity', 'Citrus', 'Sweet', 'Floral', 'Nutty/Cocoa', 'Spices', 'Structure', 'Negative'];
+  const categoryOrder = ['Fruity', 'Citrus', 'Sweet', 'Floral', 'Nutty/Cocoa', 'Spices'];
+  const includedCategories = new Set(categoryOrder);
   const tags = [
     ...(sample.notes?.fragAromaTags ?? []),
     ...(sample.notes?.inCupTags ?? [])
   ];
   const counts = tags.reduce((acc, tag) => {
-    const category = getCategoryForItem(tag) || 'Structure';
-    acc[category] = (acc[category] ?? 0) + 1;
+    const category = getCategoryForItem(tag);
+    if (!includedCategories.has(category)) return acc;
+
+    let weight = 1;
+    if (tag.startsWith('Slight ')) weight = 0.5;
+    else if (tag.startsWith('Intense ')) weight = 2;
+    acc[category] = (acc[category] ?? 0) + weight;
     return acc;
   }, {});
   const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
