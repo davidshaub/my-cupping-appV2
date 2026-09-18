@@ -60,6 +60,14 @@ const escapeHtml = (value) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther'];
+
+const parseClipboardRows = (text) => {
+  const normalized = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n$/, '');
+  if (!normalized) return [];
+  return normalized.split('\n').map((line) => line.split('\t'));
+};
+
 const App = () => {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
   const [displayMode, setDisplayMode] = useState('standard');
@@ -81,6 +89,7 @@ const App = () => {
   const [historySearch, setHistorySearch] = useState('');
   const [confirmDialog, setConfirmDialog] = useState({ open: false, onConfirm: null });
   const [metadataTableMode, setMetadataTableMode] = useState(false);
+  const [metadataTableSelection, setMetadataTableSelection] = useState({ anchor: null, focus: null });
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [isExportingPdfs, setIsExportingPdfs] = useState(false);
@@ -88,6 +97,7 @@ const App = () => {
   const [sampleDrag, setSampleDrag] = useState(null);
   const importInputRef = useRef(null);
   const metadataTableBodyRef = useRef(null);
+  const metadataTableSelectingRef = useRef(false);
   const sampleDragRef = useRef(null);
 
   useEffect(() => {
@@ -117,6 +127,36 @@ const App = () => {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    const stopTableSelection = () => {
+      metadataTableSelectingRef.current = false;
+    };
+
+    window.addEventListener('pointerup', stopTableSelection);
+    window.addEventListener('pointercancel', stopTableSelection);
+    return () => {
+      window.removeEventListener('pointerup', stopTableSelection);
+      window.removeEventListener('pointercancel', stopTableSelection);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!metadataTableMode) return;
+
+    setMetadataTableSelection((current) => {
+      if (!current.anchor || !current.focus || samples.length === 0) return { anchor: null, focus: null };
+      const clampCell = (cell) => ({
+        row: Math.min(Math.max(cell.row, 0), samples.length - 1),
+        col: Math.min(Math.max(cell.col, 0), METADATA_TABLE_COLUMNS.length - 1)
+      });
+      const next = { anchor: clampCell(current.anchor), focus: clampCell(current.focus) };
+      if (next.anchor.row === current.anchor.row && next.anchor.col === current.anchor.col && next.focus.row === current.focus.row && next.focus.col === current.focus.col) {
+        return current;
+      }
+      return next;
+    });
+  }, [metadataTableMode, samples.length]);
 
   const isMobile = viewportWidth < 640;
   const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
@@ -651,7 +691,97 @@ const App = () => {
   };
 
   const updateMetadata = (sampleIdx, field, value) => {
-    setSamples((prev) => prev.map((item, idx) => (idx === sampleIdx ? { ...item, [field]: value } : item)));
+    setSamples((prev) =>
+      prev.map((item, idx) => {
+        if (idx !== sampleIdx) return item;
+        const next = { ...item, [field]: value };
+        if (field === 'processingOther' && String(value ?? '').trim()) next.processing = 'Other';
+        return next;
+      })
+    );
+  };
+
+  const getMetadataTableSelectionRange = (selection = metadataTableSelection) => {
+    if (!selection.anchor || !selection.focus) return null;
+    return {
+      startRow: Math.min(selection.anchor.row, selection.focus.row),
+      endRow: Math.max(selection.anchor.row, selection.focus.row),
+      startCol: Math.min(selection.anchor.col, selection.focus.col),
+      endCol: Math.max(selection.anchor.col, selection.focus.col)
+    };
+  };
+
+  const isMetadataTableCellSelected = (row, col) => {
+    const range = getMetadataTableSelectionRange();
+    if (!range) return false;
+    return row >= range.startRow && row <= range.endRow && col >= range.startCol && col <= range.endCol;
+  };
+
+  const isMetadataTableCellActive = (row, col) => metadataTableSelection.focus?.row === row && metadataTableSelection.focus?.col === col;
+
+  const focusMetadataTableCell = (row, col, { selectText = false } = {}) => {
+    window.requestAnimationFrame(() => {
+      const cell = metadataTableBodyRef.current?.querySelector(`[data-metadata-cell="${row}-${col}"]`);
+      if (!cell) return;
+      cell.focus({ preventScroll: true });
+      cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      if (selectText) cell.select?.();
+    });
+  };
+
+  const selectMetadataTableCell = (row, col, { extend = false, focus = true, selectText = false } = {}) => {
+    const nextCell = {
+      row: Math.min(Math.max(row, 0), Math.max(samples.length - 1, 0)),
+      col: Math.min(Math.max(col, 0), METADATA_TABLE_COLUMNS.length - 1)
+    };
+    setMetadataTableSelection((current) => ({
+      anchor: extend && current.anchor ? current.anchor : nextCell,
+      focus: nextCell
+    }));
+    if (focus) focusMetadataTableCell(nextCell.row, nextCell.col, { selectText });
+  };
+
+  const applyMetadataTableValueToSample = (sample, field, value) => {
+    const next = { ...sample };
+    const raw = String(value ?? '');
+
+    if (field === 'processing') {
+      const normalized = normalizeProcessingInput(raw, next.processingOther);
+      next.processing = normalized.processing;
+      next.processingOther = normalized.processingOther;
+    } else if (field === 'processingOther') {
+      next.processingOther = raw;
+      if (raw.trim()) next.processing = 'Other';
+    } else if (field === 'waterActivity') {
+      next.waterActivity = formatWaterActivity(raw);
+    } else if (field === 'moisture') {
+      next.moisture = formatMoisture(raw);
+    } else if (field === 'ositoId') {
+      next.ositoId = raw;
+    } else if (field === 'lotName') {
+      next.lotName = raw;
+    }
+
+    return next;
+  };
+
+  const getMetadataTableDisplayValue = (sample, field) => {
+    if (field === 'processing') return sample.processing && sample.processing !== 'Select One' ? translateProcessing(language, sample.processing) : '';
+    return String(sample[field] ?? '');
+  };
+
+  const clearMetadataTableRange = (range = getMetadataTableSelectionRange()) => {
+    if (!range) return;
+    setSamples((prev) =>
+      prev.map((item, rowIdx) => {
+        if (rowIdx < range.startRow || rowIdx > range.endRow) return item;
+        let next = item;
+        for (let colIdx = range.startCol; colIdx <= range.endCol; colIdx += 1) {
+          next = applyMetadataTableValueToSample(next, METADATA_TABLE_COLUMNS[colIdx], '');
+        }
+        return next;
+      })
+    );
   };
 
   const getActiveIndexAfterReorder = (currentIndex, fromIndex, toIndex) => {
@@ -843,44 +973,170 @@ const App = () => {
     return { processing: 'Other', processingOther: raw };
   };
 
+  const serializeMetadataTableRange = (range = getMetadataTableSelectionRange()) => {
+    if (!range) return '';
+    const lines = [];
+    for (let rowIdx = range.startRow; rowIdx <= range.endRow; rowIdx += 1) {
+      const sample = samples[rowIdx];
+      if (!sample) continue;
+      const cells = [];
+      for (let colIdx = range.startCol; colIdx <= range.endCol; colIdx += 1) {
+        cells.push(getMetadataTableDisplayValue(sample, METADATA_TABLE_COLUMNS[colIdx]));
+      }
+      lines.push(cells.join('\t'));
+    }
+    return lines.join('\n');
+  };
+
   const handleTablePaste = (startRow, startCol, columnOrder, e) => {
-    const text = e.clipboardData?.getData('text');
-    if (!text) return;
-    const rows = text.split(/\r?\n/).filter((line) => line.length > 0).map((line) => line.split('\t'));
+    const text = e.clipboardData?.getData('text/plain') ?? e.clipboardData?.getData('text');
+    const rows = parseClipboardRows(text);
     if (rows.length === 0) return;
 
     e.preventDefault();
-    setSamples((prev) => {
-      const updated = [...prev];
-      rows.forEach((cells, rIdx) => {
-        const targetRow = startRow + rIdx;
-        if (!updated[targetRow]) return;
-        const next = { ...updated[targetRow] };
-        cells.forEach((value, cIdx) => {
-          const targetCol = startCol + cIdx;
-          const colKey = columnOrder[targetCol];
-          if (!colKey) return;
-          if (colKey === 'processing' && value) {
-            const normalized = normalizeProcessingInput(value, next.processingOther);
-            next.processing = normalized.processing;
-            next.processingOther = normalized.processingOther;
-          } else if (colKey === 'processingOther' && value) {
-            next.processingOther = value;
-            next.processing = next.processing === 'Other' ? next.processing : 'Other';
-          } else if (colKey === 'waterActivity') {
-            next.waterActivity = formatWaterActivity(value);
-          } else if (colKey === 'moisture') {
-            next.moisture = formatMoisture(value);
-          } else if (colKey === 'ositoId') {
-            next.ositoId = value;
-          } else if (colKey === 'lotName') {
-            next.lotName = value;
-          }
-        });
-        updated[targetRow] = next;
-      });
-      return updated;
+    const range = getMetadataTableSelectionRange();
+    const useRangeStart =
+      range &&
+      startRow >= range.startRow &&
+      startRow <= range.endRow &&
+      startCol >= range.startCol &&
+      startCol <= range.endCol;
+    const targetStartRow = useRangeStart ? range.startRow : startRow;
+    const targetStartCol = useRangeStart ? range.startCol : startCol;
+    const fillsSelection = useRangeStart && rows.length === 1 && rows[0].length === 1 && (range.endRow > range.startRow || range.endCol > range.startCol);
+    const pasteEndRow = fillsSelection ? range.endRow : Math.min(samples.length - 1, targetStartRow + rows.length - 1);
+    const pasteEndCol = fillsSelection
+      ? range.endCol
+      : Math.min(columnOrder.length - 1, targetStartCol + Math.max(...rows.map((cells) => cells.length)) - 1);
+
+    setSamples((prev) =>
+      prev.map((item, rowIdx) => {
+        if (rowIdx < targetStartRow || rowIdx > pasteEndRow) return item;
+        let next = item;
+        for (let colIdx = targetStartCol; colIdx <= pasteEndCol; colIdx += 1) {
+          const value = fillsSelection ? rows[0][0] : rows[rowIdx - targetStartRow]?.[colIdx - targetStartCol];
+          if (value === undefined) continue;
+          const colKey = columnOrder[colIdx];
+          if (!colKey) continue;
+          next = applyMetadataTableValueToSample(next, colKey, value);
+        }
+        return next;
+      })
+    );
+
+    setMetadataTableSelection({
+      anchor: { row: targetStartRow, col: targetStartCol },
+      focus: { row: pasteEndRow, col: pasteEndCol }
     });
+    focusMetadataTableCell(targetStartRow, targetStartCol);
+  };
+
+  const handleMetadataTableCopy = (e) => {
+    const target = e.currentTarget;
+    const range = getMetadataTableSelectionRange() ?? { startRow: Number(target.dataset.tableRow), endRow: Number(target.dataset.tableRow), startCol: Number(target.dataset.tableCol), endCol: Number(target.dataset.tableCol) };
+    const hasTextSelection = typeof target.selectionStart === 'number' && target.selectionStart !== target.selectionEnd;
+    if (hasTextSelection && range.startRow === range.endRow && range.startCol === range.endCol) return;
+
+    const tableText = serializeMetadataTableRange(range);
+    if (!tableText) return;
+    e.preventDefault();
+    e.clipboardData?.setData('text/plain', tableText);
+  };
+
+  const handleMetadataTableCut = (e) => {
+    handleMetadataTableCopy(e);
+    if (e.defaultPrevented) clearMetadataTableRange();
+  };
+
+  const shouldMoveHorizontally = (e) => {
+    if (e.shiftKey || e.metaKey || e.ctrlKey) return true;
+    const valueLength = String(e.currentTarget.value ?? '').length;
+    const selectionStart = e.currentTarget.selectionStart;
+    const selectionEnd = e.currentTarget.selectionEnd;
+    if (typeof selectionStart !== 'number' || typeof selectionEnd !== 'number') return true;
+    if (selectionStart !== selectionEnd) return false;
+    if (e.key === 'ArrowLeft') return selectionStart === 0;
+    if (e.key === 'ArrowRight') return selectionStart === valueLength;
+    return true;
+  };
+
+  const handleMetadataTableKeyDown = (row, col, e) => {
+    const moveTo = (nextRow, nextCol, { extend = e.shiftKey, selectText = false } = {}) => {
+      e.preventDefault();
+      selectMetadataTableCell(nextRow, nextCol, { extend, selectText });
+    };
+
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+      e.preventDefault();
+      setMetadataTableSelection({
+        anchor: { row: 0, col: 0 },
+        focus: { row: Math.max(samples.length - 1, 0), col: METADATA_TABLE_COLUMNS.length - 1 }
+      });
+      focusMetadataTableCell(row, col);
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      let nextRow = row;
+      let nextCol = col + (e.shiftKey ? -1 : 1);
+      if (nextCol < 0) {
+        nextCol = METADATA_TABLE_COLUMNS.length - 1;
+        nextRow -= 1;
+      } else if (nextCol >= METADATA_TABLE_COLUMNS.length) {
+        nextCol = 0;
+        nextRow += 1;
+      }
+      moveTo(nextRow, nextCol, { extend: false, selectText: true });
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      moveTo(row + (e.shiftKey ? -1 : 1), col, { extend: false, selectText: true });
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      moveTo(row, col, { extend: false });
+      return;
+    }
+
+    if ((e.key === 'Backspace' || e.key === 'Delete') && getMetadataTableSelectionRange()) {
+      const range = getMetadataTableSelectionRange();
+      if (range.endRow > range.startRow || range.endCol > range.startCol) {
+        e.preventDefault();
+        clearMetadataTableRange(range);
+        return;
+      }
+    }
+
+    if (e.key === 'ArrowUp') {
+      moveTo(row - 1, col);
+    } else if (e.key === 'ArrowDown') {
+      moveTo(row + 1, col);
+    } else if (e.key === 'ArrowLeft' && shouldMoveHorizontally(e)) {
+      moveTo(row, col - 1);
+    } else if (e.key === 'ArrowRight' && shouldMoveHorizontally(e)) {
+      moveTo(row, col + 1);
+    } else if (e.key === 'Home' && (e.metaKey || e.ctrlKey)) {
+      moveTo(0, 0);
+    } else if (e.key === 'End' && (e.metaKey || e.ctrlKey)) {
+      moveTo(samples.length - 1, METADATA_TABLE_COLUMNS.length - 1);
+    } else if (e.key === 'Home') {
+      moveTo(row, 0);
+    } else if (e.key === 'End') {
+      moveTo(row, METADATA_TABLE_COLUMNS.length - 1);
+    }
+  };
+
+  const handleMetadataTablePointerDown = (row, col, e) => {
+    if (e.button !== 0) return;
+    metadataTableSelectingRef.current = true;
+    selectMetadataTableCell(row, col, { extend: e.shiftKey, focus: false });
+  };
+
+  const handleMetadataTablePointerEnter = (row, col) => {
+    if (!metadataTableSelectingRef.current) return;
+    selectMetadataTableCell(row, col, { extend: true, focus: false });
   };
 
   const toggleTag = (idx, section, tag) => {
@@ -1277,15 +1533,47 @@ const App = () => {
   }
 
   if (appState === 'metadata') {
-    const tablePasteOrder = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther'];
-    const tableColumns = [
-      'ositoId',
-      'lotName',
-      'processing',
-      'waterActivity',
-      'moisture',
-      ...(samples.some((s) => s.processing === 'Other') ? ['processingOther'] : [])
-    ];
+    const tableColumns = METADATA_TABLE_COLUMNS;
+    const tableColumnLabels = {
+      ositoId: t('ositoId'),
+      lotName: t('lotName'),
+      processing: t('processing'),
+      waterActivity: t('waterActivity'),
+      moisture: t('moisture'),
+      processingOther: t('processingDetails')
+    };
+    const tableColumnWidths = {
+      ositoId: '150px',
+      lotName: '230px',
+      processing: '170px',
+      waterActivity: '140px',
+      moisture: '120px',
+      processingOther: '230px'
+    };
+    const getTableCellClass = (row, col, extra = '') =>
+      `metadata-grid-cell ${isMetadataTableCellSelected(row, col) ? 'is-selected' : ''} ${
+        isMetadataTableCellActive(row, col) ? 'is-active' : ''
+      } ${extra}`;
+    const getTableInputProps = (row, col) => ({
+      'data-metadata-cell': `${row}-${col}`,
+      'data-table-row': row,
+      'data-table-col': col,
+      onFocus: () => {
+        if (!isMetadataTableCellSelected(row, col)) selectMetadataTableCell(row, col, { focus: false });
+      },
+      onKeyDown: (e) => handleMetadataTableKeyDown(row, col, e),
+      onPaste: (e) => handleTablePaste(row, col, tableColumns, e),
+      onCopy: handleMetadataTableCopy,
+      onCut: handleMetadataTableCut,
+      className: 'metadata-grid-input'
+    });
+    const getTableCellProps = (row, col, extra = '') => ({
+      className: getTableCellClass(row, col, extra),
+      onPointerDown: (e) => handleMetadataTablePointerDown(row, col, e),
+      onPointerEnter: () => handleMetadataTablePointerEnter(row, col),
+      'aria-selected': isMetadataTableCellSelected(row, col)
+    });
+
     return (
       <div className="min-h-screen bg-stone-100 p-4 md:p-12">
         <div className="max-w-4xl mx-auto space-y-6 pb-32">
@@ -1320,20 +1608,26 @@ const App = () => {
           </div>
 
           {metadataTableMode ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-x-auto">
-              <table className="min-w-full text-left text-sm border-collapse">
-                <thead className="bg-stone-50 border-b border-stone-100 text-[11px] font-black uppercase tracking-widest text-stone-500">
+            <div className="metadata-table-shell">
+              <table className="metadata-spreadsheet text-left text-sm" role="grid">
+                <colgroup>
+                  <col style={{ width: '44px' }} />
+                  <col style={{ width: '52px' }} />
+                  {tableColumns.map((column) => (
+                    <col key={column} style={{ width: tableColumnWidths[column] }} />
+                  ))}
+                </colgroup>
+                <thead className="text-[11px] font-black uppercase tracking-widest text-stone-500">
                   <tr>
-                    <th className="px-2 py-2 w-10 text-center">
+                    <th className="metadata-table-corner text-center">
                       <span className="sr-only">{t('reorder')}</span>
                     </th>
-                    <th className="px-3 py-2 w-12 text-center">#</th>
-                    <th className="px-3 py-2">{t('ositoId')}</th>
-                    <th className="px-3 py-2">{t('lotName')}</th>
-                    <th className="px-3 py-2">{t('processing')}</th>
-                    <th className="px-3 py-2 whitespace-nowrap">{t('waterActivity')}</th>
-                    <th className="px-3 py-2">{t('moisture')}</th>
-                    {tableColumns.includes('processingOther') && <th className="px-3 py-2 whitespace-nowrap">{t('processingDetails')}</th>}
+                    <th className="metadata-table-corner text-center">#</th>
+                    {tableColumns.map((column) => (
+                      <th key={column} className="metadata-column-header whitespace-nowrap">
+                        {tableColumnLabels[column]}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody ref={metadataTableBodyRef}>
@@ -1344,11 +1638,11 @@ const App = () => {
                       <tr
                         key={s.id}
                         data-sample-row-index={idx}
-                        className={`border-b border-stone-100 last:border-0 transition-colors ${
-                          isDropTarget ? 'bg-amber-50 ring-2 ring-inset ring-amber-300' : 'hover:bg-stone-50/60'
-                        } ${isDraggingRow ? 'opacity-60' : ''}`}
+                        className={`metadata-table-row transition-colors ${
+                          isDropTarget ? 'metadata-row-drop-target' : ''
+                        } ${isDraggingRow ? 'metadata-row-dragging opacity-60' : ''}`}
                       >
-                        <td className="px-2 py-2 align-top text-center">
+                        <td className="metadata-row-handle-cell text-center">
                           <button
                             type="button"
                             disabled={samples.length < 2}
@@ -1366,27 +1660,28 @@ const App = () => {
                             <Icon name="grip-vertical" size={16} />
                           </button>
                         </td>
-                        <td className="px-3 py-2 align-top text-center text-xs font-black text-stone-500">{idx + 1}</td>
-                        <td className="px-3 py-2 align-top">
+                        <th scope="row" className="metadata-row-number text-center">{idx + 1}</th>
+                        <td {...getTableCellProps(idx, 0)}>
                           <input
+                            {...getTableInputProps(idx, 0)}
                             value={s.ositoId || ''}
                             onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
-                            onPaste={(e) => handleTablePaste(idx, 0, tablePasteOrder, e)}
                             placeholder="OS-ID..."
-                            className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                            aria-label={`${t('ositoId')} ${idx + 1}`}
                           />
                         </td>
-                        <td className="px-3 py-2 align-top">
+                        <td {...getTableCellProps(idx, 1)}>
                           <input
+                            {...getTableInputProps(idx, 1)}
                             value={s.lotName || ''}
                             onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
-                            onPaste={(e) => handleTablePaste(idx, 1, tablePasteOrder, e)}
                             placeholder={`${t('lotName')}...`}
-                            className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                            aria-label={`${t('lotName')} ${idx + 1}`}
                           />
                         </td>
-                        <td className="px-3 py-2 align-top min-w-[140px]">
+                        <td {...getTableCellProps(idx, 2)}>
                           <input
+                            {...getTableInputProps(idx, 2)}
                             value={s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : ''}
                             onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
                             onBlur={(e) => {
@@ -1403,61 +1698,47 @@ const App = () => {
                                 )
                               );
                             }}
-                            onPaste={(e) => handleTablePaste(idx, 2, tablePasteOrder, e)}
                             placeholder={t('processingPlaceholder')}
                             list="processing-options"
-                            className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm"
+                            aria-label={`${t('processing')} ${idx + 1}`}
                           />
                         </td>
-                        <td className="px-3 py-2 align-top min-w-[140px]">
+                        <td {...getTableCellProps(idx, 3)}>
                           <input
+                            {...getTableInputProps(idx, 3)}
                             value={s.waterActivity || ''}
                             onChange={(e) => updateMetadata(idx, 'waterActivity', e.target.value)}
                             onBlur={(e) => updateMetadata(idx, 'waterActivity', formatWaterActivity(e.target.value))}
-                            onPaste={(e) => handleTablePaste(idx, 3, tablePasteOrder, e)}
                             placeholder="0.00"
                             inputMode="decimal"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="0.99"
-                            className="w-full bg-transparent p-2 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm tabular-nums"
+                            type="text"
+                            className="metadata-grid-input tabular-nums"
+                            aria-label={`${t('waterActivity')} ${idx + 1}`}
                           />
                         </td>
-                        <td className="px-3 py-2 align-top min-w-[120px]">
-                          <div className="relative">
-                            <input
-                              value={s.moisture || ''}
-                              onChange={(e) => updateMetadata(idx, 'moisture', e.target.value)}
-                              onBlur={(e) => updateMetadata(idx, 'moisture', formatMoisture(e.target.value))}
-                              onPaste={(e) => handleTablePaste(idx, 4, tablePasteOrder, e)}
-                              placeholder="0.0"
-                              inputMode="decimal"
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              max="100"
-                              className="w-full bg-transparent p-2 pr-7 rounded-lg border border-stone-200 focus:bg-white focus:border-stone-300 outline-none font-bold text-stone-800 text-sm tabular-nums"
-                            />
-                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs font-black text-stone-400">%</span>
-                          </div>
+                        <td {...getTableCellProps(idx, 4, 'metadata-grid-cell-with-affix')}>
+                          <input
+                            {...getTableInputProps(idx, 4)}
+                            value={s.moisture || ''}
+                            onChange={(e) => updateMetadata(idx, 'moisture', e.target.value)}
+                            onBlur={(e) => updateMetadata(idx, 'moisture', formatMoisture(e.target.value))}
+                            placeholder="0.0"
+                            inputMode="decimal"
+                            type="text"
+                            className="metadata-grid-input tabular-nums"
+                            aria-label={`${t('moisture')} ${idx + 1}`}
+                          />
+                          <span className="metadata-grid-affix">%</span>
                         </td>
-                        {tableColumns.includes('processingOther') && (
-                          <td className="px-3 py-2 align-top min-w-[160px]">
-                            <input
-                              value={s.processingOther || ''}
-                              onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
-                              onPaste={(e) => handleTablePaste(idx, 5, tablePasteOrder, e)}
-                              placeholder={s.processing === 'Other' ? t('processingDetailsPlaceholder') : '—'}
-                              disabled={s.processing !== 'Other'}
-                              className={`w-full p-2 rounded-lg border ${
-                                s.processing === 'Other'
-                                  ? 'bg-transparent border-stone-200 focus:bg-white focus:border-stone-300'
-                                  : 'bg-stone-50 text-stone-300 border-stone-100'
-                              } outline-none font-bold text-stone-800 text-sm`}
-                            />
-                          </td>
-                        )}
+                        <td {...getTableCellProps(idx, 5)}>
+                          <input
+                            {...getTableInputProps(idx, 5)}
+                            value={s.processingOther || ''}
+                            onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
+                            placeholder={s.processing === 'Other' ? t('processingDetailsPlaceholder') : '-'}
+                            aria-label={`${t('processingDetails')} ${idx + 1}`}
+                          />
+                        </td>
                       </tr>
                     );
                   })}
