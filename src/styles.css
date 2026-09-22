@@ -128,6 +128,59 @@ h3 {
   background: #f5ede1;
 }
 
+.metadata-column-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.metadata-column-header-content > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metadata-sort-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.metadata-sort-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #a8a29e;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.metadata-sort-button:hover,
+.metadata-sort-button:focus-visible {
+  border-color: #d6c8b5;
+  background: #fffaf3;
+  color: #57534e;
+  outline: none;
+}
+
+.metadata-sort-button.is-active {
+  border-color: #1f2b23;
+  background: #1f2b23;
+  color: #ffffff;
+}
+
 .metadata-row-handle-cell {
   width: 44px;
   padding: 4px;
@@ -1237,6 +1290,18 @@ h3 {
   :root[data-display-mode='eink'] .metadata-grid-input:focus,
   :root[data-display-mode='eink'] .metadata-grid-input:focus-visible {
     outline: none !important;
+  }
+
+  :root[data-display-mode='eink'] .metadata-sort-button {
+    color: #000000 !important;
+  }
+
+  :root[data-display-mode='eink'] .metadata-sort-button:hover,
+  :root[data-display-mode='eink'] .metadata-sort-button:focus-visible,
+  :root[data-display-mode='eink'] .metadata-sort-button.is-active {
+    border-color: #000000 !important;
+    background: #000000 !important;
+    color: #ffffff !important;
   }
 
   :root[data-display-mode='eink'] [data-suggestion-active='true'] {

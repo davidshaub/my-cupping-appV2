@@ -7,6 +7,8 @@ const Icon = ({ name, size = 20, className = '' }) => {
     plus: <path d="M12 5v14M5 12h14" />,
     'chevron-right': <path d="m9 18 6-6-6-6" />,
     'chevron-left': <path d="m15 18-6-6 6-6" />,
+    'chevron-up': <path d="m18 15-6-6-6 6" />,
+    'chevron-down': <path d="m6 9 6 6 6-6" />,
     'settings-2': <path d="M20 7h-9M14 17H5M11 13H3M15 5v4M9 11v4M17 15v4M21 11h-4" />,
     'edit-2': <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
     tag: <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2zM7 7h.01" />,

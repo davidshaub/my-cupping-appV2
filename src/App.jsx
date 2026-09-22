@@ -61,6 +61,7 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;');
 
 const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther'];
+const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
 
 const parseClipboardRows = (text) => {
   const normalized = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n$/, '');
@@ -90,6 +91,7 @@ const App = () => {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, onConfirm: null });
   const [metadataTableMode, setMetadataTableMode] = useState(false);
   const [metadataTableSelection, setMetadataTableSelection] = useState({ anchor: null, focus: null });
+  const [metadataTableSort, setMetadataTableSort] = useState(null);
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [isExportingPdfs, setIsExportingPdfs] = useState(false);
@@ -783,6 +785,73 @@ const App = () => {
     );
   };
 
+  const getMetadataTableSortValue = (sample, field) => {
+    const raw = getMetadataTableDisplayValue(sample, field).trim();
+    if (METADATA_NUMERIC_COLUMNS.has(field)) {
+      const numeric = Number.parseFloat(raw.replace('%', ''));
+      return {
+        blank: raw === '' || Number.isNaN(numeric),
+        value: Number.isNaN(numeric) ? 0 : numeric
+      };
+    }
+
+    return {
+      blank: raw === '',
+      value: raw
+    };
+  };
+
+  const compareMetadataTableValues = (a, b, field, direction) => {
+    const aValue = getMetadataTableSortValue(a, field);
+    const bValue = getMetadataTableSortValue(b, field);
+
+    if (aValue.blank && bValue.blank) return 0;
+    if (aValue.blank) return 1;
+    if (bValue.blank) return -1;
+
+    const comparison = METADATA_NUMERIC_COLUMNS.has(field)
+      ? aValue.value - bValue.value
+      : String(aValue.value).localeCompare(String(bValue.value), language, {
+          sensitivity: 'base',
+          numeric: true
+        });
+
+    return direction === 'desc' ? comparison * -1 : comparison;
+  };
+
+  const sortMetadataTable = (field, direction) => {
+    if (!METADATA_TABLE_COLUMNS.includes(field) || samples.length < 2) return;
+
+    const activeSampleId = samples[activeSampleIndex]?.id;
+    const focusedCell = metadataTableSelection.focus;
+    const focusedSampleId = focusedCell ? samples[focusedCell.row]?.id : null;
+    const sortedSamples = samples
+      .map((sample, index) => ({ sample, index }))
+      .sort((a, b) => compareMetadataTableValues(a.sample, b.sample, field, direction) || a.index - b.index)
+      .map(({ sample }) => sample);
+
+    setSamples(sortedSamples);
+    setMetadataTableSort({ field, direction });
+
+    const nextActiveIndex = sortedSamples.findIndex((sample) => sample.id === activeSampleId);
+    if (nextActiveIndex !== -1) setActiveSampleIndex(nextActiveIndex);
+
+    if (focusedSampleId) {
+      const nextFocusRow = sortedSamples.findIndex((sample) => sample.id === focusedSampleId);
+      if (nextFocusRow !== -1) {
+        const nextFocus = {
+          row: nextFocusRow,
+          col: Math.min(focusedCell.col, METADATA_TABLE_COLUMNS.length - 1)
+        };
+        setMetadataTableSelection({ anchor: nextFocus, focus: nextFocus });
+        focusMetadataTableCell(nextFocus.row, nextFocus.col);
+        return;
+      }
+    }
+
+    setMetadataTableSelection({ anchor: null, focus: null });
+  };
+
   const getActiveIndexAfterReorder = (currentIndex, fromIndex, toIndex) => {
     if (currentIndex === fromIndex) return toIndex;
     if (fromIndex < toIndex && currentIndex > fromIndex && currentIndex <= toIndex) return currentIndex - 1;
@@ -810,6 +879,7 @@ const App = () => {
       return next;
     });
     setActiveSampleIndex((current) => getActiveIndexAfterReorder(current, fromIndex, toIndex));
+    setMetadataTableSort(null);
   };
 
   const getTableReorderTargetIndex = (clientY) => {
@@ -1572,6 +1642,8 @@ const App = () => {
       onPointerEnter: () => handleMetadataTablePointerEnter(row, col),
       'aria-selected': isMetadataTableCellSelected(row, col)
     });
+    const getSortButtonClass = (column, direction) =>
+      `metadata-sort-button ${metadataTableSort?.field === column && metadataTableSort?.direction === direction ? 'is-active' : ''}`;
 
     return (
       <div className="min-h-screen bg-stone-100 p-4 md:p-12">
@@ -1624,7 +1696,31 @@ const App = () => {
                     <th className="metadata-table-corner text-center">#</th>
                     {tableColumns.map((column) => (
                       <th key={column} className="metadata-column-header whitespace-nowrap">
-                        {tableColumnLabels[column]}
+                        <div className="metadata-column-header-content">
+                          <span>{tableColumnLabels[column]}</span>
+                          <span className="metadata-sort-controls">
+                            <button
+                              type="button"
+                              onClick={() => sortMetadataTable(column, 'asc')}
+                              className={getSortButtonClass(column, 'asc')}
+                              aria-label={`${t('sortAscending')}: ${tableColumnLabels[column]}`}
+                              aria-pressed={metadataTableSort?.field === column && metadataTableSort?.direction === 'asc'}
+                              title={t('sortAscending')}
+                            >
+                              <Icon name="chevron-up" size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => sortMetadataTable(column, 'desc')}
+                              className={getSortButtonClass(column, 'desc')}
+                              aria-label={`${t('sortDescending')}: ${tableColumnLabels[column]}`}
+                              aria-pressed={metadataTableSort?.field === column && metadataTableSort?.direction === 'desc'}
+                              title={t('sortDescending')}
+                            >
+                              <Icon name="chevron-down" size={12} />
+                            </button>
+                          </span>
+                        </div>
                       </th>
                     ))}
                   </tr>
