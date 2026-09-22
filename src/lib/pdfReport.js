@@ -1428,13 +1428,15 @@ const uniquePdfFilename = (sample, index, used) => {
 };
 
 const zipFilename = (sessionName) => {
+  const safeSessionName = safeFilenamePart(sessionName, '');
+  if (safeSessionName) return `${safeSessionName}.zip`;
+
   const stamp = new Date()
     .toLocaleString()
     .replace(/[/:]/g, '-')
     .replace(/,/g, '')
     .replace(/\s+/g, '_');
-  const safeSessionName = safeFilenamePart(sessionName, '');
-  return safeSessionName ? `Cupping_Report_${safeSessionName}_${stamp}_PDFs.zip` : `Cupping_Report_${stamp}_PDFs.zip`;
+  return `Cupping_Report_${stamp}_PDFs.zip`;
 };
 
 const concatBytes = (parts) => {

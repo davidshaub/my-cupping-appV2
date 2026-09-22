@@ -354,8 +354,7 @@ const App = () => {
   };
 
   const printAllPdf = () => {
-    const stamp = new Date().toLocaleString();
-    const title = `${t('report')} ${stamp}`;
+    const title = activeSessionName.trim() || `${t('report')} ${new Date().toLocaleString()}`;
     const pages = Array.from(document.querySelectorAll('.report-pages .sample-spec-sheet'));
     const printWindow = window.open('', '_blank');
 
