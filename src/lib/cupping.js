@@ -344,7 +344,7 @@ export const downloadCSV = (samples, sessionStartTime, sessionName) => {
     .replace(/,/g, '')
     .replace(/\s+/g, '_');
   const safeSessionName = toSafeFilenamePart(sessionName);
-  link.download = safeSessionName ? `Cupping_Report_${safeSessionName}_${stamp}.csv` : `Cupping_Report_${stamp}.csv`;
+  link.download = safeSessionName ? `${safeSessionName}.csv` : `Cupping_Report_${stamp}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 };
