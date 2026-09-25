@@ -16,6 +16,17 @@
   box-sizing: border-box;
 }
 
+.sample-count-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.sample-count-input::-webkit-inner-spin-button,
+.sample-count-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;

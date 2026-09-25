@@ -1394,7 +1394,7 @@ const App = () => {
               onChange={(e) => setNumSamples(e.target.value)}
               onBlur={() => setNumSamples(normalizeSampleCount(numSamples))}
               onFocus={(e) => e.target.select()}
-              className="min-w-0 w-32 mx-2 bg-transparent text-center text-4xl md:text-5xl font-black text-stone-900 tabular-nums rounded-lg focus:outline-2 focus:outline-stone-900"
+              className="sample-count-input min-w-0 w-32 mx-2 bg-transparent text-center text-4xl md:text-5xl font-black text-stone-900 tabular-nums rounded-lg focus:outline-2 focus:outline-stone-900"
             />
             <button
               onClick={() => setNumSamples(normalizeSampleCount(numSamples) + 1)}
