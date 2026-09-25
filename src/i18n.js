@@ -1,6 +1,10 @@
+import { WCR_ATTRIBUTES } from './lib/lexicon.js';
+
 const UI_TEXT = {
   en: {
     bwMode: 'B&W Mode',
+    lexicon: 'Lexicon',
+    bothLexicons: 'Both',
     on: 'On',
     off: 'Off',
     switchStandard: 'Switch to standard display',
@@ -129,6 +133,8 @@ const UI_TEXT = {
     handsLogo: 'Osito logo'
   },
   es: {
+    lexicon: 'Léxico',
+    bothLexicons: 'Ambos',
     sampleCount: 'Cantidad de cafés',
     decreaseSampleCount: 'Disminuir cantidad de cafés',
     increaseSampleCount: 'Aumentar cantidad de cafés',
@@ -287,6 +293,20 @@ const RADAR_LABELS_ES = {
 };
 
 const CATEGORY_TRANSLATIONS_ES = {
+  'Taste Basics': 'Gustos Básicos',
+  'Sour/Acid': 'Agrio/Ácido',
+  'Alcohol/Fermented': 'Alcohol/Fermentado',
+  'Green/Vegetative': 'Verde/Vegetal',
+  'Stale/Papery': 'Envejecido/Papel',
+  Earthy: 'Terroso',
+  Chemical: 'Químico',
+  Roasted: 'Tostado',
+  Cereal: 'Cereal',
+  Nutty: 'Nueces',
+  Cocoa: 'Cacao',
+  Amplitude: 'Amplitud',
+  Mouthfeel: 'Sensación en Boca',
+  'Osito-specific': 'Específicos de Osito',
   Fruity: 'Frutal',
   Citrus: 'Cítrico',
   Floral: 'Floral',
@@ -298,6 +318,7 @@ const CATEGORY_TRANSLATIONS_ES = {
 };
 
 const TAG_TRANSLATIONS_ES = {
+  ...Object.fromEntries(WCR_ATTRIBUTES.map(({ name, spanish }) => [name, spanish])),
   'Red Fruit': 'Fruta Roja',
   'Red Currant': 'Grosella Roja',
   Berries: 'Bayas',
@@ -399,6 +420,7 @@ const TAG_TRANSLATIONS_ES = {
 };
 
 const TAG_AGREEMENT_ES = {
+  ...Object.fromEntries(WCR_ATTRIBUTES.map(({ name, agreement }) => [name, agreement])),
   Structure: 'fs',
   Spices: 'fp',
   'Nutty/Cocoa': 'fp',

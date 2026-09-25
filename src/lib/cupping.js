@@ -1,4 +1,5 @@
-import { CATEGORISED_LEXICON, INITIAL_SCORE } from '../constants.js';
+import { INITIAL_SCORE } from '../constants.js';
+import { categoryForTag, normalizeLexiconMode } from './lexicon.js';
 
 const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || '';
 
@@ -116,12 +117,7 @@ const inferSessionNameFromFilename = (filename) => {
 };
 
 export const getCategoryForItem = (item) => {
-  const base = getBaseTag(item);
-  for (const [cat, items] of Object.entries(CATEGORISED_LEXICON)) {
-    if (items.includes(base)) return cat;
-  }
-  if (CATEGORISED_LEXICON[base]) return base;
-  return null;
+  return categoryForTag(item);
 };
 
 const normalizeSmartMatch = (value) =>
@@ -167,7 +163,7 @@ export const getTagStyle = (tag) => {
   if (cat === 'Citrus') return 'tag-citrus';
   if (cat === 'Floral') return 'tag-floral';
   if (cat === 'Sweet') return 'tag-sweet';
-  if (cat === 'Nutty/Cocoa') return 'tag-nutty';
+  if (cat === 'Nutty/Cocoa' || cat === 'Nutty' || cat === 'Cocoa' || cat === 'Cereal') return 'tag-nutty';
   if (cat === 'Spices') return 'tag-spices';
   return 'tag-negative';
 };
@@ -260,7 +256,7 @@ const toSafeFilenamePart = (value) => {
   return cleaned.slice(0, 60);
 };
 
-export const downloadCSV = (samples, sessionStartTime, sessionName) => {
+export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode = 'osito') => {
   const headers = [
     'Sample #',
     'Osito ID',
@@ -288,7 +284,8 @@ export const downloadCSV = (samples, sessionStartTime, sessionName) => {
     'In the Cup Notes',
     'Negative Notes',
     'Other Notes',
-    'Session Start Time'
+    'Session Start Time',
+    'Lexicon'
   ];
 
   const rows = samples.map((s, idx) => {
@@ -329,7 +326,8 @@ export const downloadCSV = (samples, sessionStartTime, sessionName) => {
           .filter(Boolean)
           .join('; ')
       ),
-      csvEscape(sessionStartTime)
+      csvEscape(sessionStartTime),
+      csvEscape(normalizeLexiconMode(lexiconMode))
     ].join(',');
   });
 
@@ -476,6 +474,7 @@ export const importSessionFromCSV = (csvText, filename) => {
   return {
     samples,
     sessionStartTime: sessionStartTime || new Date().toLocaleString(),
-    sessionName: inferSessionNameFromFilename(filename)
+    sessionName: inferSessionNameFromFilename(filename),
+    lexiconMode: normalizeLexiconMode(rows[1]?.[colIndex('Lexicon')])
   };
 };

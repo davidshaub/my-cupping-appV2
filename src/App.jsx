@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   CATEGORIES,
-  CATEGORISED_LEXICON,
-  INITIAL_SCORE,
-  NEGATIVE_LEXICON
+  INITIAL_SCORE
 } from './constants';
+import { LEXICON_OPTIONS, normalizeLexiconMode } from './lib/lexicon';
 import {
   calculateTotal,
   downloadCSV,
@@ -79,6 +78,7 @@ const App = () => {
   const [appState, setAppState] = useState('setup');
   const [metadataOrigin, setMetadataOrigin] = useState('setup');
   const [numSamples, setNumSamples] = useState(1);
+  const [lexiconMode, setLexiconMode] = useState('osito');
   const [activeSampleIndex, setActiveSampleIndex] = useState(0);
   const [samples, setSamples] = useState([]);
   const [sessionStartTime, setSessionStartTime] = useState(null);
@@ -209,6 +209,7 @@ const App = () => {
     name,
     date: new Date().toLocaleDateString(),
     startTime,
+    lexiconMode,
     samples: cloneSamplesForSave(sourceSamples),
     count: sourceSamples.length
   });
@@ -248,7 +249,7 @@ const App = () => {
       localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
       return updatedHistory;
     });
-  }, [samples, sessionStartTime, activeSavedSessionId, activeSessionName]);
+  }, [samples, sessionStartTime, activeSavedSessionId, activeSessionName, lexiconMode]);
 
   const openSaveSessionModal = () => {
     setSessionName(activeSessionName || sessionName);
@@ -294,6 +295,7 @@ const App = () => {
   };
 
   const loadSession = (session) => {
+    setLexiconMode(normalizeLexiconMode(session.lexiconMode));
     const sessionSamples = Array.isArray(session.samples) ? session.samples : [];
     const loadedStartTime = session.startTime || new Date().toLocaleString();
     setSamples(sessionSamples);
@@ -354,6 +356,7 @@ const App = () => {
       const imported = importSessionFromCSV(text, file.name);
       const importedStartTime = imported.sessionStartTime || new Date().toLocaleString();
       setSamples(imported.samples);
+      setLexiconMode(normalizeLexiconMode(imported.lexiconMode));
       setNumSamples(imported.samples.length);
       setActiveSampleIndex(0);
       setSessionStartTime(importedStartTime);
@@ -1341,6 +1344,29 @@ const App = () => {
       </div>
     );
 
+  const renderLexiconSelector = () => (
+    <fieldset className="lexicon-selector">
+      <legend className="text-xs font-bold text-stone-600 mb-2">{t('lexicon')}</legend>
+      <div className="grid grid-cols-3 gap-1 border border-stone-300 rounded-lg p-1 bg-white">
+        {['osito', 'wcr', 'both'].map((mode) => (
+          <label key={mode} className={`relative cursor-pointer rounded-md text-center px-3 py-2 text-sm font-bold ${lexiconMode === mode ? 'bg-stone-900 text-white' : 'text-stone-700'}`}>
+            <input
+              className="peer sr-only"
+              type="radio"
+              name="lexicon"
+              value={mode}
+              checked={lexiconMode === mode}
+              onChange={() => setLexiconMode(mode)}
+            />
+            <span className="peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4">
+              {mode === 'osito' ? 'Osito' : mode === 'wcr' ? 'WCR' : t('bothLexicons')}
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+
   if (appState === 'setup') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
@@ -1379,6 +1405,7 @@ const App = () => {
             </button>
           </div>
           <div className="space-y-3">
+            {renderLexiconSelector()}
             <button onClick={startSession} className="w-full py-4 md:py-5 btn-stone-dark font-black text-base md:text-lg flex items-center justify-center gap-3 shadow-2xl">
               {t('startSession')}
               <Icon name="chevron-right" />
@@ -1705,6 +1732,7 @@ const App = () => {
             </div>
           </div>
 
+          <div className="max-w-sm">{renderLexiconSelector()}</div>
           {metadataTableMode ? (
             <div className="metadata-table-shell">
               <table className="metadata-spreadsheet text-left text-sm" role="grid">
@@ -2023,7 +2051,7 @@ const App = () => {
                 {t('lots')}
               </button>
               <button
-                onClick={() => downloadCSV(samples, sessionStartTime, activeSessionName)}
+                onClick={() => downloadCSV(samples, sessionStartTime, activeSessionName, lexiconMode)}
                 className="flex items-center gap-2 bg-stone-200 px-4 py-2 rounded-xl font-bold text-stone-800 active:scale-95 text-xs"
               >
                 <Icon name="download" size={16} />
@@ -2210,7 +2238,7 @@ const App = () => {
               {t('save')}
             </button>
             <button
-              onClick={() => downloadCSV(samples, sessionStartTime, activeSessionName)}
+              onClick={() => downloadCSV(samples, sessionStartTime, activeSessionName, lexiconMode)}
               className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-200 text-stone-800 text-[10px] font-black uppercase tracking-wider"
             >
               <Icon name="download" size={14} />
@@ -2355,7 +2383,7 @@ const App = () => {
             <LexiconSearch
               label={t('fragranceAndAroma')}
               tags={currentSample.notes.fragAromaTags}
-              options={CATEGORISED_LEXICON}
+              options={LEXICON_OPTIONS[lexiconMode].positive}
               onToggle={(t) => toggleTag(activeSampleIndex, 'fragAroma', t)}
               onCycle={(t) => cycleTagModifier(activeSampleIndex, 'fragAroma', t)}
               language={language}
@@ -2364,7 +2392,7 @@ const App = () => {
             <LexiconSearch
               label={t('inCup')}
               tags={currentSample.notes.inCupTags}
-              options={CATEGORISED_LEXICON}
+              options={LEXICON_OPTIONS[lexiconMode].positive}
               onToggle={(t) => toggleTag(activeSampleIndex, 'inCup', t)}
               onCycle={(t) => cycleTagModifier(activeSampleIndex, 'inCup', t)}
               language={language}
@@ -2373,7 +2401,7 @@ const App = () => {
             <LexiconSearch
               label={t('negativeFactors')}
               tags={currentSample.notes.negativeTags}
-              options={{ Negative: NEGATIVE_LEXICON }}
+              options={LEXICON_OPTIONS[lexiconMode].negative}
               onToggle={(t) => toggleTag(activeSampleIndex, 'negative', t)}
               onCycle={(t) => cycleTagModifier(activeSampleIndex, 'negative', t)}
               language={language}

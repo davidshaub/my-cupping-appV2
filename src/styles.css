@@ -595,16 +595,20 @@ h3 {
 
   .print-donut-chart {
     width: 4.4cm !important;
+    height: auto !important;
+  }
+
+  .print-donut-chart .donut-plot {
+    width: 4.4cm !important;
     height: 4.4cm !important;
   }
 
-  .print-donut-chart > .absolute:nth-of-type(2) {
-    top: 100% !important;
+  .print-donut-chart .donut-legend {
     width: 4.8cm !important;
     gap: 0.1cm 0.2cm !important;
   }
 
-  .print-donut-chart > .absolute:nth-of-type(2) span {
+  .print-donut-chart .donut-legend span {
     font-size: 7px !important;
     letter-spacing: 0.01em !important;
   }

@@ -80,6 +80,20 @@ export const CATEGORISED_LEXICON = {
 };
 
 export const CATEGORY_COLORS = {
+  'Taste Basics': '#64748b',
+  'Sour/Acid': '#b09b16',
+  'Alcohol/Fermented': '#9b385a',
+  'Green/Vegetative': '#468449',
+  'Stale/Papery': '#8c8375',
+  Earthy: '#85624b',
+  Chemical: '#64748b',
+  Roasted: '#ad503b',
+  Cereal: '#b19454',
+  Nutty: '#a38a61',
+  Cocoa: '#795548',
+  Amplitude: '#287f85',
+  Mouthfeel: '#597798',
+  'Osito-specific': '#707070',
   Fruity: '#ef4444',
   Citrus: '#facc15',
   Floral: '#ec4899',

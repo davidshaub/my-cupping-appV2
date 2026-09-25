@@ -1,10 +1,12 @@
-import { RADAR_LABELS } from '../constants.js';
+import { RADAR_LABELS, CATEGORY_COLORS } from '../constants.js';
+import { LEXICON_CATEGORIES } from './lexicon.js';
 import {
   calculateTotal,
   getCategoryForItem
 } from './cupping.js';
 import {
   translate,
+  translateCategory,
   translateLevel,
   translateProcessing,
   translateRadarLabel,
@@ -44,6 +46,7 @@ const COLORS = {
 };
 
 const BALANCE_COLORS = {
+  ...CATEGORY_COLORS,
   Fruity: '#ef4444',
   Citrus: '#facc15',
   Floral: '#ec4899',
@@ -978,7 +981,7 @@ const drawRadar = (pdf, sample, language, x, y) => {
 };
 
 const getBalanceSegments = (sample) => {
-  const categoryOrder = ['Fruity', 'Citrus', 'Sweet', 'Floral', 'Nutty/Cocoa', 'Spices'];
+  const categoryOrder = LEXICON_CATEGORIES;
   const includedCategories = new Set(categoryOrder);
   const tags = [
     ...(sample.notes?.fragAromaTags ?? []),
@@ -1046,18 +1049,17 @@ const drawBalance = (pdf, sample, language, x, y) => {
   const legendY = y + 172;
   const legendWidth = 145;
   const shown = segments.slice(0, 4);
-  const totalLabelWidth = shown.reduce((sum, { category }) => sum + pdf.measureText(category.toUpperCase(), 5, 'black', 0.05) + 13, 0);
-  let legendX = x + Math.max(0, (legendWidth - totalLabelWidth) / 2);
-  shown.forEach(({ category }) => {
-    pdf.circle(legendX + 3, legendY - 1.5, 3, { fill: BALANCE_COLORS[category] || BALANCE_COLORS.Structure });
-    pdf.text(category.toUpperCase(), legendX + 10, legendY, {
+  shown.forEach(({ category }, index) => {
+    const legendX = x + (index % 2) * (legendWidth / 2);
+    const rowY = legendY + Math.floor(index / 2) * 10;
+    pdf.circle(legendX + 3, rowY - 1.5, 3, { fill: BALANCE_COLORS[category] || BALANCE_COLORS.Structure });
+    pdf.text(translateCategory(language, category).toUpperCase(), legendX + 10, rowY, {
       size: 5,
       font: 'black',
       color: COLORS.ink,
-      maxWidth: 46,
+      maxWidth: legendWidth / 2 - 12,
       letterSpacing: 0.05
     });
-    legendX += pdf.measureText(category.toUpperCase(), 5, 'black', 0.05) + 18;
   });
 };
 
@@ -1089,7 +1091,11 @@ const drawScoreGrid = (pdf, sample, language, x, y, width) => {
   });
 };
 
-const tagStyle = (tag) => TAG_STYLES[getCategoryForItem(tag) || 'Negative'] || TAG_STYLES.Negative;
+const tagStyle = (tag) => {
+  const category = getCategoryForItem(tag);
+  if (['Nutty', 'Cocoa', 'Cereal'].includes(category)) return TAG_STYLES['Nutty/Cocoa'];
+  return TAG_STYLES[category || 'Negative'] || TAG_STYLES.Negative;
+};
 
 const drawTagSection = (pdf, label, tags, language, x, y, width, maxRows = 2) => {
   pdf.text(label.toUpperCase(), x, y, {

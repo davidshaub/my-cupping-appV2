@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Icon from './Icon';
-import { getBaseTag, getSmartMatch, getTagStyle } from '../lib/cupping';
+import { getSmartMatch, getTagStyle } from '../lib/cupping';
 import { translateCategory, translateTag } from '../i18n';
+import { canonicalTag, tagSearchText } from '../lib/lexicon';
 
 const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,6 +10,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
   const [smartMatch, setSmartMatch] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const inputRef = useRef(null);
 
   const flatOptions = useMemo(() => Object.values(options).flat(), [options]);
@@ -21,13 +23,13 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
     const timer = setTimeout(async () => {
       if (
         searchTerm.length >= 3 &&
-        !flatOptions.some((o) => `${o} ${translateTag(language, o)}`.toLowerCase().includes(searchTerm.toLowerCase()))
+        !flatOptions.some((o) => `${tagSearchText(o)} ${translateTag(language, o)}`.toLowerCase().includes(searchTerm.toLowerCase()))
       ) {
         setIsLoading(true);
         setSmartMatch(null);
         const match = await getSmartMatch(
           searchTerm,
-          flatOptions.filter((o) => !tags.some((t) => getBaseTag(t) === o)),
+          flatOptions.filter((o) => !tags.some((t) => canonicalTag(t) === canonicalTag(o))),
           controller.signal
         );
         if (isCurrent) {
@@ -47,26 +49,33 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
     };
   }, [searchTerm, flatOptions, tags, language]);
 
-  const filtered = flatOptions.filter(
-    (o) => `${o} ${translateTag(language, o)}`.toLowerCase().includes(searchTerm.toLowerCase()) && !tags.some((t) => getBaseTag(t) === o)
+  const filtered = (selectedCategory ? options[selectedCategory] ?? [] : flatOptions).filter(
+    (o) => `${tagSearchText(o)} ${translateTag(language, o)}`.toLowerCase().includes(searchTerm.toLowerCase()) && !tags.some((t) => canonicalTag(t) === canonicalTag(o))
   );
 
   useEffect(() => {
     setHighlightIndex(0);
-  }, [searchTerm]);
+  }, [searchTerm, selectedCategory, options]);
 
-  const visibleSuggestions = filtered.slice(0, 8);
-  const smartSuggestionFallback = smartMatch && !filtered.includes(smartMatch) ? [smartMatch] : [];
+  useEffect(() => {
+    setSelectedCategory(null);
+    setSmartMatch(null);
+  }, [options]);
+
+  const visibleSuggestions = selectedCategory ? filtered : filtered.slice(0, 8);
+  const smartSuggestionFallback = smartMatch && flatOptions.includes(smartMatch) && !tags.some((tag) => canonicalTag(tag) === canonicalTag(smartMatch)) && !filtered.includes(smartMatch) ? [smartMatch] : [];
   const highlightPool = visibleSuggestions.length > 0 ? visibleSuggestions : smartSuggestionFallback;
 
   const handleSelect = (value) => {
     onToggle(value);
     setSearchTerm('');
+    setSelectedCategory(null);
     setIsFocused(true);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const selectHighlightedSuggestion = () => {
+    if (!searchTerm && !selectedCategory) return false;
     if (highlightPool.length === 0) return false;
     handleSelect(highlightPool[highlightIndex] ?? highlightPool[0]);
     return true;
@@ -106,13 +115,14 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                 ref={inputRef}
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setSelectedCategory(null); }}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 250)}
                 onKeyDown={handleKeyDown}
                 enterKeyHint="search"
                 inputMode="search"
                 autoComplete="off"
+                aria-label={label}
                 placeholder={t('search')}
                 className="bg-transparent border-none p-0 text-sm font-bold text-stone-800 focus:ring-0 w-full placeholder:text-stone-300 outline-none"
               />
@@ -122,13 +132,22 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                 </div>
               )}
             </div>
-            {isFocused && searchTerm.length > 0 && (
+            {isFocused && (
               <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border-2 border-stone-200 rounded-3xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto p-1">
-                {visibleSuggestions.length > 0 ? (
+                {searchTerm.length === 0 && !selectedCategory ? (
+                  <div className="flex flex-wrap gap-2 p-3">
+                    {categories.map((cat) => (
+                      <button key={cat} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setSelectedCategory(cat); inputRef.current?.focus(); }} className="px-3 py-2 rounded-lg bg-stone-100 text-stone-700 text-xs font-bold">
+                        {translateCategory(language, cat)}
+                      </button>
+                    ))}
+                  </div>
+                ) : visibleSuggestions.length > 0 ? (
                   visibleSuggestions.map((option) => {
                     const isActiveSuggestion = highlightPool[highlightIndex] === option;
                     return (
                       <button
+                        type="button"
                         key={option}
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleSelect(option)}
@@ -144,6 +163,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                   })
                 ) : smartSuggestionFallback.length > 0 ? (
                   <button
+                    type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleSelect(smartSuggestionFallback[0])}
                     aria-selected={highlightPool[highlightIndex] === smartSuggestionFallback[0]}
@@ -166,9 +186,10 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                     <div className="flex flex-wrap gap-2">
                       {categories.map((cat) => (
                         <button
+                          type="button"
                           key={cat}
                           onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => handleSelect(cat)}
+                          onClick={() => { setSearchTerm(''); setSelectedCategory(cat); inputRef.current?.focus(); }}
                           className="px-3 py-2 rounded-lg bg-stone-100 text-stone-600 font-black text-[10px] uppercase tracking-tighter hover:bg-stone-200 transition-colors"
                         >
                           {translateCategory(language, cat)}
