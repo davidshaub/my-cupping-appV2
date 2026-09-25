@@ -13,6 +13,10 @@ const UI_TEXT = {
     yesGoBack: 'Yes, go back',
     cuppingLab: 'Cupping Lab',
     selectSampleCount: 'Select sample count to begin',
+    sampleCount: 'Number of coffees',
+    decreaseSampleCount: 'Decrease coffee count',
+    increaseSampleCount: 'Increase coffee count',
+    addCoffee: 'Add Coffee',
     startSession: 'Start Session',
     upload: 'Upload',
     session: 'Session',
@@ -125,6 +129,10 @@ const UI_TEXT = {
     handsLogo: 'Osito logo'
   },
   es: {
+    sampleCount: 'Cantidad de cafés',
+    decreaseSampleCount: 'Disminuir cantidad de cafés',
+    increaseSampleCount: 'Aumentar cantidad de cafés',
+    addCoffee: 'Agregar café',
     bwMode: 'Modo B&N',
     on: 'Sí',
     off: 'No',

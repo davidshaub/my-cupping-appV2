@@ -306,9 +306,23 @@ const App = () => {
     setAppState('report');
   };
 
+  const normalizeSampleCount = (value) => {
+    const count = Number(value);
+    return Number.isSafeInteger(count) && count >= 1 ? count : 1;
+  };
+
+  const addCoffee = () => {
+    setSamples((current) => {
+      const nextId = current.reduce((max, sample) => Math.max(max, Number(sample.id) || 0), 0) + 1;
+      return [...current, { ...initializeSamples(1)[0], id: nextId }];
+    });
+    setNumSamples(samples.length + 1);
+    setMetadataTableSort(null);
+  };
+
   const startSession = () => {
     const startedAt = new Date().toLocaleString();
-    const nextSamples = initializeSamples(numSamples);
+    const nextSamples = initializeSamples(normalizeSampleCount(numSamples));
     setSessionStartTime(startedAt);
     setSamples(nextSamples);
     setActiveSampleIndex(0);
@@ -318,7 +332,7 @@ const App = () => {
 
   const goToMetadata = (origin) => {
     const nextStartTime = sessionStartTime || new Date().toLocaleString();
-    const nextSamples = samples.length === 0 ? initializeSamples(numSamples) : samples;
+    const nextSamples = samples.length === 0 ? initializeSamples(normalizeSampleCount(numSamples)) : samples;
     if (!sessionStartTime) setSessionStartTime(nextStartTime);
     if (samples.length === 0) setSamples(nextSamples);
     if (activeSavedSessionId === null && nextSamples.length > 0) createAutosavedSession(nextSamples, nextStartTime);
@@ -1338,14 +1352,27 @@ const App = () => {
           <p className="text-stone-400 font-medium mb-8 md:mb-10 text-xs uppercase tracking-widest">{t('selectSampleCount')}</p>
           <div className="flex items-center justify-between bg-stone-100 rounded-2xl p-2 md:p-3 mb-8 md:mb-10 border border-stone-200 shadow-inner">
             <button
-              onClick={() => setNumSamples(Math.max(1, numSamples - 1))}
+              onClick={() => setNumSamples(Math.max(1, normalizeSampleCount(numSamples) - 1))}
+              aria-label={t('decreaseSampleCount')}
               className="w-12 h-12 md:w-14 md:h-14 bg-white shadow-sm flex items-center justify-center btn-stone-light"
             >
               <Icon name="minus" size={18} />
             </button>
-            <span className="text-4xl md:text-5xl font-black text-stone-900 tabular-nums">{numSamples}</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="1"
+              step="1"
+              aria-label={t('sampleCount')}
+              value={numSamples}
+              onChange={(e) => setNumSamples(e.target.value)}
+              onBlur={() => setNumSamples(normalizeSampleCount(numSamples))}
+              onFocus={(e) => e.target.select()}
+              className="min-w-0 w-32 mx-2 bg-transparent text-center text-4xl md:text-5xl font-black text-stone-900 tabular-nums rounded-lg focus:outline-2 focus:outline-stone-900"
+            />
             <button
-              onClick={() => setNumSamples(numSamples + 1)}
+              onClick={() => setNumSamples(normalizeSampleCount(numSamples) + 1)}
+              aria-label={t('increaseSampleCount')}
               className="w-12 h-12 md:w-14 md:h-14 bg-white shadow-sm flex items-center justify-center btn-stone-light"
             >
               <Icon name="plus" size={18} />
@@ -1935,6 +1962,13 @@ const App = () => {
               </div>
             ))
           )}
+          <button
+            onClick={addCoffee}
+            className="w-full py-3 btn-stone-light border border-stone-300 flex items-center justify-center gap-2 font-bold"
+          >
+            <Icon name="plus" size={18} />
+            {t('addCoffee')}
+          </button>
           <button
             onClick={() => setAppState(metadataOrigin === 'report' ? 'report' : 'cupping')}
             className="w-[calc(100%-2rem)] md:w-full py-4 md:py-5 btn-stone-dark font-black text-base md:text-lg shadow-2xl fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 max-w-lg uppercase tracking-wider pb-safe"
