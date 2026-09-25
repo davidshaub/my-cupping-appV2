@@ -345,8 +345,17 @@ export const downloadCSV = (samples, sessionStartTime, sessionName) => {
     .replace(/\s+/g, '_');
   const safeSessionName = toSafeFilenamePart(sessionName);
   link.download = safeSessionName ? `${safeSessionName}.csv` : `Cupping_Report_${stamp}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  link.hidden = true;
+  document.body.appendChild(link);
+  try {
+    link.click();
+  } finally {
+    // Mobile browsers may retrieve the blob asynchronously after the click.
+    setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 60_000);
+  }
 };
 
 export const importSessionFromCSV = (csvText, filename) => {
