@@ -40,6 +40,18 @@ test('empty profiles and long words are supported', () => {
   assert.ok(wrapWheelText('abcdefghijklmnopqrstuvwxyz', 20, 10).every(line => line.length <= 3));
 });
 
+test('mobile descriptors wrap between words without fragmenting fruit names', () => {
+  const notes = {fragAromaTags: ['Sweet', 'Berry', 'Pineapple', 'Maple Syrup'], inCupTags: ['Berry', 'Strawberry', 'Raspberry']};
+  for (const width of [300, 320, 375, 560]) for (const language of ['en', 'es']) {
+    const wheel = layoutFlavorWheel(notes, {width, language});
+    for (const label of wheel.labels) {
+      if (language === 'en' && !label.name.includes(' ')) assert.deepEqual(label.lines, [label.name]);
+      const longest = Math.max(...label.lines.map(line => line.length * wheel.fontSize * 0.65));
+      assert.ok(label.side > 0 ? label.x + longest <= width : label.x - longest >= 0);
+    }
+  }
+});
+
 test('seven-category screenshot uses whole category names in a consistent key', () => {
   const notes = { fragAromaTags: ['Dried Banana', 'Grain', 'Cocoa'], inCupTags: ['Terracotta', 'Brown, Roast', 'Phosphoric', 'Herbal'] };
   for (const width of [300, 560]) for (const language of ['en', 'es']) {

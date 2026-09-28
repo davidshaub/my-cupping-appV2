@@ -29,7 +29,6 @@ const drawFooter = (pdf, language, logoImage, page = 1) => {
     const height = width * logoImage.height / logoImage.width;
     pdf.image(logoImage.name, (WIDTH - width) / 2, 585 - height / 2, width, height, 90);
   }
-  pdf.text(String(page), WIDTH - MARGIN, 590, { size: 6, color: '#666666', align: 'right' });
 };
 
 const drawIdentity = (pdf, sample, index, language) => {

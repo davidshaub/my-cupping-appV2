@@ -55,13 +55,13 @@ export const wheelColor = (category, outer = false, index = 0) => {
   return '#' + hex.slice(1).match(/../g).map((part) => Math.round(parseInt(part, 16) * (1 - fraction) + 255 * fraction).toString(16).padStart(2, '0')).join('');
 };
 
-export const wrapWheelText = (text, width, size, measure = (value, fontSize) => value.length * fontSize * 0.53) => {
+export const wrapWheelText = (text, width, size, measure = (value, fontSize) => value.length * fontSize * 0.53, breakLongWords = true) => {
   const lines = [];
   let line = '';
   for (const word of String(text).split(/\s+/)) {
     const candidate = line ? `${line} ${word}` : word;
     if (line && measure(candidate, size) > width) { lines.push(line); line = ''; }
-    if (measure(word, size) > width) {
+    if (breakLongWords && measure(word, size) > width) {
       if (line) { lines.push(line); line = ''; }
       for (const char of word) {
         if (line && measure(line + char, size) > width) { lines.push(line); line = ''; }
@@ -76,15 +76,17 @@ export const wrapWheelText = (text, width, size, measure = (value, fontSize) => 
 export const layoutFlavorWheel = (notes, { width = 560, language = 'en', measure } = {}) => {
   const profile = buildFlavorProfile(notes);
   const compact = width < 430;
-  const radius = compact ? 72 : 108;
-  const fontSize = compact ? 12 : 14;
+  const measureLabel = measure ?? ((value, size) => value.length * size * 0.65);
+  const longestWord = Math.max(1, ...profile.descriptors.flatMap(entry => translateTag(language, entry.name).split(/\s+/).map(word => measureLabel(word, 1))));
+  const fontSize = compact ? Math.min(11, (width / 2 - 71) / longestWord) : 14;
+  const radius = compact ? Math.min(72, Math.max(40, width / 2 - longestWord * fontSize - 31)) : 108;
   const centerX = width / 2;
   const labelX = centerX + radius + 23;
   const labelWidth = width - labelX - 5;
   const labels = profile.descriptors.map((entry) => {
     const angle = (entry.start + entry.end) / 2;
     const side = Math.cos(angle) >= 0 ? 1 : -1;
-    const lines = wrapWheelText(translateTag(language, entry.name), labelWidth, fontSize, measure);
+    const lines = wrapWheelText(translateTag(language, entry.name), labelWidth, fontSize, measureLabel, false);
     return { ...entry, angle, side, lines, height: lines.length * (fontSize + 2) + 15, desiredY: Math.sin(angle) * (radius + 18) };
   });
   const sides = [-1, 1].map((side) => labels.filter((label) => label.side === side).sort((a, b) => a.desiredY - b.desiredY));

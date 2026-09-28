@@ -11,7 +11,10 @@ test('PDF legend centers both short and long keys on the wheel', () => {
     const painter = {
       measureText: (text, size) => text.length * size * 0.5,
       fillRect() {}, strokeRect() {}, line() {}, polygon() {},
-      text(value, x, y, options) { if (y === 414) marks.push([x, x + this.measureText(value, options.size)]); },
+      text(value, x, y, options) {
+        assert.ok(!(x === 768 && y === 590), 'No PDF footer page number');
+        if (y === 414) marks.push([x, x + this.measureText(value, options.size)]);
+      },
       circle(x, y, radius) { if (y === 412 && radius === 2.5) marks.push([x - 3, x + 3]); },
       image(name, x, y, width, height, rotation) {
         assert.equal(rotation, 90);

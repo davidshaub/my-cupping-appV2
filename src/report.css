@@ -179,6 +179,13 @@
 }
 
 @media screen and (max-width: 700px) {
+  .cupping-toolbar { display: grid; grid-template-columns: 40px 40px minmax(0, 1fr) auto; gap: 8px; padding: 12px; }
+  .cupping-toolbar > button { min-width: 0; min-height: 40px; padding-left: 8px; padding-right: 8px; }
+  .cupping-toolbar > button > span { display: none; }
+  .cupping-toolbar > div:last-child { gap: 6px; }
+  .cupping-toolbar .eink-toggle { min-height: 40px; padding-left: 8px; padding-right: 8px; font-size: 9px; }
+  .cupping-toolbar .cupping-coffee-tabs { grid-row: 2; grid-column: 1 / -1; min-width: 0; width: 100%; padding: 6px 2px; scrollbar-width: thin; }
+  .cupping-coffee-tabs > button { flex: 0 0 auto; min-width: 44px; min-height: 40px; }
   .report-screen .visual-row,
   .report-screen .data-column {
     grid-template-columns: minmax(0, 1fr);

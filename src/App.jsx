@@ -2046,17 +2046,18 @@ const App = () => {
       {renderConfirmModal()}
       {renderSaveSessionModal()}
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
-        <header className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+        <header className="cupping-toolbar max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <button
             onClick={() => openConfirm(resetToHome)}
             className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-transform active:scale-90"
           >
             <Icon name="chevron-left" size={24} />
           </button>
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 flex-1 px-4">
+          <div className="cupping-coffee-tabs flex items-center gap-2 overflow-x-auto py-1 flex-1 px-4" role="group" aria-label={t('sample')}>
             {samples.map((s, idx) => (
               <button
                 key={idx}
+                aria-pressed={activeSampleIndex === idx}
                 onClick={() => setActiveSampleIndex(idx)}
                 className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                   activeSampleIndex === idx ? 'bg-stone-800 text-white shadow-lg scale-105' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
