@@ -12,7 +12,8 @@ import {
   translateRadarLabel,
   translateTag
 } from '../i18n.js';
-import { LineCapStyle, PDFDocument, rgb } from 'pdf-lib';
+import { LineCapStyle, PDFDocument, rgb, degrees } from 'pdf-lib';
+import { paintEditorialReport, paintReportContinuation } from './reportDesign.js';
 import fontkit from '@pdf-lib/fontkit';
 import inter400Url from '@fontsource/inter/files/inter-latin-400-normal.woff?url';
 import inter400ItalicUrl from '@fontsource/inter/files/inter-latin-400-italic.woff?url';
@@ -21,8 +22,8 @@ import inter600Url from '@fontsource/inter/files/inter-latin-600-normal.woff?url
 import inter700Url from '@fontsource/inter/files/inter-latin-700-normal.woff?url';
 import inter800Url from '@fontsource/inter/files/inter-latin-800-normal.woff?url';
 import inter900Url from '@fontsource/inter/files/inter-latin-900-normal.woff?url';
-import fraunces500Url from '@fontsource/fraunces/files/fraunces-latin-500-normal.woff?url';
-import fraunces900Url from '@fontsource/fraunces/files/fraunces-latin-900-normal.woff?url';
+import fraunces500Url from '@fontsource/libre-baskerville/files/libre-baskerville-latin-400-normal.woff?url';
+import fraunces900Url from '@fontsource/libre-baskerville/files/libre-baskerville-latin-700-normal.woff?url';
 
 const PAGE = {
   width: 792,
@@ -326,8 +327,13 @@ class PdfPainter {
     this.push(`q ${strokeColor(color)} ${fmt(lineWidth)} w 1 J ${commands.join(' ')} S Q`);
   }
 
-  image(name, x, y, width, height) {
-    this.push(`q ${fmt(width)} 0 0 ${fmt(height)} ${fmt(x)} ${fmt(this.y(y + height))} cm /${name} Do Q`);
+  image(name, x, y, width, height, rotation = 0) {
+    const angle = rotation * Math.PI / 180;
+    const a = width * Math.cos(angle), b = -width * Math.sin(angle);
+    const c = height * Math.sin(angle), d = height * Math.cos(angle);
+    const e = x + width / 2 - a / 2 - c / 2;
+    const f = this.y(y + height / 2) - b / 2 - d / 2;
+    this.push(`q ${fmt(a)} ${fmt(b)} ${fmt(c)} ${fmt(d)} ${fmt(e)} ${fmt(f)} cm /${name} Do Q`);
   }
 
   polygon(points, { fill = null, stroke = COLORS.line, lineWidth = 1 } = {}) {
@@ -398,8 +404,8 @@ const CANVAS_FONT = {
   extraBold: (size) => `800 ${size}px Inter, sans-serif`,
   black: (size) => `900 ${size}px Inter, sans-serif`,
   italic: (size) => `italic 400 ${size}px Inter, sans-serif`,
-  serif: (size) => `500 ${size}px Fraunces, serif`,
-  serifBold: (size) => `900 ${size}px Fraunces, serif`
+  serif: (size) => `400 ${size}px "Libre Baskerville", serif`,
+  serifBold: (size) => `700 ${size}px "Libre Baskerville", serif`
 };
 
 class CanvasPainter {
@@ -476,9 +482,15 @@ class CanvasPainter {
     this.pathPaint({ stroke: color, lineWidth });
   }
 
-  image(name, x, y, width, height) {
+  image(name, x, y, width, height, rotation = 0) {
     const source = this.images[name];
-    if (source) this.ctx.drawImage(source, x, y, width, height);
+    if (source) {
+      this.ctx.save();
+      this.ctx.translate(x + width / 2, y + height / 2);
+      this.ctx.rotate(rotation * Math.PI / 180);
+      this.ctx.drawImage(source, -width / 2, -height / 2, width, height);
+      this.ctx.restore();
+    }
   }
 
   polygon(points, options = {}) {
@@ -680,9 +692,14 @@ class VectorPdfPainter {
     });
   }
 
-  image(name, x, y, width, height) {
+  image(name, x, y, width, height, rotation = 0) {
     const image = this.images[name];
-    if (image) this.page.drawImage(image, { x, y: this.y(y + height), width, height });
+    const angle = rotation * Math.PI / 180;
+    if (image) this.page.drawImage(image, {
+      x: x + width / 2 - width * Math.cos(angle) / 2 - height * Math.sin(angle) / 2,
+      y: this.y(y + height / 2) + width * Math.sin(angle) / 2 - height * Math.cos(angle) / 2,
+      width, height, rotate: degrees(-rotation)
+    });
   }
 
   polygon(points, { fill = null, stroke = COLORS.line, lineWidth = 1, opacity = 1 } = {}) {
@@ -1230,32 +1247,7 @@ const paintSampleReport = (pdf, sample, index, {
   language = 'en',
   logoImage = null
 } = {}) => {
-  pdf.fillRect(0, 0, PAGE.width, PAGE.height, COLORS.white);
-  drawHeader(pdf, sessionStartTime, language);
-  drawIdentity(pdf, sample, index, language);
-
-  const leftX = PAGE.margin;
-  const rightX = 412;
-  const bodyY = 206;
-
-  drawRadar(pdf, sample, language, leftX, bodyY);
-  drawBalance(pdf, sample, language, leftX + 204, bodyY);
-
-  let tagY = bodyY;
-  tagY = drawTagSection(pdf, translate(language, 'fragranceAroma'), sample.notes?.fragAromaTags ?? [], language, rightX, tagY, 358, 2);
-  tagY = drawTagSection(pdf, translate(language, 'inCup'), sample.notes?.inCupTags ?? [], language, rightX, tagY + 3, 358, 2);
-  const negativeEndY = drawTagSection(
-    pdf,
-    translate(language, 'negative'),
-    sample.notes?.negativeTags ?? [],
-    language,
-    rightX,
-    tagY + 3,
-    358,
-    2
-  );
-  drawNotes(pdf, sample, language, rightX, Math.max(316, negativeEndY + 4), 358);
-  drawFooter(pdf, language, logoImage);
+  return paintEditorialReport(pdf, sample, index, { sessionStartTime, language, logoImage });
 };
 
 export const createSampleReportPdf = (sample, index, options = {}) => {
@@ -1384,13 +1376,24 @@ const FONT_ASSET_URLS = {
 };
 
 let vectorAssetPromise;
+let vectorAssetLogo;
+
+const fetchPdfAsset = async (url) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`PDF asset request failed (${response.status})`);
+  return new Uint8Array(await response.arrayBuffer());
+};
 
 const loadVectorAssets = (logoSrc) => {
-  if (!vectorAssetPromise) {
+  if (!vectorAssetPromise || vectorAssetLogo !== logoSrc) {
+    vectorAssetLogo = logoSrc;
     vectorAssetPromise = Promise.all([
-      Promise.all(Object.entries(FONT_ASSET_URLS).map(async ([name, url]) => [name, new Uint8Array(await (await fetch(url)).arrayBuffer())])),
-      logoSrc ? fetch(logoSrc).then((response) => response.arrayBuffer()).then((bytes) => new Uint8Array(bytes)) : null
-    ]).then(([fontEntries, logoBytes]) => ({ fontBytes: Object.fromEntries(fontEntries), logoBytes }));
+      Promise.all(Object.entries(FONT_ASSET_URLS).map(async ([name, url]) => [name, await fetchPdfAsset(url)])),
+      logoSrc ? fetchPdfAsset(logoSrc) : null
+    ]).then(([fontEntries, logoBytes]) => ({ fontBytes: Object.fromEntries(fontEntries), logoBytes })).catch(error => {
+      vectorAssetPromise = null;
+      throw error;
+    });
   }
   return vectorAssetPromise;
 };
@@ -1411,7 +1414,12 @@ const createVectorSampleReportPdf = async (sample, index, options, assets) => {
   }
   const page = document.addPage([PAGE.width, PAGE.height]);
   const painter = new VectorPdfPainter(page, fonts, images);
-  paintSampleReport(painter, sample, index, { ...options, logoImage });
+  let remaining = paintSampleReport(painter, sample, index, { ...options, logoImage });
+  let pageNumber = 1;
+  while (remaining.length) {
+    const nextPage = document.addPage([PAGE.width, PAGE.height]);
+    remaining = paintReportContinuation(new VectorPdfPainter(nextPage, fonts, images), remaining, { ...options, logoImage, sampleName: sampleDisplayName(sample, index, options.language) }, ++pageNumber);
+  }
   return new Uint8Array(await document.save());
 };
 
@@ -1622,7 +1630,7 @@ const buildRasterReportPdfSet = async (samples, {
   };
 };
 
-const buildVectorReportPdfSet = async (samples, {
+export const buildVectorReportPdfSet = async (samples, {
   sessionStartTime = '',
   sessionName = '',
   language = 'en',
@@ -1654,7 +1662,18 @@ export const downloadReportPdfZip = async (samples, options = {}) => {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 
   return { fileCount: files.length, zipFilename: downloadName };
+};
+
+export const buildCombinedReportPdf = async (samples, options = {}) => {
+  const { files } = await buildVectorReportPdfSet(samples, options);
+  const combined = await PDFDocument.create();
+  for (const file of files) {
+    const source = await PDFDocument.load(file.data);
+    const pages = await combined.copyPages(source, source.getPageIndices());
+    pages.forEach((page) => combined.addPage(page));
+  }
+  return combined.save();
 };

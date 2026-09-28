@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Wheel layout checks</title>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import FlavorWheel from '../src/components/FlavorWheel.jsx';
+import { translate } from '../src/i18n.js';
+import '@fontsource/libre-baskerville/latin-700.css';
+import '@fontsource/inter/latin-400.css';
+import '../src/report.css';
+const cases = [
+  {fragAromaTags: ['Dried Banana', 'Grain', 'Cocoa'], inCupTags: ['Terracotta', 'Brown, Roast', 'Phosphoric', 'Herbal']},
+  {fragAromaTags: ['Raspberry', 'Molasses'], inCupTags: ['Caramel', 'Almond', 'Peanuts']}
+];
+createRoot(document.getElementById('root')).render(React.createElement('main', {style:{maxWidth:600,margin:'32px auto',fontFamily:'Inter, sans-serif'}}, cases.map((notes,i)=>React.createElement('section', {key:i,style:{padding:'16px 0',borderBottom:'1px solid #ddd'}},React.createElement(FlavorWheel,{notes,language:'en',einkMode:false,t:key=>translate('en',key)})))));
+</script></html>

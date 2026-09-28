@@ -11,14 +11,13 @@ import {
   importSessionFromCSV,
   initializeSamples
 } from './lib/cupping';
-import DonutChart from './components/DonutChart';
+import FlavorWheel from './components/FlavorWheel';
 import Icon from './components/Icon';
 import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
 import HandsLogo from '../assets/hands.png';
-import HandsPrintLogo from '../assets/hands-print-clean.png';
 import LevelSelector from './components/LevelSelector';
 import {
   translate,
@@ -51,13 +50,6 @@ const LanguageToggle = ({ language, onToggle, t, compact = false, className = ''
     {!compact && <span className="eink-toggle-state">{language === 'en' ? 'Español' : 'English'}</span>}
   </button>
 );
-
-const escapeHtml = (value) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 
 const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther'];
 const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
@@ -95,12 +87,17 @@ const App = () => {
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [isExportingPdfs, setIsExportingPdfs] = useState(false);
+  const [preparedPdf, setPreparedPdf] = useState(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const [sampleDrag, setSampleDrag] = useState(null);
   const importInputRef = useRef(null);
   const metadataTableBodyRef = useRef(null);
   const metadataTableSelectingRef = useRef(false);
   const sampleDragRef = useRef(null);
+
+  useEffect(() => () => {
+    if (preparedPdf) URL.revokeObjectURL(preparedPdf.url);
+  }, [preparedPdf]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -165,9 +162,6 @@ const App = () => {
   const isEinkMode = displayMode === 'eink';
   const t = (key) => translate(language, key);
   const reportRadarSize = isMobile ? 260 : isTablet ? 280 : 300;
-  const reportDonutSize = isMobile ? 150 : isTablet ? 170 : 180;
-  const reportRadarVerticalLabelSpace = reportRadarSize <= 260 ? 26 : 32;
-  const reportBalanceOffset = isMobile ? 0 : reportRadarVerticalLabelSpace + (reportRadarSize - reportDonutSize) / 2;
 
   const openConfirm = (action) => setConfirmDialog({ open: true, onConfirm: action });
   const closeConfirm = () => setConfirmDialog({ open: false, onConfirm: null });
@@ -372,256 +366,20 @@ const App = () => {
     }
   };
 
-  const printAllPdf = () => {
-    const title = activeSessionName.trim() || `${t('report')} ${new Date().toLocaleString()}`;
-    const pages = Array.from(document.querySelectorAll('.report-pages .sample-spec-sheet'));
-    const printWindow = window.open('', '_blank');
-
-    if (!printWindow || pages.length === 0) {
-      const prev = document.title;
-      document.title = title;
-      window.print();
-      setTimeout(() => {
-        document.title = prev;
-      }, 500);
-      return;
+  const printAllPdf = async () => {
+    if (isExportingPdfs || samples.length === 0) return;
+    setIsExportingPdfs(true);
+    try {
+      const { buildCombinedReportPdf } = await import('./lib/pdfReport');
+      const bytes = await buildCombinedReportPdf(samples, { sessionStartTime, language, logoSrc: HandsLogo });
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      setPreparedPdf({ url, name: `${(activeSessionName || 'Cupping report').replace(/[<>:"/\\|?*]/g, '_')}.pdf` });
+    } catch (error) {
+      console.error(error);
+      window.alert(t('pdfExportError'));
+    } finally {
+      setIsExportingPdfs(false);
     }
-
-    const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map((node) => (node.tagName === 'LINK' ? `<link rel="stylesheet" href="${escapeHtml(node.href)}">` : node.outerHTML))
-      .join('\n');
-    const displayModeAttr = document.documentElement.dataset.displayMode ? ` data-display-mode="${escapeHtml(document.documentElement.dataset.displayMode)}"` : '';
-    const pageMarkup = pages
-      .map((page) => page.outerHTML.replace(/<img([^>]*?)src="[^"]*"([^>]*?)>/g, `<img$1src="${escapeHtml(HandsPrintLogo)}"$2>`))
-      .join('\n');
-
-    printWindow.document.open();
-    printWindow.document.write(`<!doctype html>
-<html lang="${escapeHtml(language)}"${displayModeAttr}>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <base href="${escapeHtml(window.location.href)}">
-  <title>${escapeHtml(title)}</title>
-  ${styleTags}
-  <style>
-    @page {
-      size: letter landscape;
-      margin: 0.3in;
-    }
-
-    * {
-      box-sizing: border-box;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    html,
-    body {
-      width: auto;
-      min-width: 0;
-      min-height: 0;
-      padding: 0;
-      margin: 0;
-      overflow: visible;
-      background: #ffffff;
-    }
-
-    body {
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #1f2b23;
-    }
-
-    .print-document {
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      background: #ffffff;
-    }
-
-    .print-hidden,
-    .report-title,
-    .report-signoff,
-    .report-logo {
-      display: none !important;
-    }
-
-    .print-only {
-      display: block !important;
-    }
-
-    .sample-spec-sheet {
-      width: 100% !important;
-      max-width: none !important;
-      min-width: 0 !important;
-      height: 6.85in !important;
-      min-height: 6.85in !important;
-      max-height: 6.85in !important;
-      padding: 0 0 0.16in 0 !important;
-      margin: 0 !important;
-      overflow: hidden !important;
-      border: 0 !important;
-      background: #ffffff !important;
-      box-shadow: none !important;
-      display: grid !important;
-      grid-template-rows: auto auto 1fr auto !important;
-      gap: 0.12in !important;
-      break-before: auto !important;
-      break-after: auto !important;
-      break-inside: avoid !important;
-      page-break-before: auto !important;
-      page-break-after: auto !important;
-      page-break-inside: avoid !important;
-    }
-
-    .sample-spec-sheet + .sample-spec-sheet {
-      break-before: page !important;
-      page-break-before: always !important;
-    }
-
-    .sample-spec-sheet * {
-      break-inside: avoid !important;
-      page-break-inside: avoid !important;
-    }
-
-    .print-page-header {
-      display: flex !important;
-      align-items: flex-start !important;
-      justify-content: space-between !important;
-      gap: 0.24in !important;
-      border-bottom: 1.4px solid #1c1917 !important;
-      padding-bottom: 0.12in !important;
-    }
-
-    .print-page-footer {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      gap: 0.03in !important;
-      width: 100% !important;
-      margin-top: 0.02in !important;
-      padding-top: 0.07in !important;
-      border-top: 1.4px solid #1c1917 !important;
-      text-align: center !important;
-    }
-
-    .print-footer-text {
-      max-width: 100% !important;
-      margin: 0 !important;
-      overflow: hidden !important;
-      color: #1f2b23 !important;
-      font-size: 8.5px !important;
-      font-weight: 800 !important;
-      letter-spacing: 0.08em !important;
-      line-height: 1.2 !important;
-      text-align: center !important;
-      text-transform: uppercase !important;
-      white-space: nowrap !important;
-    }
-
-    .print-identity-block {
-      margin: 0 !important;
-    }
-
-    .print-spec-grid,
-    .spec-grid {
-      display: grid !important;
-      grid-template-columns: 4.85in 1fr !important;
-      gap: 0.25in !important;
-      margin-top: 0 !important;
-      align-items: start !important;
-    }
-
-    .print-visual-row,
-    .visual-row {
-      display: flex !important;
-      flex-direction: row !important;
-      align-items: flex-start !important;
-      justify-content: flex-start !important;
-      gap: 0.16in !important;
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border-bottom: none !important;
-    }
-
-    .data-column {
-      gap: 0.18in !important;
-    }
-
-    .print-tag-sections {
-      gap: 0.14in !important;
-    }
-
-    .print-tag-sections > div {
-      margin: 0 !important;
-      padding-bottom: 0.03in !important;
-    }
-
-    .print-tag-sections > div > div {
-      max-height: 0.72in !important;
-      overflow: hidden !important;
-    }
-
-    .print-notes-block {
-      margin-top: 0 !important;
-      padding-top: 0.1in !important;
-    }
-
-    .print-notes-body {
-      max-height: 1.05in !important;
-      overflow: hidden !important;
-      padding-right: 0 !important;
-    }
-
-    .print-logo {
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      width: 100% !important;
-      height: 0.86in !important;
-      margin-top: 0 !important;
-      overflow: hidden !important;
-    }
-
-    .print-logo img {
-      display: block !important;
-      width: auto !important;
-      height: 0.78in !important;
-      max-width: none !important;
-      max-height: none !important;
-      object-fit: contain !important;
-      transform: none !important;
-      transform-origin: center center !important;
-      image-rendering: auto !important;
-    }
-  </style>
-</head>
-<body>
-  <main class="print-document">
-    ${pageMarkup}
-  </main>
-  <script>
-    const waitForImages = () => Promise.all(Array.from(document.images).map((img) => (
-      img.complete ? Promise.resolve() : new Promise((resolve) => {
-        img.addEventListener('load', resolve, { once: true });
-        img.addEventListener('error', resolve, { once: true });
-      })
-    )));
-    const waitForFonts = document.fonts ? document.fonts.ready : Promise.resolve();
-    Promise.all([waitForImages(), waitForFonts]).then(() => {
-      setTimeout(() => {
-        window.focus();
-        window.print();
-      }, 250);
-    });
-    window.addEventListener('afterprint', () => {
-      setTimeout(() => window.close(), 500);
-    });
-  </script>
-</body>
-</html>`);
-    printWindow.document.close();
   };
 
   const downloadPdfSet = async () => {
@@ -634,7 +392,7 @@ const App = () => {
         sessionStartTime,
         sessionName: activeSessionName,
         language,
-        logoSrc: HandsPrintLogo
+        logoSrc: HandsLogo
       });
     } catch (err) {
       console.error(err);
@@ -2013,6 +1771,24 @@ const App = () => {
       <div className="report-screen min-h-screen bg-stone-100 p-4 md:p-8 relative">
         {renderConfirmModal()}
         {renderSaveSessionModal()}
+        {preparedPdf && <div className="pdf-ready-backdrop print-hidden">
+          <section role="dialog" aria-modal="true" aria-labelledby="pdf-ready-title" className="pdf-ready-dialog" onKeyDown={event => {
+            if (event.key === 'Escape') setPreparedPdf(null);
+            if (event.key === 'Tab') {
+              const controls = event.currentTarget.querySelectorAll('button, a');
+              if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls[controls.length - 1].focus(); }
+              else if (!event.shiftKey && document.activeElement === controls[controls.length - 1]) { event.preventDefault(); controls[0].focus(); }
+            }
+          }}>
+            <button type="button" className="pdf-ready-close" onClick={() => setPreparedPdf(null)} aria-label={t('closePdf')} autoFocus><Icon name="x" size={20} /></button>
+            <h2 id="pdf-ready-title">{t('pdfReady')}</h2>
+            <p>{preparedPdf.name}</p>
+            <div className="pdf-ready-actions">
+              <a href={preparedPdf.url} download={preparedPdf.name}><Icon name="download" size={18} />{t('downloadPdf')}</a>
+              <a href={preparedPdf.url} target="_blank" rel="noopener noreferrer"><Icon name="printer" size={18} />{t('openPdf')}</a>
+            </div>
+          </section>
+        </div>}
         <div className="max-w-[1400px] mx-auto space-y-4 pb-28 md:pb-20 report-container">
           <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
@@ -2097,19 +1873,19 @@ const App = () => {
                     <div className="print-page-date">{sessionStartTime}</div>
                   </div>
                   <div className="print-identity-block flex flex-col sm:flex-row items-stretch justify-between border border-stone-900 mb-6">
-                    <div className="flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
-                      <div className="flex items-center gap-3 mb-1">
+                    <div className="report-identity-copy flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
+                      <div className="report-identity-id-row flex items-center gap-3 mb-1">
                         {!s.lotName && (
                           <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">{t('sample')} 0{idx + 1}</span>
                         )}
-                        <span className="inline-flex items-center gap-2 text-base font-black text-stone-900 uppercase tracking-tight px-2 py-1 rounded-xl bg-stone-100 border border-stone-200">
+                        <span className="report-coffee-id text-base font-bold text-stone-900">
                           {s.ositoId || t('noId')}
                         </span>
                       </div>
-                      <h2 className="text-xl sm:text-2xl md:text-4xl font-black text-stone-900 tracking-tighter uppercase leading-tight">
+                      <h2 className="report-coffee-name text-xl sm:text-2xl md:text-4xl font-bold text-stone-900 leading-tight">
                         {s.lotName ? s.lotName : `${t('sample')} 0${idx + 1}`}
                       </h2>
-                      <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-2">
+                      <div className="report-identity-metadata flex flex-wrap items-center gap-4 sm:gap-6 pt-2">
                         <div className="flex flex-col">
                           <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">{t('processing')}</span>
                           <span className="text-[12px] font-bold text-stone-600 uppercase">
@@ -2147,12 +1923,10 @@ const App = () => {
                         <SpiderGraph scores={s.scores} size={reportRadarSize} einkMode={isEinkMode} language={language} />
                       </div>
                       <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
-                        <p className="section-header mb-6">{t('sensoryBalance')}</p>
-                        <div className="report-balance-align" style={{ '--report-balance-offset': `${reportBalanceOffset}px` }}>
-                          <DonutChart
-                            tags={[...s.notes.fragAromaTags, ...s.notes.inCupTags]}
-                            size={reportDonutSize}
-                            className="print-donut-chart"
+                        <p className="section-header mb-6">{t('flavorProfile')}</p>
+                        <div className="report-wheel-panel">
+                          <FlavorWheel
+                            notes={s.notes}
                             einkMode={isEinkMode}
                             language={language}
                             t={t}
@@ -2171,14 +1945,14 @@ const App = () => {
                       <div className="pt-6 border-t border-stone-100 print-notes-block">
                         <p className="section-header text-stone-900 mb-3">{t('otherObservations')}</p>
                         {(s.notes.acidityLevel || s.notes.sweetnessLevel) && (
-                          <div className="flex flex-wrap gap-2 mb-2 text-[11px] font-black text-stone-800 print:text-[10px]">
+                          <div className="report-observation-levels flex flex-wrap gap-2 mb-2 text-stone-800">
                             {s.notes.acidityLevel && (
-                              <span className="px-3 py-1 rounded-lg bg-stone-100 border border-stone-200">
+                              <span>
                                 {t('acidity')}: {translateLevel(language, s.notes.acidityLevel)}
                               </span>
                             )}
                             {s.notes.sweetnessLevel && (
-                              <span className="px-3 py-1 rounded-lg bg-stone-100 border border-stone-200">
+                              <span>
                                 {t('sweetness')}: {translateLevel(language, s.notes.sweetnessLevel)}
                               </span>
                             )}
