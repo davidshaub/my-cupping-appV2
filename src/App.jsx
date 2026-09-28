@@ -12,6 +12,7 @@ import {
   initializeSamples
 } from './lib/cupping';
 import FlavorWheel from './components/FlavorWheel';
+import { reportPdfFilename } from './lib/reportFilenames';
 import Icon from './components/Icon';
 import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
@@ -373,7 +374,7 @@ const App = () => {
       const { buildCombinedReportPdf } = await import('./lib/pdfReport');
       const bytes = await buildCombinedReportPdf(samples, { sessionStartTime, language, logoSrc: HandsLogo });
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-      setPreparedPdf({ url, name: `${(activeSessionName || 'Cupping report').replace(/[<>:"/\\|?*]/g, '_')}.pdf` });
+      setPreparedPdf({ url, name: reportPdfFilename(samples, activeSessionName) });
     } catch (error) {
       console.error(error);
       window.alert(t('pdfExportError'));

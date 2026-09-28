@@ -1,5 +1,6 @@
 import { RADAR_LABELS, CATEGORY_COLORS } from '../constants.js';
 import { LEXICON_CATEGORIES } from './lexicon.js';
+import { safeFilenamePart, uniquePdfFilename } from './reportFilenames.js';
 import {
   calculateTotal,
   getCategoryForItem
@@ -1421,24 +1422,6 @@ const createVectorSampleReportPdf = async (sample, index, options, assets) => {
     remaining = paintReportContinuation(new VectorPdfPainter(nextPage, fonts, images), remaining, { ...options, logoImage, sampleName: sampleDisplayName(sample, index, options.language) }, ++pageNumber);
   }
   return new Uint8Array(await document.save());
-};
-
-const safeFilenamePart = (value, fallback) => {
-  const cleaned = toAscii(value || fallback)
-    .replace(/[<>:"/\\|?*]+/g, '')
-    .replace(/\.+$/g, '')
-    .replace(/\s+/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 72);
-  return cleaned || fallback;
-};
-
-const uniquePdfFilename = (sample, index, used) => {
-  const base = safeFilenamePart(sample.ositoId || sample.lotName, `Sample_${String(index + 1).padStart(2, '0')}`);
-  const count = (used.get(base) ?? 0) + 1;
-  used.set(base, count);
-  return count === 1 ? `${base}.pdf` : `${base}_${count}.pdf`;
 };
 
 const zipFilename = (sessionName) => {
