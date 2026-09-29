@@ -1573,3 +1573,10 @@ h3 {
     page-break-before: always !important;
   }
 }
+/* Trait browsing is explicit; the input remains dedicated to text search. */
+.lexicon-browse-toggle { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid #bbb; border-radius: 6px; background: #fff; color: #000; }
+.lexicon-browse-toggle:hover, .lexicon-browse-toggle[aria-expanded='true'] { background: #eee; border-color: #000; }
+.lexicon-browse-toggle:focus-visible, .lexicon-category-header button:focus-visible { outline: 2px solid #000; outline-offset: 2px; }
+.lexicon-category-header { position: sticky; top: -4px; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; background: #fff; border-bottom: 1px solid #ddd; font-size: 12px; font-weight: 600; }
+.lexicon-category-header button { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; color: #000; flex-shrink: 0; }
+.lexicon-category-header > span { overflow-wrap: anywhere; }

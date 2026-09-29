@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Icon from './Icon';
 import { getSmartMatch, getTagStyle } from '../lib/cupping';
 import { translateCategory, translateTag } from '../i18n';
@@ -11,7 +11,15 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
   const [isLoading, setIsLoading] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [isBrowsing, setIsBrowsing] = useState(false);
+  const panelId = useId();
   const inputRef = useRef(null);
+  const browseRef = useRef(null);
+  const backRef = useRef(null);
+
+  useEffect(() => {
+    if (isBrowsing && selectedCategory) backRef.current?.focus();
+  }, [isBrowsing, selectedCategory]);
 
   const flatOptions = useMemo(() => Object.values(options).flat(), [options]);
   const categories = useMemo(() => Object.keys(options), [options]);
@@ -50,7 +58,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
   }, [searchTerm, flatOptions, tags, language]);
 
   const filtered = (selectedCategory ? options[selectedCategory] ?? [] : flatOptions).filter(
-    (o) => `${tagSearchText(o)} ${translateTag(language, o)}`.toLowerCase().includes(searchTerm.toLowerCase()) && !tags.some((t) => canonicalTag(t) === canonicalTag(o))
+    (o) => (isBrowsing || `${tagSearchText(o)} ${translateTag(language, o)}`.toLowerCase().includes(searchTerm.toLowerCase())) && !tags.some((t) => canonicalTag(t) === canonicalTag(o))
   );
 
   useEffect(() => {
@@ -59,6 +67,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
 
   useEffect(() => {
     setSelectedCategory(null);
+    setIsBrowsing(false);
     setSmartMatch(null);
   }, [options]);
 
@@ -70,11 +79,13 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
     onToggle(value);
     setSearchTerm('');
     setSelectedCategory(null);
+    setIsBrowsing(false);
     setIsFocused(true);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const selectHighlightedSuggestion = () => {
+    if (!isFocused || (isBrowsing && !selectedCategory)) return false;
     if (!searchTerm && !selectedCategory) return false;
     if (highlightPool.length === 0) return false;
     handleSelect(highlightPool[highlightIndex] ?? highlightPool[0]);
@@ -87,6 +98,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
   };
 
   const handleKeyDown = (e) => {
+    if (!isFocused || (isBrowsing && !selectedCategory)) return;
     if (highlightPool.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -104,7 +116,23 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
   return (
     <div className="space-y-3 relative">
       <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest block leading-none">{label}</label>
-          <form className="relative" onSubmit={handleSearchSubmit}>
+          <form className="relative" onSubmit={handleSearchSubmit}
+            onFocus={() => setIsFocused(true)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setIsFocused(false);
+                setIsBrowsing(false);
+                setSelectedCategory(null);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setIsFocused(false);
+                setIsBrowsing(false);
+                setSelectedCategory(null);
+              }
+            }}>
             <div
               className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all shadow-inner ${
                 isFocused ? 'bg-white border-stone-300' : 'bg-stone-50 border-transparent'
@@ -115,29 +143,37 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                 ref={inputRef}
                 type="text"
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setSelectedCategory(null); }}
+                onChange={(e) => { setSearchTerm(e.target.value); setSelectedCategory(null); setIsBrowsing(false); setIsFocused(true); }}
                 onFocus={() => setIsFocused(true)}
-                onBlur={() => setTimeout(() => setIsFocused(false), 250)}
                 onKeyDown={handleKeyDown}
                 enterKeyHint="search"
                 inputMode="search"
                 autoComplete="off"
                 aria-label={label}
                 placeholder={t('search')}
-                className="bg-transparent border-none p-0 text-sm font-bold text-stone-800 focus:ring-0 w-full placeholder:text-stone-300 outline-none"
+                className="bg-transparent border-none p-0 text-sm font-bold text-stone-800 focus:ring-0 w-full min-w-0 placeholder:text-stone-300 outline-none"
               />
               {isLoading && (
                 <div className="animate-spin text-stone-400 shrink-0">
                   <Icon name="loader-2" size={14} />
                 </div>
               )}
+              <button ref={browseRef} type="button" className="lexicon-browse-toggle" aria-label={t(isBrowsing ? 'closeCategories' : 'browseCategories')} title={t(isBrowsing ? 'closeCategories' : 'browseCategories')}
+                aria-expanded={isFocused && isBrowsing} aria-controls={panelId}
+                onClick={() => { setIsBrowsing(!isBrowsing); setSelectedCategory(null); setIsFocused(!isBrowsing); }}>
+                <Icon name={isBrowsing ? 'x' : 'plus'} size={18} />
+              </button>
             </div>
-            {isFocused && (
-              <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border-2 border-stone-200 rounded-3xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto p-1">
-                {searchTerm.length === 0 && !selectedCategory ? (
+            {isFocused && (isBrowsing || searchTerm.trim().length > 0) && (
+              <div id={panelId} className="lexicon-suggestion-panel absolute z-50 left-0 right-0 top-full mt-2 bg-white border-2 border-stone-200 rounded-lg shadow-2xl overflow-hidden max-h-60 overflow-y-auto p-1">
+                {isBrowsing && <div className="lexicon-category-header">
+                  {selectedCategory ? <button ref={backRef} type="button" onClick={() => { setSelectedCategory(null); setHighlightIndex(0); browseRef.current?.focus(); }} aria-label={t('backToCategories')} title={t('backToCategories')}><Icon name="chevron-left" size={18} />{t('categories')}</button> : <span>{t('categories')}</span>}
+                  {selectedCategory && <span>{translateCategory(language, selectedCategory)}</span>}
+                </div>}
+                {isBrowsing && !selectedCategory ? (
                   <div className="flex flex-wrap gap-2 p-3">
                     {categories.map((cat) => (
-                      <button key={cat} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setSelectedCategory(cat); inputRef.current?.focus(); }} className="px-3 py-2 rounded-lg bg-stone-100 text-stone-700 text-xs font-bold">
+                      <button key={cat} type="button" onClick={() => { setSelectedCategory(cat); }} className="px-3 py-2 rounded-lg bg-stone-100 text-stone-700 text-xs font-bold">
                         {translateCategory(language, cat)}
                       </button>
                     ))}
@@ -161,7 +197,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                       </button>
                     );
                   })
-                ) : smartSuggestionFallback.length > 0 ? (
+                ) : !isBrowsing && smartSuggestionFallback.length > 0 ? (
                   <button
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -183,19 +219,6 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                 ) : (
                   <div className="p-3 space-y-2">
                     <p className="text-[9px] font-black text-stone-300 uppercase px-2 mb-2 tracking-tighter">{t('noMatches')}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {categories.map((cat) => (
-                        <button
-                          type="button"
-                          key={cat}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => { setSearchTerm(''); setSelectedCategory(cat); inputRef.current?.focus(); }}
-                          className="px-3 py-2 rounded-lg bg-stone-100 text-stone-600 font-black text-[10px] uppercase tracking-tighter hover:bg-stone-200 transition-colors"
-                        >
-                          {translateCategory(language, cat)}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>
