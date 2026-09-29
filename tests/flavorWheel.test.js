@@ -21,8 +21,8 @@ test('inner category boundaries match their outer descriptor boundaries exactly'
   assert.ok(Math.abs(profile.descriptors.at(-1).end - profile.descriptors[0].start - Math.PI * 2) < 1e-10);
 });
 
-test('English and Spanish labels do not collide at phone or desktop widths', () => {
-  for (const width of [300, 375, 560]) for (const language of ['en', 'es']) {
+test('all language labels do not collide at phone or desktop widths', () => {
+  for (const width of [300, 375, 560]) for (const language of ['en', 'es', 'pt-BR']) {
     const wheel = layoutFlavorWheel({ inCupTags: ['Red Fruit', 'Plum', 'Citrus', 'Chocolate', 'Melon', 'Good Sweetness', 'Apple', 'Peach', 'Floral'] }, { width, language });
     for (const side of [-1, 1]) {
       const labels = wheel.labels.filter(l => l.side === side).sort((a,b) => a.y-b.y);
@@ -42,7 +42,7 @@ test('empty profiles and long words are supported', () => {
 
 test('mobile descriptors wrap between words without fragmenting fruit names', () => {
   const notes = {fragAromaTags: ['Sweet', 'Berry', 'Pineapple', 'Maple Syrup'], inCupTags: ['Berry', 'Strawberry', 'Raspberry']};
-  for (const width of [300, 320, 375, 560]) for (const language of ['en', 'es']) {
+  for (const width of [300, 320, 375, 560]) for (const language of ['en', 'es', 'pt-BR']) {
     const wheel = layoutFlavorWheel(notes, {width, language});
     for (const label of wheel.labels) {
       if (language === 'en' && !label.name.includes(' ')) assert.deepEqual(label.lines, [label.name]);
@@ -54,7 +54,7 @@ test('mobile descriptors wrap between words without fragmenting fruit names', ()
 
 test('seven-category screenshot uses whole category names in a consistent key', () => {
   const notes = { fragAromaTags: ['Dried Banana', 'Grain', 'Cocoa'], inCupTags: ['Terracotta', 'Brown, Roast', 'Phosphoric', 'Herbal'] };
-  for (const width of [300, 560]) for (const language of ['en', 'es']) {
+  for (const width of [300, 560]) for (const language of ['en', 'es', 'pt-BR']) {
     const wheel = layoutFlavorWheel(notes, {width, language});
     assert.equal(wheel.useCategoryKey, true);
     assert.ok(wheel.groups.every(group => group.external && group.lines.length === 1));

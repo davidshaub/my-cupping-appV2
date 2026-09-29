@@ -1,7 +1,18 @@
-import { WCR_ATTRIBUTES } from './lib/lexicon.js';
+import { WCR_ATTRIBUTES, tagSearchText } from './lib/lexicon.js';
 import { canModifyTag, englishTagLabel, modifierBase, hasSlightOnly } from './lib/tagModifiers.js';
+import { UI_PT, SCORE_PT, RADAR_PT, CATEGORIES_PT, TAGS_PT, modifiedTagPT } from './locales/pt-BR.js';
 
-const UI_TEXT = {
+export const LANGUAGES = ['en', 'es', 'pt-BR'];
+export const normalizeLanguage = value => LANGUAGES.includes(value) ? value : 'en';
+export const nextLanguage = value => LANGUAGES[(LANGUAGES.indexOf(normalizeLanguage(value)) + 1) % LANGUAGES.length];
+export const LANGUAGE_OPTIONS = {
+  en: {code: 'EN', name: 'English', switchKey: 'switchEnglish'},
+  es: {code: 'ES', name: 'Español', switchKey: 'switchSpanish'},
+  'pt-BR': {code: 'PT', name: 'Português (Brasil)', switchKey: 'switchPortuguese'}
+};
+
+export const UI_TEXT = {
+  'pt-BR': UI_PT,
   en: {
     bwMode: 'B&W Mode',
     lexicon: 'Lexicon',
@@ -18,6 +29,7 @@ const UI_TEXT = {
     switchBw: 'Switch to B&W display',
     switchSpanish: 'Switch to Spanish',
     switchEnglish: 'Switch to English',
+    switchPortuguese: 'Switch to Brazilian Portuguese',
     leaveSessionTitle: 'Leave this session?',
     leaveSessionBody: 'Returning to the Start page will close this session. Your latest autosave will remain in Saved Sessions.',
     stayHere: 'Stay here',
@@ -168,6 +180,7 @@ const UI_TEXT = {
     switchBw: 'Cambiar a pantalla B&N',
     switchSpanish: 'Cambiar a español',
     switchEnglish: 'Cambiar a inglés',
+    switchPortuguese: 'Cambiar a portugués de Brasil',
     leaveSessionTitle: '¿Salir de esta sesión?',
     leaveSessionBody: 'Volver al inicio cerrará esta sesión. Tu autoguardado más reciente quedará en Sesiones Guardadas.',
     stayHere: 'Quedarme',
@@ -545,16 +558,16 @@ const PROCESSING_KEYS = {
 export const translate = (language, key) => UI_TEXT[language]?.[key] ?? UI_TEXT.en[key] ?? key;
 
 export const translateScoreLabel = (language, id, fallback = id) =>
-  language === 'es' ? SCORE_LABELS_ES[id] ?? fallback : fallback;
+  ({es: SCORE_LABELS_ES, 'pt-BR': SCORE_PT}[language]?.[id]) ?? fallback;
 
 export const translateRadarLabel = (language, label) =>
-  language === 'es' ? RADAR_LABELS_ES[label] ?? label : label;
+  ({es: RADAR_LABELS_ES, 'pt-BR': RADAR_PT}[language]?.[label]) ?? label;
 
 export const translateCategory = (language, category) =>
-  language === 'es' ? CATEGORY_TRANSLATIONS_ES[category] ?? category : category;
+  ({es: CATEGORY_TRANSLATIONS_ES, 'pt-BR': CATEGORIES_PT}[language]?.[category]) ?? category;
 
 export const translateTag = (language, tag) => {
-  if (language !== 'es') return englishTagLabel(tag);
+  if (language !== 'es' && language !== 'pt-BR') return englishTagLabel(tag);
 
   let modifierKey = '';
   let base = tag;
@@ -568,6 +581,10 @@ export const translateTag = (language, tag) => {
 
   base = modifierBase(tag);
   if (modifierKey && hasSlightOnly(tag)) modifierKey = 'Slight';
+  if (language === 'pt-BR') {
+    if (!modifierKey || !canModifyTag(tag)) return TAGS_PT[base]?.[0] ?? CATEGORIES_PT[base] ?? base;
+    return modifiedTagPT(base, modifierKey);
+  }
   const translatedBase = TAG_TRANSLATIONS_ES[base] ?? CATEGORY_TRANSLATIONS_ES[base] ?? base;
   if (!modifierKey || !canModifyTag(tag)) return translatedBase;
 
@@ -579,7 +596,12 @@ export const translateTag = (language, tag) => {
 };
 
 export const translateLevel = (language, level) =>
-  language === 'es' ? translate(language, LEVEL_KEYS[level] ?? level) : level;
+  language !== 'en' ? translate(language, LEVEL_KEYS[level] ?? level) : level;
+
+export const matchesTagSearch = (language, tag, query) => {
+  const fold = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return fold(`${tagSearchText(tag)} ${translateTag(language, tag)}`).includes(fold(query));
+};
 
 export const translateProcessing = (language, processing) =>
-  language === 'es' ? translate(language, PROCESSING_KEYS[processing] ?? processing) : processing;
+  language !== 'en' ? translate(language, PROCESSING_KEYS[processing] ?? processing) : processing;

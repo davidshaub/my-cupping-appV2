@@ -1,5 +1,24 @@
 # Session Lexicons
 
+## Brazilian Portuguese
+
+The language control cycles English -> Spanish -> Brazilian Portuguese, persisting
+`pt-BR` locally. UI, lexicon names, modifiers, charts, and PDFs are translated offline.
+Typed observations, lot names/IDs, stored tag identifiers, and CSV round-tripping
+are not translated. Trait search accepts Portuguese with or without accents.
+
+New descriptors also require a Portuguese label and explicit Portuguese grammar in
+`src/locales/pt-BR.js`; coverage tests enforce this. Portuguese nouns use Leve/Leves
+and Intenso/Intensa/Intensos/Intensas; adjectives use Levemente/Intensamente.
+The same locked and two-state restrictions apply in every language.
+
+These are editorial Brazilian Portuguese labels, not an official WCR translation.
+Terminology to confirm with the user: Hard Cups = Xícaras Duras; Flat = Sem Vivacidade;
+Lacking = Pouco Expressivo; Brown, Roast = Torra Marrom; Lime = Lima. Panela uses
+Rapadura. Quaker and Honey processing remain unchanged. Core sensory vocabulary
+follows Brazilian usage (fragrância, aroma, doçura, corpo, acidez), as described by
+[BSCA](https://www.bsca.com.br/bsca-apresenta-sistema-cva-de-avaliacao-a-comunidade-do-cafe-especial-da-alta-mogiana/).
+
 ## Required Modifier Review for New Words
 
 Every new Osito or WCR descriptor must be classified in

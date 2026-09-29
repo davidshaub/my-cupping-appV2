@@ -1,8 +1,8 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Icon from './Icon';
 import { getSmartMatch, getTagStyle } from '../lib/cupping';
-import { translateCategory, translateTag } from '../i18n';
-import { canonicalTag, tagSearchText } from '../lib/lexicon';
+import { translateCategory, translateTag, matchesTagSearch } from '../i18n';
+import { canonicalTag } from '../lib/lexicon';
 import { canModifyTag, hasSlightOnly } from '../lib/tagModifiers';
 
 const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t }) => {
@@ -32,7 +32,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
     const timer = setTimeout(async () => {
       if (
         searchTerm.length >= 3 &&
-        !flatOptions.some((o) => `${tagSearchText(o)} ${translateTag(language, o)}`.toLowerCase().includes(searchTerm.toLowerCase()))
+        !flatOptions.some((o) => matchesTagSearch(language, o, searchTerm))
       ) {
         setIsLoading(true);
         setSmartMatch(null);
@@ -59,7 +59,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
   }, [searchTerm, flatOptions, tags, language]);
 
   const filtered = (selectedCategory ? options[selectedCategory] ?? [] : flatOptions).filter(
-    (o) => (isBrowsing || `${tagSearchText(o)} ${translateTag(language, o)}`.toLowerCase().includes(searchTerm.toLowerCase())) && !tags.some((t) => canonicalTag(t) === canonicalTag(o))
+    (o) => (isBrowsing || matchesTagSearch(language, o, searchTerm)) && !tags.some((t) => canonicalTag(t) === canonicalTag(o))
   );
 
   useEffect(() => {

@@ -17,7 +17,7 @@ try {
   sample.scores.flavor = 8.25;
   sample.notes = { fragAromaTags: ['Red Fruit', 'Slight Plum', 'Slight Citrus', 'Chocolate'], inCupTags: ['Citrus', 'Slight Melon', 'Good Sweetness', 'Balanced', 'Red Fruit'], negativeTags: [], acidityLevel: 'Med', sweetnessLevel: 'Med', otherText: '' };
   await mkdir('/tmp/cupping-report-qa', { recursive: true });
-  for (const language of ['en', 'es']) {
+  for (const language of ['en', 'es', 'pt-BR']) {
     const result = await buildVectorReportPdfSet([sample], { language, sessionStartTime: '6/25/2026, 11:38:37 AM', logoSrc: '/my-cupping-appV2/assets/hands.png' });
     await writeFile(`/tmp/cupping-report-qa/report-${language}.pdf`, result.files[0].data);
     console.log(language, (await PDFDocument.load(result.files[0].data)).getPageCount(), 'page(s)');

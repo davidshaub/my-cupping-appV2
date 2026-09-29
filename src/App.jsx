@@ -25,6 +25,9 @@ import {
   translate,
   translateLevel,
   translateProcessing,
+  LANGUAGE_OPTIONS,
+  nextLanguage,
+  normalizeLanguage,
   translateScoreLabel
 } from './i18n';
 
@@ -46,10 +49,11 @@ const LanguageToggle = ({ language, onToggle, t, compact = false, className = ''
     type="button"
     onClick={onToggle}
     className={`eink-toggle ${compact ? 'eink-toggle-compact' : ''} ${className}`}
-    title={language === 'en' ? t('switchSpanish') : t('switchEnglish')}
+    title={t(LANGUAGE_OPTIONS[nextLanguage(language)].switchKey)}
+    aria-label={t(LANGUAGE_OPTIONS[nextLanguage(language)].switchKey)}
   >
-    <span>{language === 'en' ? 'ES' : 'EN'}</span>
-    {!compact && <span className="eink-toggle-state">{language === 'en' ? 'Español' : 'English'}</span>}
+    <span>{LANGUAGE_OPTIONS[nextLanguage(language)].code}</span>
+    {!compact && <span className="eink-toggle-state">{LANGUAGE_OPTIONS[nextLanguage(language)].name}</span>}
   </button>
 );
 
@@ -67,7 +71,7 @@ const App = () => {
   const [displayMode, setDisplayMode] = useState('standard');
   const [language, setLanguage] = useState(() => {
     if (typeof window === 'undefined') return 'en';
-    return localStorage.getItem('cupping_language') === 'es' ? 'es' : 'en';
+    return normalizeLanguage(localStorage.getItem('cupping_language'));
   });
   const [appState, setAppState] = useState('setup');
   const [metadataOrigin, setMetadataOrigin] = useState('setup');
@@ -185,7 +189,7 @@ const App = () => {
   const toggleDisplayMode = () => {
     setDisplayMode((current) => (current === 'eink' ? 'standard' : 'eink'));
   };
-  const toggleLanguage = () => setLanguage((current) => (current === 'en' ? 'es' : 'en'));
+  const toggleLanguage = () => setLanguage(nextLanguage);
 
   const cloneSamplesForSave = (sourceSamples = samples) =>
     sourceSamples.map((sample) => ({
@@ -361,7 +365,7 @@ const App = () => {
       setSessionName(imported.sessionName || '');
       setAppState('report');
     } catch (err) {
-      setImportError(language === 'es' ? t('csvImportError') : err?.message || t('csvImportError'));
+      setImportError(language !== 'en' ? t('csvImportError') : err?.message || t('csvImportError'));
     } finally {
       setIsImporting(false);
       if (importInputRef.current) importInputRef.current.value = '';

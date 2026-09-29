@@ -70,7 +70,7 @@ const drawRadar = (pdf, sample, language) => {
   points.forEach((p) => pdf.circle(p.x, p.y, 2.7, { fill: INK, stroke: WHITE, lineWidth: 1 }));
   RADAR_LABELS.forEach((label, i) => {
     const p = point(radius + 13, i);
-    const name = language === 'es' ? translateRadarLabel(language, label) : ({ 'Frag/Aroma': 'Fr/Aroma', Consistency: 'Consist.' }[label] || label);
+    const name = language !== 'en' ? translateRadarLabel(language, label) : ({ 'Frag/Aroma': 'Fr/Aroma', Consistency: 'Consist.' }[label] || label);
     pdf.text(name.toUpperCase(), p.x, p.y + 2, { size: 6, color: INK, align: p.x < cx - 10 ? 'right' : p.x > cx + 10 ? 'left' : 'center' });
   });
 };

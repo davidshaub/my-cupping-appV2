@@ -24,7 +24,7 @@ const LevelSelector = ({ label, value, onSelect, language, t }) => (
               : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
           }`}
         >
-          <span className="sm:hidden">{level.short}</span>
+          <span className="sm:hidden">{language === 'pt-BR' ? ({Low: 'B', High: 'A'}[level.label] ?? level.short) : level.short}</span>
           <span className="hidden sm:inline">{translateLevel(language, level.label)}</span>
         </button>
       );

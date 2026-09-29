@@ -63,7 +63,7 @@ const SpiderGraph = ({ scores, size, einkMode = false, language }) => {
           />
         ))}
         {RADAR_LABELS.map((label, i) => {
-          const displayLabel = language === 'es' ? translateRadarLabel(language, label) : DISPLAY_LABELS[label] ?? label;
+          const displayLabel = language !== 'en' ? translateRadarLabel(language, label) : DISPLAY_LABELS[label] ?? label;
           const angle = i * ((Math.PI * 2) / 10) - Math.PI / 2;
           const cos = Math.cos(angle);
           const x2 = centerX + radius * Math.cos(angle);

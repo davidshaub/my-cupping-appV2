@@ -978,7 +978,7 @@ const drawRadar = (pdf, sample, language, x, y) => {
   }));
 
   RADAR_LABELS.forEach((label, index) => {
-    const displayLabel = language === 'es'
+    const displayLabel = language !== 'en'
       ? translateRadarLabel(language, label)
       : ({ 'Frag/Aroma': 'Fr/Aroma', Consistency: 'Consist.' }[label] ?? label);
     const point = radarPoint(centerX, centerY, radius + 14, index, RADAR_LABELS.length);

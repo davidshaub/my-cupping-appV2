@@ -3,8 +3,8 @@ import { CATEGORY_COLORS } from '../constants.js';
 import { translateCategory, translateTag } from '../i18n.js';
 
 export const wheelProvenance = (entry, language = 'en') => entry.aroma && entry.cup
-  ? (language === 'es' ? 'Aroma + taza' : 'Aroma + cup')
-  : entry.aroma ? 'Aroma' : (language === 'es' ? 'Taza' : 'Cup');
+  ? ({es: 'Aroma + taza', 'pt-BR': 'Aroma + xícara'}[language] ?? 'Aroma + cup')
+  : entry.aroma ? 'Aroma' : ({es: 'Taza', 'pt-BR': 'Xícara'}[language] ?? 'Cup');
 
 export const buildFlavorProfile = (notes = {}) => {
   const entries = new Map();
