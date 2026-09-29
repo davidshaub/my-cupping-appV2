@@ -13,6 +13,7 @@ import {
 } from './lib/cupping';
 import FlavorWheel from './components/FlavorWheel';
 import { reportPdfFilename } from './lib/reportFilenames';
+import { canModifyTag, nextTagModifier } from './lib/tagModifiers';
 import Icon from './components/Icon';
 import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
@@ -1007,23 +1008,14 @@ const App = () => {
   };
 
   const cycleTagModifier = (idx, section, tagString) => {
+    if (!canModifyTag(tagString)) return;
     setSamples((prev) => {
       const field = `${section}Tags`;
       const tags = [...prev[idx].notes[field]];
       const tagIdx = tags.indexOf(tagString);
       if (tagIdx === -1) return prev;
 
-      const baseTag = getBaseTag(tagString);
-      let newTag = '';
-      if (tagString.startsWith('Slight ')) {
-        newTag = `Intense ${baseTag}`;
-      } else if (tagString.startsWith('Intense ')) {
-        newTag = baseTag;
-      } else {
-        newTag = `Slight ${baseTag}`;
-      }
-
-      tags[tagIdx] = newTag;
+      tags[tagIdx] = nextTagModifier(tagString);
 
       return prev.map((item, sampleIdx) =>
         sampleIdx === idx

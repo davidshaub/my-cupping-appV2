@@ -1,4 +1,5 @@
 import { WCR_ATTRIBUTES } from './lib/lexicon.js';
+import { canModifyTag, englishTagLabel } from './lib/tagModifiers.js';
 
 const UI_TEXT = {
   en: {
@@ -550,7 +551,7 @@ export const translateCategory = (language, category) =>
   language === 'es' ? CATEGORY_TRANSLATIONS_ES[category] ?? category : category;
 
 export const translateTag = (language, tag) => {
-  if (language !== 'es') return tag;
+  if (language !== 'es') return englishTagLabel(tag);
 
   let modifierKey = '';
   let base = tag;
@@ -563,7 +564,7 @@ export const translateTag = (language, tag) => {
   }
 
   const translatedBase = TAG_TRANSLATIONS_ES[base] ?? CATEGORY_TRANSLATIONS_ES[base] ?? base;
-  if (!modifierKey) return translatedBase;
+  if (!modifierKey || !canModifyTag(tag)) return translatedBase;
 
   const override = MODIFIER_OVERRIDES_ES[modifierKey]?.[base];
   if (override) return override;

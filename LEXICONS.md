@@ -1,5 +1,32 @@
 # Session Lexicons
 
+## Required Modifier Review for New Words
+
+Every new Osito or WCR descriptor must be classified in
+`src/lib/tagModifiers.js` before it is added. Run
+`node --test tests/*.test.js`; the coverage test fails if a catalog word lacks a
+modifier decision. Review both **Slight/Slightly** and **Intense/Intensely**, as
+well as Spanish agreement and any special wording. Do not infer grammar from
+suffixes or canonical aliases: Nuts is a noun, but Nutty is an adjective.
+
+Nouns use Slight/Intense; adjectives use Slightly/Intensely in English displays.
+Storage and CSV keep the existing Slight/Intense prefixes for compatibility.
+The wheel still omits modifiers. Spanish keeps its existing agreement rules.
+Good Sweetness is locked: clicking cannot cycle it, and its displayed label is
+unmodified even for legacy records. Existing saved records are not rewritten.
+
+Editorial decisions still to discuss with the user (do not silently rename or lock):
+
+- Nice Structure and Balanced: should these be unmodifiable evaluations too?
+- Hard Cups, Harsh Finish, Unclean Finish: noun-phrase modifiers are grammatical
+  structurally but awkward in context; consider a custom phrase or locking.
+- Dusty/Concrete and Artificial/Process: mixed grammatical forms; retain existing
+  labels pending a decision about splitting or rephrasing.
+- Brown, Roast and Overall Sweet (WCR): unusual source labels; retain existing
+  modifier wording pending review.
+- Lacking and Flat/Lacking: Slightly works, but Intensely may not be the intended
+  description; consider a custom strong form.
+
 The setup screen and Lot Information screen offer Osito, WCR, and Both.
 The setting changes suggestions only. Existing tags, scores, observations, and
 their intensity modifiers remain untouched when changing lexicons.
