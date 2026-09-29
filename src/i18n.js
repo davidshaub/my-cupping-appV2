@@ -1,5 +1,5 @@
 import { WCR_ATTRIBUTES } from './lib/lexicon.js';
-import { canModifyTag, englishTagLabel } from './lib/tagModifiers.js';
+import { canModifyTag, englishTagLabel, modifierBase, hasSlightOnly } from './lib/tagModifiers.js';
 
 const UI_TEXT = {
   en: {
@@ -129,6 +129,7 @@ const UI_TEXT = {
     mapping: 'Mapping',
     noMatches: 'No matches. Map to group:',
     cycleTitle: 'Click to cycle: normal -> Slight -> Intense',
+    slightOnlyCycleTitle: 'Click to cycle: normal -> Slight',
     remove: 'Remove',
     intensity: 'intensity',
     processingPlaceholder: 'Washed / Natural / Honey / Other',
@@ -274,6 +275,7 @@ const UI_TEXT = {
     mapping: 'Asignación',
     noMatches: 'Sin coincidencias. Asignar al grupo:',
     cycleTitle: 'Haz clic para cambiar: normal -> Ligero/a(s) -> Intenso/a(s)',
+    slightOnlyCycleTitle: 'Haz clic para cambiar: normal -> Ligero/a(s)',
     remove: 'Eliminar',
     intensity: 'intensidad',
     processingPlaceholder: 'Lavado / Natural / Honey / Otro',
@@ -441,7 +443,8 @@ const TAG_TRANSLATIONS_ES = {
   Butyric: 'Butírico',
   Pepper: 'Pimienta',
   Leather: 'Cuero',
-  'Flat/Lacking': 'Plano/Falto',
+  Flat: 'Plano',
+  'Flat/Lacking': 'Plano',
   Winey: 'Vinoso',
   'Unclean Finish': 'Final No Limpio',
   'Off Ferment Character': 'Carácter de Fermentación Defectuoso',
@@ -563,6 +566,8 @@ export const translateTag = (language, tag) => {
     base = tag.slice('Intense '.length);
   }
 
+  base = modifierBase(tag);
+  if (modifierKey && hasSlightOnly(tag)) modifierKey = 'Slight';
   const translatedBase = TAG_TRANSLATIONS_ES[base] ?? CATEGORY_TRANSLATIONS_ES[base] ?? base;
   if (!modifierKey || !canModifyTag(tag)) return translatedBase;
 

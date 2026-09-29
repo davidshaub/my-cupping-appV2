@@ -3,7 +3,7 @@ import Icon from './Icon';
 import { getSmartMatch, getTagStyle } from '../lib/cupping';
 import { translateCategory, translateTag } from '../i18n';
 import { canonicalTag, tagSearchText } from '../lib/lexicon';
-import { canModifyTag } from '../lib/tagModifiers';
+import { canModifyTag, hasSlightOnly } from '../lib/tagModifiers';
 
 const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -231,7 +231,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
               key={tag}
               className={`${getTagStyle(tag)} px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-2 shadow-sm border ${canModifyTag(tag) ? 'active:scale-95 cursor-pointer' : 'cursor-default'}`}
               onClick={() => { if (canModifyTag(tag)) onCycle?.(tag); }}
-              title={onCycle && canModifyTag(tag) ? t('cycleTitle') : undefined}
+              title={onCycle && canModifyTag(tag) ? t(hasSlightOnly(tag) ? 'slightOnlyCycleTitle' : 'cycleTitle') : undefined}
             >
               {translateTag(language, tag)}
               <button

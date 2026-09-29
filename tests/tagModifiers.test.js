@@ -34,8 +34,41 @@ test('cycling keeps legacy storage spelling, and Good Sweetness cannot cycle', (
   }
 });
 
-test('Spanish agreement and undecided compound phrases retain their existing forms', () => {
+test('Spanish agreement is preserved', () => {
   assert.equal(translateTag('es', 'Slight Raspberry'), 'Ligera Frambuesa');
   assert.equal(translateTag('es', 'Intense Raspberry'), 'Intensa Frambuesa');
-  assert.equal(translateTag('en', 'Slight Dusty/Concrete'), 'Slight Dusty/Concrete');
+});
+
+test('approved evaluation terms cannot be modified', () => {
+  for (const name of ['Nice Structure', 'Balanced', 'Hard Cups', 'Brown, Roast', 'Overall Sweet']) {
+    assert.equal(canModifyTag(name), false);
+    assert.equal(nextTagModifier(name), name);
+    assert.equal(translateTag('en', `Intense ${name}`), name);
+  }
+});
+
+test('custom English phrases match the approved wording exactly', () => {
+  const labels = {
+    'Harsh Finish': ['Slightly Harsh Finish', 'Very Harsh Finish'],
+    'Unclean Finish': ['Slightly Unclean Finish', 'Very Unclean Finish'],
+    'Dusty/Concrete': ['Slightly Dusty/Concrete-like', 'Intensely Dusty/Concrete-like'],
+    'Artificial/Process': ['Slightly Artificial/Process-driven', 'Intensely Artificial/Process-driven']
+  };
+  for (const [name, [slight, intense]] of Object.entries(labels)) {
+    assert.equal(translateTag('en', nextTagModifier(name)), slight);
+    assert.equal(translateTag('en', nextTagModifier(`Slight ${name}`)), intense);
+    assert.equal(nextTagModifier(`Intense ${name}`), name);
+  }
+});
+
+test('Flat and Lacking cycle only between unmodified and slight, including legacy labels', () => {
+  for (const name of ['Flat', 'Lacking']) {
+    assert.equal(nextTagModifier(name), `Slight ${name}`);
+    assert.equal(nextTagModifier(`Slight ${name}`), name);
+    assert.equal(nextTagModifier(`Intense ${name}`), name);
+  }
+  assert.equal(translateTag('en', 'Flat/Lacking'), 'Flat');
+  assert.equal(translateTag('en', 'Slight Flat/Lacking'), 'Slightly Flat');
+  assert.equal(nextTagModifier('Slight Flat/Lacking'), 'Flat');
+  assert.equal(translateTag('es', 'Flat/Lacking'), 'Plano');
 });

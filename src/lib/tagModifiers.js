@@ -21,7 +21,7 @@ const nouns = [
 const adjectives = [
   'Acetic', 'Acrid', 'Animalic', 'Ashy', 'Astringent', 'Balanced', 'Beany', 'Bitter',
   'Blended', 'Boozy', 'Burnt', 'Butyric', 'Caramelized', 'Cloying', 'Dark Green', 'Drying',
-  'Earthy', 'Fermented', 'Flabby', 'Flat/Lacking', 'Floral', 'Fresh', 'Fruity', 'Green',
+  'Earthy', 'Fermented', 'Flabby', 'Flat', 'Floral', 'Fresh', 'Fruity', 'Green',
   'Hay-like', 'Herb-like', 'Herbal', 'Jammy', 'Juicy', 'Lacking', 'Lactic', 'Meaty/Brothy',
   'Medicinal', 'Metallic', 'Moldy/Damp', 'Mouth Drying', 'Muddled', 'Musty/Dusty',
   'Musty/Earthy', 'Nutty', 'Oily', 'Overripe/Near Fermented', 'Papery', 'Phenolic',
@@ -33,26 +33,42 @@ const adjectives = [
 export const TAG_MODIFIER_GRAMMAR = Object.freeze({
   ...Object.fromEntries(nouns.map(name => [name, 'noun'])),
   ...Object.fromEntries(adjectives.map(name => [name, 'adjective'])),
-  // Mixed phrases retain their existing wording pending an editorial decision.
-  'Artificial/Process': 'review',
-  'Dusty/Concrete': 'review',
-  'Brown, Roast': 'review',
-  'Overall Sweet': 'review',
+  'Artificial/Process': 'custom',
+  'Dusty/Concrete': 'custom',
+  'Harsh Finish': 'custom',
+  'Unclean Finish': 'custom',
+  'Nice Structure': 'locked',
+  Balanced: 'locked',
+  'Hard Cups': 'locked',
+  'Brown, Roast': 'locked',
+  'Overall Sweet': 'locked',
   'Good Sweetness': 'locked'
 });
 
-export const modifierBase = tag => tag.replace(/^(Slight|Intense) /, '');
+export const modifierBase = tag => tag.replace(/^(Slight|Intense) /, '').replace(/^Flat\/Lacking$/, 'Flat');
 export const canModifyTag = tag => TAG_MODIFIER_GRAMMAR[modifierBase(tag)] !== 'locked';
+export const hasSlightOnly = tag => ['Flat', 'Lacking'].includes(modifierBase(tag));
+
+const CUSTOM_LABELS = {
+  'Harsh Finish': ['Slightly Harsh Finish', 'Very Harsh Finish'],
+  'Unclean Finish': ['Slightly Unclean Finish', 'Very Unclean Finish'],
+  'Dusty/Concrete': ['Slightly Dusty/Concrete-like', 'Intensely Dusty/Concrete-like'],
+  'Artificial/Process': ['Slightly Artificial/Process-driven', 'Intensely Artificial/Process-driven']
+};
 
 export const nextTagModifier = tag => {
   if (!canModifyTag(tag)) return tag;
   const base = modifierBase(tag);
+  if (hasSlightOnly(tag)) return /^(Slight|Intense) /.test(tag) ? base : `Slight ${base}`;
   return tag.startsWith('Slight ') ? `Intense ${base}` : tag.startsWith('Intense ') ? base : `Slight ${base}`;
 };
 
 export const englishTagLabel = tag => {
   const base = modifierBase(tag);
   if (!canModifyTag(tag)) return base;
-  if (TAG_MODIFIER_GRAMMAR[base] !== 'adjective') return tag;
-  return tag.replace(/^Slight /, 'Slightly ').replace(/^Intense /, 'Intensely ');
+  const modifier = tag.startsWith('Slight ') ? 'Slight' : tag.startsWith('Intense ') ? 'Intense' : '';
+  if (!modifier) return base;
+  if (hasSlightOnly(tag)) return `Slightly ${base}`;
+  if (CUSTOM_LABELS[base]) return CUSTOM_LABELS[base][modifier === 'Slight' ? 0 : 1];
+  return `${TAG_MODIFIER_GRAMMAR[base] === 'adjective' ? modifier === 'Slight' ? 'Slightly' : 'Intensely' : modifier} ${base}`;
 };

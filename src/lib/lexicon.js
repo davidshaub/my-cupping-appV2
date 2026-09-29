@@ -105,7 +105,7 @@ const ALIASES = {
   Berries: 'Berry', Citrus: 'Citrus Fruit', Herbal: 'Herb-like',
   Acetic: 'Acetic Acid', Butyric: 'Butyric Acid', Paper: 'Papery',
   Vegetal: 'Vegetative', Wood: 'Woody', Rubbery: 'Rubber', Phenol: 'Phenolic',
-  Nuts: 'Nutty', Drying: 'Mouth Drying'
+  Nuts: 'Nutty', Drying: 'Mouth Drying', 'Flat/Lacking': 'Flat'
 };
 
 export const canonicalTag = (tag) => {
@@ -128,7 +128,7 @@ const OSITO_CATEGORY_OVERRIDES = {
   'Stale/Papery': ['Age', 'Paper'],
   Chemical: ['Medicinal', 'Rubbery', 'Artificial/Process'],
   Mouthfeel: ['Astringent', 'Drying', 'Thin', 'Pulpy'],
-  'Osito-specific': ['Balanced', 'Nice Structure', 'Flabby', 'Hard Cups', 'Harsh Finish', 'Lacking', 'Quaker', 'Unclean', 'Cloying', 'Muddled', 'Flat/Lacking', 'Unclean Finish']
+  'Osito-specific': ['Balanced', 'Nice Structure', 'Flabby', 'Hard Cups', 'Harsh Finish', 'Lacking', 'Quaker', 'Unclean', 'Cloying', 'Muddled', 'Flat', 'Flat/Lacking', 'Unclean Finish']
 };
 
 const ositoCategories = new Map(Object.entries(CATEGORISED_LEXICON).flatMap(([category, tags]) => tags.map((tag) => [tag, category])));

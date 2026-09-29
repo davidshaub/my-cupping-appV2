@@ -138,7 +138,7 @@ export const NEGATIVE_LEXICON = [
   'Butyric',
   'Pepper',
   'Leather',
-  'Flat/Lacking',
+  'Flat',
   'Winey',
   'Unclean Finish',
   'Off Ferment Character',

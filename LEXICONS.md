@@ -15,17 +15,18 @@ The wheel still omits modifiers. Spanish keeps its existing agreement rules.
 Good Sweetness is locked: clicking cannot cycle it, and its displayed label is
 unmodified even for legacy records. Existing saved records are not rewritten.
 
-Editorial decisions still to discuss with the user (do not silently rename or lock):
+Approved exceptions:
 
-- Nice Structure and Balanced: should these be unmodifiable evaluations too?
-- Hard Cups, Harsh Finish, Unclean Finish: noun-phrase modifiers are grammatical
-  structurally but awkward in context; consider a custom phrase or locking.
-- Dusty/Concrete and Artificial/Process: mixed grammatical forms; retain existing
-  labels pending a decision about splitting or rephrasing.
-- Brown, Roast and Overall Sweet (WCR): unusual source labels; retain existing
-  modifier wording pending review.
-- Lacking and Flat/Lacking: Slightly works, but Intensely may not be the intended
-  description; consider a custom strong form.
+- Good Sweetness, Nice Structure, Balanced, Hard Cups, Brown, Roast (one WCR
+  descriptor), and Overall Sweet are unmodifiable.
+- Harsh Finish and Unclean Finish use Slightly and Very in English.
+- Dusty/Concrete uses Slightly Dusty/Concrete-like and Intensely Dusty/Concrete-like.
+- Artificial/Process uses Slightly Artificial/Process-driven and Intensely Artificial/Process-driven.
+- Flat and Lacking have only two states: unmodified and Slightly. Flat replaces
+  Flat/Lacking; the old name remains a search/deduplication alias for saved data.
+  Legacy intense forms display as slight and return to unmodified when clicked.
+- Custom wording is a display rule, not a new storage prefix. Spanish retains its
+  existing translations and agreement, with the same locked/two-state restrictions.
 
 The setup screen and Lot Information screen offer Osito, WCR, and Both.
 The setting changes suggestions only. Existing tags, scores, observations, and
