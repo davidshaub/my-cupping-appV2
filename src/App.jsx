@@ -2095,14 +2095,6 @@ const App = () => {
           <div className="text-right leading-none shrink-0 pl-4 pr-2">
             <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t(currentSample.noScore ? 'noScore' : 'liveScore')}</span>
             <span className="text-3xl md:text-4xl font-black tabular-nums">{calculateTotal(currentSample)}</span>
-            <button
-              type="button"
-              aria-pressed={Boolean(currentSample.noScore)}
-              onClick={() => setSamples(prev => prev.map((sample, index) => index === activeSampleIndex ? { ...sample, noScore: !sample.noScore } : sample))}
-              className="no-score-toggle"
-            >
-              {t(currentSample.noScore ? 'restoreScoring' : 'noScore')}
-            </button>
           </div>
         </div>
       </div>
@@ -2157,6 +2149,16 @@ const App = () => {
                 onUpdate={(d) => updateScore(activeSampleIndex, 'correction', d)}
                 colorClass="text-blue-600"
               />
+              <div className="pt-2">
+                <button
+                  type="button"
+                  aria-pressed={Boolean(currentSample.noScore)}
+                  onClick={() => setSamples(prev => prev.map((sample, index) => index === activeSampleIndex ? { ...sample, noScore: !sample.noScore } : sample))}
+                  className="no-score-toggle"
+                >
+                  {t(currentSample.noScore ? 'restoreScoring' : 'noScore')}
+                </button>
+              </div>
             </div>
           </div>
           <div className="space-y-8">
