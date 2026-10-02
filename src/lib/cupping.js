@@ -204,6 +204,7 @@ export const getSmartMatch = async (userInput, officialOptions, signal) => {
 export const initializeSamples = (count) =>
   Array.from({ length: count }, (_, i) => ({
     id: i + 1,
+    noScore: false,
     ositoId: '',
     lotName: '',
     processing: 'Select One',
@@ -229,6 +230,7 @@ export const initializeSamples = (count) =>
   }));
 
 export const calculateTotal = (sample) => {
+  if (sample.noScore === true) return '0.00';
   const s = sample.scores;
   const fragAroma = s.aroma !== null ? (s.fragrance + s.aroma) / 2 : s.fragrance;
   const others = [
@@ -256,7 +258,7 @@ const toSafeFilenamePart = (value) => {
   return cleaned.slice(0, 60);
 };
 
-export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode = 'osito') => {
+export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito') => {
   const headers = [
     'Sample #',
     'Osito ID',
@@ -285,7 +287,8 @@ export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode 
     'Negative Notes',
     'Other Notes',
     'Session Start Time',
-    'Lexicon'
+    'Lexicon',
+    'Scoring Status'
   ];
 
   const rows = samples.map((s, idx) => {
@@ -300,8 +303,8 @@ export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode 
       csvEscape(s.waterActivity || ''),
       csvEscape(s.moisture || ''),
       s.scores.fragrance.toFixed(2),
-      (s.scores.aroma || s.scores.fragrance).toFixed(2),
-      ((s.scores.fragrance + (s.scores.aroma || s.scores.fragrance)) / 2).toFixed(2),
+      s.scores.aroma == null ? '' : s.scores.aroma.toFixed(2),
+      ((s.scores.fragrance + (s.scores.aroma ?? s.scores.fragrance)) / 2).toFixed(2),
       s.scores.cleanCup.toFixed(2),
       s.scores.sweetness.toFixed(2),
       s.scores.acidity.toFixed(2),
@@ -327,11 +330,16 @@ export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode 
           .join('; ')
       ),
       csvEscape(sessionStartTime),
-      csvEscape(normalizeLexiconMode(lexiconMode))
+      csvEscape(normalizeLexiconMode(lexiconMode)),
+      s.noScore === true ? 'No Score' : 'Scored'
     ].join(',');
   });
 
-  const csvContent = [headers.join(','), ...rows].join('\n');
+  return [headers.join(','), ...rows].join('\n');
+};
+
+export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode = 'osito') => {
+  const csvContent = buildSessionCSV(samples, sessionStartTime, lexiconMode);
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -386,6 +394,7 @@ export const importSessionFromCSV = (csvText, filename) => {
   const idxOverall = colIndex('Overall');
   const idxDefects = colIndex('Defects');
   const idxCorrection = colIndex('Cup Correction');
+  const idxScoringStatus = colIndex('Scoring Status');
 
   const idxFragAromaTags = colIndex('Frag/Aroma Notes');
   const idxInCupTags = colIndex('In the Cup Notes');
@@ -431,6 +440,7 @@ export const importSessionFromCSV = (csvText, filename) => {
 
     samples.push({
       id: parsedId,
+      noScore: idxScoringStatus >= 0 && String(row[idxScoringStatus] ?? '').trim().toLowerCase() === 'no score',
       ositoId: idxOsitoId >= 0 ? String(row[idxOsitoId] ?? '') : '',
       lotName: idxLotName >= 0 ? String(row[idxLotName] ?? '') : '',
       processing,
@@ -439,7 +449,7 @@ export const importSessionFromCSV = (csvText, filename) => {
       moisture,
       scores: {
         fragrance: numOr(idxFragrance, INITIAL_SCORE),
-        aroma: idxAroma >= 0 ? numOr(idxAroma, INITIAL_SCORE) : null,
+        aroma: idxAroma >= 0 && String(row[idxAroma] ?? '').trim() ? numOr(idxAroma, INITIAL_SCORE) : null,
         cleanCup: numOr(idxCleanCup, INITIAL_SCORE),
         sweetness: numOr(idxSweetness, INITIAL_SCORE),
         acidity: numOr(idxAcidity, INITIAL_SCORE),

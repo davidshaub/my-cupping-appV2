@@ -436,6 +436,7 @@ const App = () => {
   const updateScore = (sampleIdx, cat, delta) => {
     setSamples((prev) => {
       const sample = prev[sampleIdx];
+      if (sample.noScore) return prev;
       const current = sample.scores[cat];
       const cur = current ?? 0;
       let next = current === null ? INITIAL_SCORE : Math.round((cur + delta) * 4) / 4;
@@ -1908,7 +1909,7 @@ const App = () => {
                       </div>
                     </div>
                     <div className="grade-display w-full sm:w-auto shrink-0 flex flex-col items-center justify-center bg-stone-900 px-6 sm:px-10 py-4 sm:min-w-[200px]">
-                      <p className="text-[9px] font-black text-stone-400 uppercase tracking-[0.4em] mb-1">{t('finalScore')}</p>
+                      <p className="text-[9px] font-black text-stone-400 uppercase tracking-[0.4em] mb-1">{t(s.noScore ? 'noScore' : 'finalScore')}</p>
                       <p className="text-4xl sm:text-5xl md:text-6xl font-black tabular-nums text-white leading-none">{calculateTotal(s)}</p>
                     </div>
                   </div>
@@ -1917,7 +1918,7 @@ const App = () => {
                     <div className="print-visual-row flex flex-col sm:flex-row items-center sm:items-start justify-center lg:justify-start gap-8 md:gap-8 visual-row">
                       <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
                         <p className="section-header mb-6">{t('attributeMap')}</p>
-                        <SpiderGraph scores={s.scores} size={reportRadarSize} einkMode={isEinkMode} language={language} />
+                        {s.noScore ? <div className="flex items-center justify-center" style={{ width: reportRadarSize, height: reportRadarSize }}>{t('noScore')}</div> : <SpiderGraph scores={s.scores} size={reportRadarSize} einkMode={isEinkMode} language={language} />}
                       </div>
                       <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
                         <p className="section-header mb-6">{t('flavorProfile')}</p>
@@ -2092,8 +2093,16 @@ const App = () => {
             </h2>
           </div>
           <div className="text-right leading-none shrink-0 pl-4 pr-2">
-            <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t('liveScore')}</span>
+            <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t(currentSample.noScore ? 'noScore' : 'liveScore')}</span>
             <span className="text-3xl md:text-4xl font-black tabular-nums">{calculateTotal(currentSample)}</span>
+            <button
+              type="button"
+              aria-pressed={Boolean(currentSample.noScore)}
+              onClick={() => setSamples(prev => prev.map((sample, index) => index === activeSampleIndex ? { ...sample, noScore: !sample.noScore } : sample))}
+              className="no-score-toggle"
+            >
+              {t(currentSample.noScore ? 'restoreScoring' : 'noScore')}
+            </button>
           </div>
         </div>
       </div>
@@ -2110,6 +2119,7 @@ const App = () => {
                 <ScoreControl
                   label={translateScoreLabel(language, cat.id, cat.label)}
                   value={currentSample.scores[cat.id]}
+                  disabled={currentSample.noScore}
                   onUpdate={(d) => updateScore(activeSampleIndex, cat.id, d)}
                 />
                 {cat.id === 'sweetness' && (
@@ -2136,12 +2146,14 @@ const App = () => {
               <ScoreControl
                 label={t('defects')}
                 value={currentSample.scores.defects}
+                disabled={currentSample.noScore}
                 onUpdate={(d) => updateScore(activeSampleIndex, 'defects', d)}
                 colorClass="text-red-600"
               />
               <ScoreControl
                 label={t('cupCorrection')}
                 value={currentSample.scores.correction}
+                disabled={currentSample.noScore}
                 onUpdate={(d) => updateScore(activeSampleIndex, 'correction', d)}
                 colorClass="text-blue-600"
               />

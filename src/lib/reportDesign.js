@@ -53,12 +53,16 @@ const drawIdentity = (pdf, sample, index, language) => {
     pdf.text(label.toUpperCase(), x, y + 75, { size: 6, font: 'bold', color: INK });
     pdf.text(value, x, y + 87, { size: 9, color: INK, maxWidth: 175 });
   });
-  pdf.text(translate(language, 'finalScore').toUpperCase(), 691, y + 36, { size: 7, font: 'bold', color: WHITE, align: 'center' });
+  pdf.text(translate(language, sample.noScore ? 'noScore' : 'finalScore').toUpperCase(), 691, y + 36, { size: 7, font: 'bold', color: WHITE, align: 'center' });
   pdf.text(calculateTotal(sample), 691, y + 72, { size: 36, font: 'black', color: WHITE, align: 'center' });
 };
 
 const drawRadar = (pdf, sample, language) => {
   heading(pdf, translate(language, 'attributeMap'), 24, 185);
+  if (sample.noScore) {
+    pdf.text(translate(language, 'noScore'), 163, 305, { size: 12, color: INK, align: 'center' });
+    return;
+  }
   const cx = 163, cy = 305, radius = 91;
   const point = (r, i) => ({ x: cx + Math.cos(-Math.PI / 2 + i * Math.PI / 5) * r, y: cy + Math.sin(-Math.PI / 2 + i * Math.PI / 5) * r });
   [7.5, 8.5, 9.5, 10].forEach((value) => pdf.circle(cx, cy, (value - 7) / 3 * radius, { stroke: '#d4d4d4', lineWidth: 0.6, dash: value === 10 ? [] : [2, 3] }));

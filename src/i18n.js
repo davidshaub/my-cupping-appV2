@@ -14,6 +14,8 @@ export const LANGUAGE_OPTIONS = {
 export const UI_TEXT = {
   'pt-BR': UI_PT,
   en: {
+    noScore: 'No Score',
+    restoreScoring: 'Restore Scoring',
     bwMode: 'B&W Mode',
     lexicon: 'Lexicon',
     flavorProfile: 'Flavor Profile',
@@ -161,6 +163,8 @@ export const UI_TEXT = {
     handsLogo: 'Osito logo'
   },
   es: {
+    noScore: 'Sin puntuación',
+    restoreScoring: 'Restaurar puntuación',
     lexicon: 'Léxico',
     flavorProfile: 'Perfil de Sabor',
     allowPrintWindow: 'Permite las ventanas emergentes para abrir el informe imprimible.',
