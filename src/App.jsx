@@ -1437,31 +1437,24 @@ const App = () => {
 
     return (
       <div className="min-h-screen bg-stone-100 p-4 md:p-12">
-        <div className="max-w-4xl mx-auto space-y-6 pb-32">
+        <div className="max-w-4xl mx-auto space-y-6 metadata-editor-content">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-2xl font-black text-stone-900 tracking-tight">{t('lotInformation')}</h1>
             <div className="flex gap-2 flex-wrap">
               <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact />
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact />
               <button
-                onClick={() => setMetadataTableMode(false)}
-                className={`px-4 py-2 rounded-xl font-bold text-xs border ${
-                  !metadataTableMode ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-700 border-stone-200'
-                }`}
+                type="button"
+                onClick={() => setMetadataTableMode(current => !current)}
+                className="eink-toggle eink-toggle-compact"
+                title={t(metadataTableMode ? 'standardView' : 'tableView')}
               >
-                {t('standardView')}
-              </button>
-              <button
-                onClick={() => setMetadataTableMode(true)}
-                className={`px-4 py-2 rounded-xl font-bold text-xs border ${
-                  metadataTableMode ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-700 border-stone-200'
-                }`}
-              >
-                {t('tableView')}
+                {t(metadataTableMode ? 'standardView' : 'tableView')}
               </button>
               <button
                 onClick={resetToHome}
-                className="text-stone-400 font-bold text-sm"
+                type="button"
+                className="eink-toggle eink-toggle-compact"
               >
                 <Icon name="home" size={16} /> {t('home')}
               </button>
@@ -1733,12 +1726,24 @@ const App = () => {
             <Icon name="plus" size={18} />
             {t('addCoffee')}
           </button>
-          <button
-            onClick={() => setAppState(metadataOrigin === 'report' ? 'report' : 'cupping')}
-            className="w-[calc(100%-2rem)] md:w-full py-4 md:py-5 btn-stone-dark font-black text-base md:text-lg shadow-2xl fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 max-w-lg uppercase tracking-wider pb-safe"
-          >
-            {t(metadataOrigin === 'report' ? 'viewReport' : 'editSession')}
-          </button>
+          <div className="metadata-navigation">
+            <div className="metadata-navigation-actions">
+              <button
+                type="button"
+                onClick={() => setAppState('cupping')}
+                className="btn-stone-dark"
+              >
+                {t(metadataOrigin === 'setup' ? 'startSession' : 'returnToSession')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppState('report')}
+                className="btn-stone-light"
+              >
+                {t('viewReport')}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );

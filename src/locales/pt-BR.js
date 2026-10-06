@@ -1,5 +1,6 @@
 // Built-in Brazilian Portuguese. Coffee terminology is editorial, not an official WCR translation.
 export const UI_PT = {
+  returnToSession: 'Voltar à sessão',
   home: 'Início', editSession: 'Editar sessão', viewReport: 'Ver relatório',
   homeSaveError: 'Não foi possível salvar as últimas alterações neste dispositivo. Sua sessão continua aberta. Exporte uma cópia CSV antes de sair.',
   noScore: 'Sem pontuação', restoreScoring: 'Restaurar pontuação',
