@@ -86,7 +86,6 @@ const App = () => {
   const [activeSessionName, setActiveSessionName] = useState('');
   const [activeSavedSessionId, setActiveSavedSessionId] = useState(null);
   const [historySearch, setHistorySearch] = useState('');
-  const [confirmDialog, setConfirmDialog] = useState({ open: false, onConfirm: null });
   const [metadataTableMode, setMetadataTableMode] = useState(false);
   const [metadataTableSelection, setMetadataTableSelection] = useState({ anchor: null, focus: null });
   const [metadataTableSort, setMetadataTableSort] = useState(null);
@@ -169,14 +168,20 @@ const App = () => {
   const t = (key) => translate(language, key);
   const reportRadarSize = isMobile ? 260 : isTablet ? 280 : 300;
 
-  const openConfirm = (action) => setConfirmDialog({ open: true, onConfirm: action });
-  const closeConfirm = () => setConfirmDialog({ open: false, onConfirm: null });
-  const confirmAndRun = () => {
-    confirmDialog.onConfirm?.();
-    closeConfirm();
-  };
-
   const resetToHome = () => {
+    // Flush the latest edits before clearing the active session, including lot setup.
+    if (samples.length) {
+      try {
+        const existing = history.find(item => item.id === activeSavedSessionId);
+        const startTime = sessionStartTime || new Date().toLocaleString();
+        const entry = buildSessionEntry(existing?.id ?? Date.now(), activeSessionName || startTime, existing || {}, samples, startTime);
+        persistHistory(existing ? history.map(item => item.id === existing.id ? entry : item) : [entry, ...history]);
+      } catch (error) {
+        console.error(error);
+        window.alert(t('homeSaveError'));
+        return;
+      }
+    }
     setSamples([]);
     setSessionStartTime(null);
     setActiveSampleIndex(0);
@@ -215,8 +220,8 @@ const App = () => {
   });
 
   const persistHistory = (updatedHistory) => {
-    setHistory(updatedHistory);
     localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+    setHistory(updatedHistory);
   };
 
   const createAutosavedSession = (sourceSamples, startTime) => {
@@ -407,31 +412,6 @@ const App = () => {
       setIsExportingPdfs(false);
     }
   };
-
-  const renderConfirmModal = () =>
-    confirmDialog.open && (
-      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-stone-900/70 backdrop-blur-sm p-6">
-        <div className="bg-white w-full max-w-md rounded-[1.75rem] p-8 space-y-5 shadow-2xl">
-          <div className="space-y-2">
-            <h3 className="text-xl font-black text-stone-900 leading-tight">{t('leaveSessionTitle')}</h3>
-            <p className="text-sm text-stone-600 leading-relaxed">
-              {t('leaveSessionBody')}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={closeConfirm}
-              className="w-full py-3 rounded-xl font-bold text-stone-700 bg-stone-100 border border-stone-200 hover:bg-stone-200 active:scale-95 transition"
-            >
-              {t('stayHere')}
-            </button>
-            <button onClick={confirmAndRun} className="w-full py-3 rounded-xl font-bold text-white btn-stone-dark active:scale-95 transition">
-              {t('yesGoBack')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
 
   const updateScore = (sampleIdx, cat, delta) => {
     setSamples((prev) => {
@@ -1242,8 +1222,8 @@ const App = () => {
                 onClick={() => setAppState('setup')}
                 className="px-3 py-2 rounded-xl bg-white text-stone-700 border border-stone-200 hover:bg-stone-50 font-black text-[11px] uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
               >
-                <Icon name="chevron-left" size={16} />
-                {t('back')}
+                <Icon name="home" size={16} />
+                {t('home')}
               </button>
             </div>
           </div>
@@ -1339,7 +1319,7 @@ const App = () => {
               <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact />
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact />
               <button onClick={() => setAppState('setup')} className="text-stone-400 font-bold hover:text-stone-900 text-sm">
-                {t('back')}
+                <Icon name="home" size={16} /> {t('home')}
               </button>
             </div>
           </div>
@@ -1480,10 +1460,10 @@ const App = () => {
                 {t('tableView')}
               </button>
               <button
-                onClick={() => setAppState(metadataOrigin === 'report' ? 'report' : 'setup')}
+                onClick={resetToHome}
                 className="text-stone-400 font-bold text-sm"
               >
-                {t('back')}
+                <Icon name="home" size={16} /> {t('home')}
               </button>
             </div>
           </div>
@@ -1757,7 +1737,7 @@ const App = () => {
             onClick={() => setAppState(metadataOrigin === 'report' ? 'report' : 'cupping')}
             className="w-[calc(100%-2rem)] md:w-full py-4 md:py-5 btn-stone-dark font-black text-base md:text-lg shadow-2xl fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 max-w-lg uppercase tracking-wider pb-safe"
           >
-            {t('saveDetails')}
+            {t(metadataOrigin === 'report' ? 'viewReport' : 'editSession')}
           </button>
         </div>
       </div>
@@ -1767,7 +1747,6 @@ const App = () => {
   if (appState === 'report') {
     return (
       <div className="report-screen min-h-screen bg-stone-100 p-4 md:p-8 relative">
-        {renderConfirmModal()}
         {renderSaveSessionModal()}
         {preparedPdf && <div className="pdf-ready-backdrop print-hidden">
           <section role="dialog" aria-modal="true" aria-labelledby="pdf-ready-title" className="pdf-ready-dialog" onKeyDown={event => {
@@ -1791,18 +1770,18 @@ const App = () => {
           <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
               <button
-                onClick={() => openConfirm(resetToHome)}
+                onClick={resetToHome}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-stone-100 px-4 md:px-5 py-2 rounded-xl font-bold shadow-sm border border-stone-200 text-stone-600 active:scale-95 transition-all text-xs"
               >
                 <Icon name="home" size={16} />
-                {t('reset')}
+                {t('home')}
               </button>
               <button
                 onClick={() => setAppState('cupping')}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white px-4 md:px-5 py-2 rounded-xl font-bold shadow-sm border border-stone-200 text-stone-600 active:scale-95 transition-all text-xs"
               >
-                <Icon name="chevron-left" size={16} />
-                {t('back')}
+                <Icon name="edit-3" size={16} />
+                {t('editSession')}
               </button>
               <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact className="flex-1 sm:flex-none eink-report-mobile-toggle" />
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact className="flex-1 sm:flex-none eink-report-mobile-toggle" />
@@ -1992,8 +1971,8 @@ const App = () => {
               onClick={() => setAppState('cupping')}
               className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-100 text-stone-700 text-[10px] font-black uppercase tracking-wider"
             >
-              <Icon name="chevron-left" size={14} />
-              {t('back')}
+              <Icon name="edit-3" size={14} />
+              <span>{t('editSession')}</span>
             </button>
             <button
               onClick={() => goToMetadata('report')}
@@ -2041,15 +2020,16 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 pb-24 md:pb-40">
-      {renderConfirmModal()}
       {renderSaveSessionModal()}
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
         <header className="cupping-toolbar max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <button
-            onClick={() => openConfirm(resetToHome)}
+            onClick={resetToHome}
+            aria-label={t('home')}
+            title={t('home')}
             className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-transform active:scale-90"
           >
-            <Icon name="chevron-left" size={24} />
+            <Icon name="home" size={24} />
           </button>
           <div className="cupping-coffee-tabs flex items-center gap-2 overflow-x-auto py-1 flex-1 px-4" role="group" aria-label={t('sample')}>
             {samples.map((s, idx) => (

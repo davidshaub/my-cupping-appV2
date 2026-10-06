@@ -14,6 +14,8 @@ export const LANGUAGE_OPTIONS = {
 export const UI_TEXT = {
   'pt-BR': UI_PT,
   en: {
+    home: 'Home', editSession: 'Edit Session', viewReport: 'View Report',
+    homeSaveError: 'Your latest changes could not be saved on this device. You are still in your session. Please export a CSV backup before leaving.',
     noScore: 'No Score',
     restoreScoring: 'Restore Scoring',
     bwMode: 'B&W Mode',
@@ -163,6 +165,8 @@ export const UI_TEXT = {
     handsLogo: 'Osito logo'
   },
   es: {
+    home: 'Inicio', editSession: 'Editar sesión', viewReport: 'Ver informe',
+    homeSaveError: 'No se pudieron guardar los últimos cambios en este dispositivo. Tu sesión sigue abierta. Exporta una copia CSV antes de salir.',
     noScore: 'Sin puntuación',
     restoreScoring: 'Restaurar puntuación',
     lexicon: 'Léxico',
