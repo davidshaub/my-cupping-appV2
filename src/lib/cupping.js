@@ -207,6 +207,9 @@ export const initializeSamples = (count) =>
     noScore: false,
     ositoId: '',
     lotName: '',
+    country: '',
+    sampleType: '',
+    roastId: '',
     processing: 'Select One',
     processingOther: '',
     waterActivity: '',
@@ -277,7 +280,7 @@ export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito'
     'Flavor',
     'Aftertaste',
     'Balance',
-    'Consistency',
+    'Uniformity',
     'Overall',
     'Defects',
     'Cup Correction',
@@ -288,7 +291,10 @@ export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito'
     'Other Notes',
     'Session Start Time',
     'Lexicon',
-    'Scoring Status'
+    'Scoring Status',
+    'Country',
+    'Sample Type',
+    'Roast ID'
   ];
 
   const rows = samples.map((s, idx) => {
@@ -331,7 +337,10 @@ export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito'
       ),
       csvEscape(sessionStartTime),
       csvEscape(normalizeLexiconMode(lexiconMode)),
-      s.noScore === true ? 'No Score' : 'Scored'
+      s.noScore === true ? 'No Score' : 'Scored',
+      csvEscape(s.country),
+      csvEscape(s.sampleType),
+      csvEscape(s.roastId)
     ].join(',');
   });
 
@@ -390,7 +399,7 @@ export const importSessionFromCSV = (csvText, filename) => {
   const idxFlavor = colIndex('Flavor');
   const idxAftertaste = colIndex('Aftertaste');
   const idxBalance = colIndex('Balance');
-  const idxConsistency = colIndex('Consistency');
+  const idxConsistency = colIndex('Uniformity') >= 0 ? colIndex('Uniformity') : colIndex('Consistency');
   const idxOverall = colIndex('Overall');
   const idxDefects = colIndex('Defects');
   const idxCorrection = colIndex('Cup Correction');
@@ -442,6 +451,9 @@ export const importSessionFromCSV = (csvText, filename) => {
       id: parsedId,
       noScore: idxScoringStatus >= 0 && String(row[idxScoringStatus] ?? '').trim().toLowerCase() === 'no score',
       ositoId: idxOsitoId >= 0 ? String(row[idxOsitoId] ?? '') : '',
+      country: colIndex('Country') >= 0 ? String(row[colIndex('Country')] ?? '') : '',
+      sampleType: colIndex('Sample Type') >= 0 ? String(row[colIndex('Sample Type')] ?? '') : '',
+      roastId: colIndex('Roast ID') >= 0 ? String(row[colIndex('Roast ID')] ?? '') : '',
       lotName: idxLotName >= 0 ? String(row[idxLotName] ?? '') : '',
       processing,
       processingOther,

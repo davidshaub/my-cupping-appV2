@@ -57,7 +57,7 @@ const LanguageToggle = ({ language, onToggle, t, compact = false, className = ''
   </button>
 );
 
-const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther'];
+const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther', 'country', 'sampleType', 'roastId'];
 const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
 
 const parseClipboardRows = (text) => {
@@ -521,8 +521,8 @@ const App = () => {
       next.moisture = formatMoisture(raw);
     } else if (field === 'ositoId') {
       next.ositoId = raw;
-    } else if (field === 'lotName') {
-      next.lotName = raw;
+    } else if (['lotName', 'country', 'sampleType', 'roastId'].includes(field)) {
+      next[field] = raw;
     }
 
     return next;
@@ -1399,7 +1399,8 @@ const App = () => {
       processing: t('processing'),
       waterActivity: t('waterActivity'),
       moisture: t('moisture'),
-      processingOther: t('processingDetails')
+      processingOther: t('processingDetails'),
+      country: t('country'), sampleType: t('sampleType'), roastId: t('roastId')
     };
     const tableColumnWidths = {
       ositoId: '150px',
@@ -1407,7 +1408,8 @@ const App = () => {
       processing: '170px',
       waterActivity: '140px',
       moisture: '120px',
-      processingOther: '230px'
+      processingOther: '230px',
+      country: '160px', sampleType: '160px', roastId: '160px'
     };
     const getTableCellClass = (row, col, extra = '') =>
       `metadata-grid-cell ${isMetadataTableCellSelected(row, col) ? 'is-selected' : ''} ${
@@ -1618,6 +1620,14 @@ const App = () => {
                             aria-label={`${t('processingDetails')} ${idx + 1}`}
                           />
                         </td>
+                        {['country', 'sampleType', 'roastId'].map((field, offset) => (
+                          <td key={field} {...getTableCellProps(idx, 6 + offset)}>
+                            <input {...getTableInputProps(idx, 6 + offset)}
+                              value={s[field] || ''}
+                              onChange={(e) => updateMetadata(idx, field, e.target.value)}
+                              placeholder={`${t(field)}...`} aria-label={`${t(field)} ${idx + 1}`} />
+                          </td>
+                        ))}
                       </tr>
                     );
                   })}
@@ -1670,6 +1680,17 @@ const App = () => {
                       <option value="Other">{t('other')}</option>
                     </select>
                   </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {['country', 'sampleType', 'roastId'].map((field) => (
+                    <div key={field} className="space-y-1">
+                      <label className="text-[9px] font-black text-stone-400 uppercase ml-1" htmlFor={`${field}-${s.id}`}>{t(field)}</label>
+                      <input id={`${field}-${s.id}`} value={s[field] || ''}
+                        onChange={(e) => updateMetadata(idx, field, e.target.value)}
+                        placeholder={`${t(field)}...`}
+                        className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm" />
+                    </div>
+                  ))}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -1863,6 +1884,11 @@ const App = () => {
                         <span className="report-coffee-id text-base font-bold text-stone-900">
                           {s.ositoId || t('noId')}
                         </span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-stone-600 mb-1">
+                        {['country', 'sampleType', 'roastId'].filter((field) => s[field]?.trim()).map((field) => (
+                          <span key={field} className="break-words"><span className="font-bold">{t(field)}:</span> {s[field]}</span>
+                        ))}
                       </div>
                       <h2 className="report-coffee-name text-xl sm:text-2xl md:text-4xl font-bold text-stone-900 leading-tight">
                         {s.lotName ? s.lotName : `${t('sample')} 0${idx + 1}`}
