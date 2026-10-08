@@ -14,6 +14,8 @@ import {
 import useGoogleSheets from './hooks/useGoogleSheets';
 import GoogleSheetsSync from './components/GoogleSheetsSync';
 import { newSyncId, normalizeSessionIdentity } from './lib/googleSheets';
+import SearchableSelect from './components/SearchableSelect';
+import { COUNTRY_OPTIONS, SAMPLE_TYPE_OPTIONS } from './lib/lotOptions';
 import FlavorWheel from './components/FlavorWheel';
 import { reportPdfFilename } from './lib/reportFilenames';
 import { canModifyTag, nextTagModifier } from './lib/tagModifiers';
@@ -1640,10 +1642,14 @@ const App = () => {
                         </td>
                         {['country', 'sampleType', 'roastId'].map((field, offset) => (
                           <td key={field} {...getTableCellProps(idx, 6 + offset)}>
-                            <input {...getTableInputProps(idx, 6 + offset)}
-                              value={s[field] || ''}
-                              onChange={(e) => updateMetadata(idx, field, e.target.value)}
-                              placeholder={`${t(field)}...`} aria-label={`${t(field)} ${idx + 1}`} />
+                            {field === 'roastId' ? <input {...getTableInputProps(idx, 6 + offset)}
+                              value={s[field] || ''} onChange={(e) => updateMetadata(idx, field, e.target.value)}
+                              placeholder={`${t(field)}...`} aria-label={`${t(field)} ${idx + 1}`} /> :
+                              <SearchableSelect value={s[field]} onChange={(value) => updateMetadata(idx, field, value)}
+                                options={field === 'country' ? COUNTRY_OPTIONS : SAMPLE_TYPE_OPTIONS}
+                                label={`${t(field)} ${idx + 1}`} noMatches={t('noMatchingOptions')}
+                                inputProps={{ ...getTableInputProps(idx, 6 + offset), placeholder: `${t(field)}...` }} />}
+
                           </td>
                         ))}
                       </tr>
@@ -1703,10 +1709,15 @@ const App = () => {
                   {['country', 'sampleType', 'roastId'].map((field) => (
                     <div key={field} className="space-y-1">
                       <label className="text-[9px] font-black text-stone-400 uppercase ml-1" htmlFor={`${field}-${s.id}`}>{t(field)}</label>
-                      <input id={`${field}-${s.id}`} value={s[field] || ''}
-                        onChange={(e) => updateMetadata(idx, field, e.target.value)}
-                        placeholder={`${t(field)}...`}
-                        className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm" />
+                      {field === 'roastId' ? <input id={`${field}-${s.id}`} value={s[field] || ''}
+                        onChange={(e) => updateMetadata(idx, field, e.target.value)} placeholder={`${t(field)}...`}
+                        className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm" /> :
+                        <SearchableSelect value={s[field]} onChange={(value) => updateMetadata(idx, field, value)}
+                          options={field === 'country' ? COUNTRY_OPTIONS : SAMPLE_TYPE_OPTIONS}
+                          label={t(field)} noMatches={t('noMatchingOptions')}
+                          inputProps={{ id: `${field}-${s.id}`, placeholder: `${t(field)}...` }}
+                          className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm" />}
+
                     </div>
                   ))}
                 </div>
@@ -1904,14 +1915,14 @@ const App = () => {
                           {s.ositoId || t('noId')}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-stone-600 mb-1">
+                      <h2 className="report-coffee-name text-xl sm:text-2xl md:text-4xl font-bold text-stone-900 leading-tight">
+                        {s.lotName ? s.lotName : `${t('sample')} 0${idx + 1}`}
+                      </h2>
+                      <div className="report-lot-details">
                         {['country', 'sampleType', 'roastId'].filter((field) => s[field]?.trim()).map((field) => (
                           <span key={field} className="break-words"><span className="font-bold">{t(field)}:</span> {s[field]}</span>
                         ))}
                       </div>
-                      <h2 className="report-coffee-name text-xl sm:text-2xl md:text-4xl font-bold text-stone-900 leading-tight">
-                        {s.lotName ? s.lotName : `${t('sample')} 0${idx + 1}`}
-                      </h2>
                       <div className="report-identity-metadata flex flex-wrap items-center gap-4 sm:gap-6 pt-2">
                         <div className="flex flex-col">
                           <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">{t('processing')}</span>

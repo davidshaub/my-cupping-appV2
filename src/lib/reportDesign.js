@@ -36,20 +36,23 @@ const drawIdentity = (pdf, sample, index, language) => {
   const scoreX = 614;
   pdf.strokeRect(MARGIN, y, WIDTH - MARGIN * 2, 101, INK, 0.8);
   pdf.fillRect(scoreX, y, WIDTH - MARGIN - scoreX, 101, INK);
-  pdf.text(sample.ositoId || translate(language, 'noId'), 42, y + 20, { font: 'bold', size: 10, color: INK, maxWidth: sample.country || sample.sampleType || sample.roastId ? 132 : 550 });
-  ['country', 'sampleType', 'roastId'].forEach((field, i) => {
-    const value = String(sample[field] || '').trim();
-    if (!value) return;
-    const x = 190 + i * 140;
-    pdf.text(translate(language, field).toUpperCase(), x, y + 13, { size: 6, font: 'bold', color: INK, maxWidth: 132 });
-    pdf.text(value, x, y + 25, { size: 9, color: INK, maxWidth: 132 });
-  });
+  pdf.text(sample.ositoId || translate(language, 'noId'), 42, y + 20, { font: 'bold', size: 10, color: INK, maxWidth: 550 });
   const name = sample.lotName || `${translate(language, 'sample')} ${index + 1}`;
+  const details = ['country', 'sampleType', 'roastId'].filter(field => String(sample[field] || '').trim());
   let size = 25;
   let lines = textLines(pdf, name, 550, size, 'serifBold');
-  while ((lines.length > 2 || (lines.length === 2 && size > 18)) && size > 12) { size--; lines = textLines(pdf, name, 550, size, 'serifBold'); }
-  const titleBaseline = lines.length > 1 ? 40 : 47;
+  while ((lines.length > 2 || (lines.length === 2 && size > (details.length ? 16 : 18))) && size > 12) { size--; lines = textLines(pdf, name, 550, size, 'serifBold'); }
+  const titleBaseline = details.length ? (lines.length > 1 ? 36 : 44) : (lines.length > 1 ? 40 : 47);
   lines.slice(0, 2).forEach((line, i) => heading(pdf, line, 42, y + titleBaseline + i * (size + 2), size));
+  const detailsY = lines.length > 1 ? y + 70 : y + 65;
+  details.forEach((field, i) => {
+    const x = 42 + i * 184;
+    const label = `${translate(language, field)}: `;
+    pdf.text(label, x, detailsY, { size: 8, font: 'bold', color: INK });
+    const labelWidth = pdf.measureText(label, 8, 'bold');
+    pdf.text(sample[field], x + labelWidth, detailsY, { size: 8, color: INK, maxWidth: 175 - labelWidth });
+  });
+  const metadataY = details.length ? y + 83 : y + 75;
   const meta = [
     [translate(language, 'processing'), sample.processing === 'Other' ? sample.processingOther || translate(language, 'other') : translateProcessing(language, sample.processing || 'Select One')],
     [translate(language, 'waterActivity'), sample.waterActivity || ''],
@@ -57,8 +60,8 @@ const drawIdentity = (pdf, sample, index, language) => {
   ].filter(([, value]) => value);
   meta.forEach(([label, value], i) => {
     const x = 42 + i * 184;
-    pdf.text(label.toUpperCase(), x, y + 75, { size: 6, font: 'bold', color: INK });
-    pdf.text(value, x, y + 87, { size: 9, color: INK, maxWidth: 175 });
+    pdf.text(label.toUpperCase(), x, metadataY, { size: 6, font: 'bold', color: INK });
+    pdf.text(value, x, metadataY + 12, { size: 9, color: INK, maxWidth: 175 });
   });
   pdf.text(translate(language, sample.noScore ? 'noScore' : 'finalScore').toUpperCase(), 691, y + 36, { size: 7, font: 'bold', color: WHITE, align: 'center' });
   pdf.text(calculateTotal(sample), 691, y + 72, { size: 36, font: 'black', color: WHITE, align: 'center' });

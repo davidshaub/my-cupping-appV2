@@ -57,7 +57,7 @@ export const UI_PT = {
   noMatchingSessions: 'Nenhuma sessão salva corresponde à busca.', lotInformation: 'Informações dos Lotes',
   standardView: 'Visualização Padrão', tableView: 'Editar em Tabela', sortAscending: 'Ordenar crescente',
   sortDescending: 'Ordenar decrescente', reorder: 'Reordenar', reorderLot: 'Arraste para reordenar o lote',
-  country: 'País', sampleType: 'Tipo de Amostra', roastId: 'ID de Torra', ositoId: 'ID Osito', lotName: 'Nome do Lote', processing: 'Processamento', waterActivity: 'Atividade de Água',
+  noMatchingOptions: 'Nenhuma opção correspondente', country: 'País', sampleType: 'Tipo de Amostra', roastId: 'ID de Torra', ositoId: 'ID Osito', lotName: 'Nome do Lote', processing: 'Processamento', waterActivity: 'Atividade de Água',
   moisture: 'Umidade', processingDetails: 'Detalhes do Processamento', lotData: 'Dados do Lote',
   saveDetails: 'Salvar Detalhes', nameSession: 'Nomear esta Sessão', saveOnDevice: 'Para salvar neste dispositivo',
   sessionNamePlaceholder: 'ex. Controle da manhã...', saveSession: 'Salvar Sessão', saveSessionChanges: 'Salvar Alterações',

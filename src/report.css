@@ -18,6 +18,10 @@
 .report-screen .report-identity-copy { min-width: 0; padding: 22px 24px 26px; }
 .report-screen .report-identity-id-row { margin-bottom: 8px; }
 .report-screen .report-coffee-name { line-height: 1.2; }
+.report-lot-details { display: flex; flex-wrap: wrap; gap: 6px 24px; margin-top: 12px; color: #333; font-size: 12px; line-height: 1.5; }
+.report-lot-details:empty { display: none; }
+.report-lot-details > span { overflow-wrap: anywhere; }
+.report-lot-details .font-bold { font-weight: 600; }
 .report-screen .report-identity-metadata { padding-top: 22px; gap: 18px 36px; align-items: start; }
 .report-screen .report-identity-metadata > div { gap: 5px; min-width: 0; }
 .report-screen .report-identity-metadata > div > span:first-child { font-size: 10px; font-weight: 700; letter-spacing: 0; color: #333; }
