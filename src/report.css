@@ -183,7 +183,7 @@
 }
 
 @media screen and (max-width: 700px) {
-  .cupping-toolbar { display: grid; grid-template-columns: 40px 40px minmax(0, 1fr) auto; gap: 8px; padding: 12px; }
+  .cupping-toolbar { display: grid; grid-template-columns: 36px 36px 36px minmax(0, 1fr) auto; gap: 4px; padding: 12px 8px; }
   .cupping-toolbar > button { min-width: 0; min-height: 40px; padding-left: 8px; padding-right: 8px; }
   .cupping-toolbar > button > span { display: none; }
   .cupping-toolbar > div:last-child { gap: 6px; }

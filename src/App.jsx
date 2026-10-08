@@ -2101,6 +2101,16 @@ const App = () => {
             ))}
           </div>
           <button
+            type="button"
+            onClick={() => goToMetadata('cupping')}
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white text-stone-800 border border-stone-200 shadow-sm font-black text-[10px] uppercase tracking-widest active:scale-95 shrink-0 transition-transform"
+            title={t('lotInformation')}
+            aria-label={t('lotInformation')}
+          >
+            <Icon name="edit-2" size={16} />
+            <span className="hidden sm:inline">{t('lots')}</span>
+          </button>
+          <button
             onClick={openSaveSessionModal}
             className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-white text-blue-700 border border-blue-100 shadow-sm font-black text-[10px] uppercase tracking-widest active:scale-95 shrink-0 transition-transform"
             title={t('save')}
