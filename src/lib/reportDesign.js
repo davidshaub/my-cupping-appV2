@@ -15,10 +15,9 @@ const textLines = (pdf, text, width, size = 9, font = 'regular') => String(text)
 const heading = (pdf, text, x, y, size = 16) => pdf.text(text, x, y, { font: 'serifBold', size, color: INK });
 
 const drawHeader = (pdf, sessionStartTime, language) => {
-  pdf.text(translate(language, 'labSummary').toUpperCase(), MARGIN, 24, { size: 9, font: 'bold', color: INK });
-  pdf.text(translate(language, 'qualityControl').toUpperCase(), MARGIN, 36, { size: 6.5, color: INK });
+  pdf.text(translate(language, 'labSummary').toUpperCase(), MARGIN, 25, { size: 13, font: 'serifBold', color: INK });
+  pdf.text(translate(language, 'qualityControl').toUpperCase(), MARGIN, 39, { size: 6.5, font: 'bold', color: '#7c6f5f', letterSpacing: 1.1 });
   pdf.text(sessionStartTime, WIDTH - MARGIN, 24, { size: 7, align: 'right', color: INK, maxWidth: 230 });
-  pdf.line(MARGIN, 44, WIDTH - MARGIN, 44, INK, 0.8);
 };
 
 const drawFooter = (pdf, language, logoImage, page = 1) => {
@@ -34,34 +33,39 @@ const drawFooter = (pdf, language, logoImage, page = 1) => {
 const drawIdentity = (pdf, sample, index, language) => {
   const y = 54;
   const scoreX = 614;
-  pdf.strokeRect(MARGIN, y, WIDTH - MARGIN * 2, 101, INK, 0.8);
-  pdf.fillRect(scoreX, y, WIDTH - MARGIN - scoreX, 101, INK);
+  pdf.strokeRect(MARGIN, y, WIDTH - MARGIN * 2, 111, INK, 0.8);
+  pdf.fillRect(scoreX, y, WIDTH - MARGIN - scoreX, 111, INK);
   pdf.text(sample.ositoId || translate(language, 'noId'), 42, y + 20, { font: 'bold', size: 10, color: INK, maxWidth: 550 });
   const name = sample.lotName || `${translate(language, 'sample')} ${index + 1}`;
   const details = ['country', 'sampleType', 'roastId'].filter(field => String(sample[field] || '').trim());
   let size = 25;
   let lines = textLines(pdf, name, 550, size, 'serifBold');
   while ((lines.length > 2 || (lines.length === 2 && size > (details.length ? 16 : 18))) && size > 12) { size--; lines = textLines(pdf, name, 550, size, 'serifBold'); }
-  const titleBaseline = details.length ? (lines.length > 1 ? 36 : 44) : (lines.length > 1 ? 40 : 47);
+  const titleBaseline = lines.length > 1 ? 42 : 50;
   lines.slice(0, 2).forEach((line, i) => heading(pdf, line, 42, y + titleBaseline + i * (size + 2), size));
-  const detailsY = lines.length > 1 ? y + 70 : y + 65;
-  details.forEach((field, i) => {
-    const x = 42 + i * 184;
+  const detailsY = lines.length > 1 ? y + 73 : y + 68;
+  let detailX = 42;
+  details.forEach((field) => {
+    const x = detailX;
     const label = `${translate(language, field)}: `;
     pdf.text(label, x, detailsY, { size: 8, font: 'bold', color: INK });
     const labelWidth = pdf.measureText(label, 8, 'bold');
-    pdf.text(sample[field], x + labelWidth, detailsY, { size: 8, color: INK, maxWidth: 175 - labelWidth });
+    const valueWidth = Math.min(pdf.measureText(sample[field], 8), 175 - labelWidth);
+    pdf.text(sample[field], x + labelWidth, detailsY, { size: 8, color: '#333333', maxWidth: valueWidth });
+    detailX += labelWidth + valueWidth + 16;
   });
-  const metadataY = details.length ? y + 83 : y + 75;
+  const metadataY = details.length ? detailsY + 18 : y + 79;
   const meta = [
     [translate(language, 'processing'), sample.processing === 'Other' ? sample.processingOther || translate(language, 'other') : translateProcessing(language, sample.processing || 'Select One')],
     [translate(language, 'waterActivity'), sample.waterActivity || ''],
     [translate(language, 'moisture'), sample.moisture ? `${sample.moisture}%` : '']
   ].filter(([, value]) => value);
-  meta.forEach(([label, value], i) => {
-    const x = 42 + i * 184;
-    pdf.text(label.toUpperCase(), x, metadataY, { size: 6, font: 'bold', color: INK });
-    pdf.text(value, x, metadataY + 12, { size: 9, color: INK, maxWidth: 175 });
+  let metaX = 42;
+  meta.forEach(([label, value]) => {
+    const x = metaX;
+    pdf.text(label.toUpperCase(), x, metadataY, { size: 6, font: 'bold', color: '#57534e' });
+    pdf.text(value, x, metadataY + 12, { size: 9, color: '#292524', maxWidth: 175 });
+    metaX += Math.max(pdf.measureText(label.toUpperCase(), 6, 'bold'), Math.min(pdf.measureText(value, 9), 175)) + 24;
   });
   pdf.text(translate(language, sample.noScore ? 'noScore' : 'finalScore').toUpperCase(), 691, y + 36, { size: 7, font: 'bold', color: WHITE, align: 'center' });
   pdf.text(calculateTotal(sample), 691, y + 72, { size: 36, font: 'black', color: WHITE, align: 'center' });
