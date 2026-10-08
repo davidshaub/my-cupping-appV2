@@ -204,6 +204,7 @@ export const getSmartMatch = async (userInput, officialOptions, signal) => {
 export const initializeSamples = (count) =>
   Array.from({ length: count }, (_, i) => ({
     id: i + 1,
+    syncId: globalThis.crypto.randomUUID(),
     noScore: false,
     ositoId: '',
     lotName: '',
@@ -261,7 +262,7 @@ const toSafeFilenamePart = (value) => {
   return cleaned.slice(0, 60);
 };
 
-export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito') => {
+export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito', sessionId = '') => {
   const headers = [
     'Sample #',
     'Osito ID',
@@ -294,7 +295,9 @@ export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito'
     'Scoring Status',
     'Country',
     'Sample Type',
-    'Roast ID'
+    'Roast ID',
+    'Session ID',
+    'Sample ID'
   ];
 
   const rows = samples.map((s, idx) => {
@@ -340,15 +343,17 @@ export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito'
       s.noScore === true ? 'No Score' : 'Scored',
       csvEscape(s.country),
       csvEscape(s.sampleType),
-      csvEscape(s.roastId)
+      csvEscape(s.roastId),
+      csvEscape(sessionId),
+      csvEscape(s.syncId)
     ].join(',');
   });
 
   return [headers.join(','), ...rows].join('\n');
 };
 
-export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode = 'osito') => {
-  const csvContent = buildSessionCSV(samples, sessionStartTime, lexiconMode);
+export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode = 'osito', sessionId = '') => {
+  const csvContent = buildSessionCSV(samples, sessionStartTime, lexiconMode, sessionId);
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -449,6 +454,7 @@ export const importSessionFromCSV = (csvText, filename) => {
 
     samples.push({
       id: parsedId,
+      syncId: String(row[colIndex('Sample ID')] || '').trim() || globalThis.crypto.randomUUID(),
       noScore: idxScoringStatus >= 0 && String(row[idxScoringStatus] ?? '').trim().toLowerCase() === 'no score',
       ositoId: idxOsitoId >= 0 ? String(row[idxOsitoId] ?? '') : '',
       country: colIndex('Country') >= 0 ? String(row[colIndex('Country')] ?? '') : '',
@@ -495,6 +501,7 @@ export const importSessionFromCSV = (csvText, filename) => {
 
   return {
     samples,
+    syncId: String(rows[1]?.[colIndex('Session ID')] || '').trim(),
     sessionStartTime: sessionStartTime || new Date().toLocaleString(),
     sessionName: inferSessionNameFromFilename(filename),
     lexiconMode: normalizeLexiconMode(rows[1]?.[colIndex('Lexicon')])
