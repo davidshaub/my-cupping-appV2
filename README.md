@@ -40,7 +40,7 @@ http://localhost:5173/my-cupping-appV2/
 
 ## Local data
 
-Sessions are saved in the browser's `localStorage`, so they stay on the same device/browser and are not sent to a server. Clearing browser site data will remove saved sessions.
+Sessions save immediately in the browser's `localStorage`. When the shared sync endpoint is configured, saved sessions automatically upload to the cupping spreadsheet. Offline changes stay pending across reloads and retry automatically when online. Clearing browser site data removes any local sessions that have not yet uploaded. The production app caches itself and its PDF assets after the first online visit. See [shared sync setup](server/SETUP.md).
 
 ## Deployment
 

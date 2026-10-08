@@ -1,5 +1,13 @@
 // Built-in Brazilian Portuguese. Coffee terminology is editorial, not an official WCR translation.
 export const UI_PT = {
+    sharedSavedLocal: "Salvo neste dispositivo",
+    sharedSaving: "Sincronizando…",
+    sharedPending: "Salvo · sincronização pendente",
+    sharedOffline: "Salvo sem conexão · será sincronizado ao conectar",
+    sharedSaved: "Salvo e sincronizado",
+    sharedInvalidData: "Salvo aqui. O serviço de sincronização precisa de atenção.",
+    sharedTooLarge: "Salvo aqui. A sessão é grande demais para sincronizar.",
+
     googleSheets: "Google Sheets",
     googleOfflineReady: 'Uso sem conexão pronto neste dispositivo.',
     googleOfflinePreparing: 'Abra o aplicativo publicado online uma vez para preparar o uso sem conexão.',

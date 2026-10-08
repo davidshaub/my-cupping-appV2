@@ -14,6 +14,14 @@ export const LANGUAGE_OPTIONS = {
 export const UI_TEXT = {
   'pt-BR': UI_PT,
   en: {
+    sharedSavedLocal: "Saved on this device",
+    sharedSaving: "Syncing…",
+    sharedPending: "Saved · sync pending",
+    sharedOffline: "Saved offline · will sync when online",
+    sharedSaved: "Saved and synced",
+    sharedInvalidData: "Saved locally. The shared sync service needs attention.",
+    sharedTooLarge: "Saved locally. This session is too large to sync.",
+
     googleSheets: "Google Sheets",
     googleOfflineReady: 'Offline use is ready on this device.',
     googleOfflinePreparing: 'Open the published app online once to prepare offline use.',
@@ -198,6 +206,14 @@ export const UI_TEXT = {
     handsLogo: 'Osito logo'
   },
   es: {
+    sharedSavedLocal: "Guardado en este dispositivo",
+    sharedSaving: "Sincronizando…",
+    sharedPending: "Guardado · sincronización pendiente",
+    sharedOffline: "Guardado sin conexión · se sincronizará al conectar",
+    sharedSaved: "Guardado y sincronizado",
+    sharedInvalidData: "Guardado aquí. El servicio de sincronización necesita atención.",
+    sharedTooLarge: "Guardado aquí. La sesión es demasiado grande para sincronizar.",
+
     googleSheets: "Google Sheets",
     googleOfflineReady: 'Uso sin conexión listo en este dispositivo.',
     googleOfflinePreparing: 'Abre la aplicación publicada con conexión una vez para preparar el uso sin conexión.',

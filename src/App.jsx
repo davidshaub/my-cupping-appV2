@@ -12,7 +12,6 @@ import {
   initializeSamples
 } from './lib/cupping';
 import useGoogleSheets from './hooks/useGoogleSheets';
-import GoogleSheetsSync from './components/GoogleSheetsSync';
 import { newSyncId, normalizeSessionIdentity } from './lib/googleSheets';
 import SearchableSelect from './components/SearchableSelect';
 import { COUNTRY_OPTIONS, SAMPLE_TYPE_OPTIONS } from './lib/lotOptions';
@@ -234,8 +233,7 @@ const App = () => {
     setHistory(updatedHistory);
   };
 
-  const googleSync = useGoogleSheets(history, (restored) => persistHistory(restored));
-  const renderGoogleSync = () => <GoogleSheetsSync sync={googleSync} t={t} />;
+  useGoogleSheets(history);
 
   const createAutosavedSession = (sourceSamples, startTime) => {
     const autosaveName = startTime || new Date().toLocaleString();
@@ -1157,7 +1155,6 @@ const App = () => {
               <Icon name="plus" size={18} />
             </button>
           </div>
-          {renderGoogleSync()}
           <div className="space-y-3">
             {renderLexiconSelector()}
             <button onClick={startSession} className="w-full py-4 md:py-5 btn-stone-dark font-black text-base md:text-lg flex items-center justify-center gap-3 shadow-2xl">
@@ -1331,7 +1328,6 @@ const App = () => {
     return (
       <div className="min-h-screen bg-stone-100 p-6 md:p-12">
         <div className="max-w-4xl mx-auto space-y-8">
-          {renderGoogleSync()}
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">{t('savedSessions')}</h1>
             <div className="flex items-center gap-3">
@@ -1482,7 +1478,6 @@ const App = () => {
             </div>
           </div>
 
-          {renderGoogleSync()}
           <div className="max-w-sm">{renderLexiconSelector()}</div>
           {metadataTableMode ? (
             <div className="metadata-table-shell">
@@ -1822,7 +1817,6 @@ const App = () => {
           </section>
         </div>}
         <div className="max-w-[1400px] mx-auto space-y-4 pb-28 md:pb-20 report-container">
-          {renderGoogleSync()}
           <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
               <button
@@ -2082,7 +2076,6 @@ const App = () => {
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 pb-24 md:pb-40">
       {renderSaveSessionModal()}
-      <div className="max-w-6xl mx-auto px-4">{renderGoogleSync()}</div>
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
         <header className="cupping-toolbar max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <button

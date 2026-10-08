@@ -1,11 +1,9 @@
 import { calculateTotal } from './cupping.js';
 import { normalizeLexiconMode } from './lexicon.js';
 
-export const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || '761778063564-pb2rq89m4ium536jsj3dtqsu6vtnaecp.apps.googleusercontent.com';
 export const SPREADSHEET_ID = '1jSQkBTxNKAtdRXns9rY_5GrskRfF3MpsB6Z1ntYcdqE';
 export const SHEET_ID = 58722764;
 export const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit#gid=${SHEET_ID}`;
-export const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 const API = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
 
 export const newSyncId = () => globalThis.crypto.randomUUID();
@@ -14,21 +12,6 @@ export const normalizeSessionIdentity = (session) => ({
   syncId: session.syncId || newSyncId(),
   samples: (session.samples || []).map(sample => ({ ...sample, syncId: sample.syncId || newSyncId() }))
 });
-
-let identityReady;
-export const loadGoogleIdentity = () => {
-  if (window.google?.accounts?.oauth2) return Promise.resolve(window.google.accounts.oauth2);
-  if (!identityReady) identityReady = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    const timeout = setTimeout(() => { identityReady = null; script.remove(); reject(new Error('googleLoadError')); }, 15000);
-    script.onload = () => { clearTimeout(timeout); resolve(window.google.accounts.oauth2); };
-    script.onerror = () => { clearTimeout(timeout); identityReady = null; script.remove(); reject(new Error('googleLoadError')); };
-    document.head.appendChild(script);
-  });
-  return identityReady;
-};
 
 const columnName = index => {
   let result = '';
@@ -126,7 +109,7 @@ const readSheet = async (request) => {
   return { sheet, range, rows: values.values || [] };
 };
 
-export const syncSessionToSheet = async (session, credential, fetcher = fetch) => {
+export const syncSessionsToSheet = async (sessions, credential, fetcher = fetch) => {
   const request = sheetRequest(credential, fetcher);
   const { sheet, range, rows } = await readSheet(request);
   // Add only integration-owned columns; preserve the user's existing layout.
@@ -142,11 +125,14 @@ export const syncSessionToSheet = async (session, credential, fetcher = fetch) =
     headers.push(...missing);
     rows[0] = headers;
   }
-  const { data, newRows } = planSheetUpdates(session, rows, sheet.title);
+  const plans = sessions.map(session => planSheetUpdates(session, rows, sheet.title));
+  const data = plans.flatMap(plan => plan.data), newRows = plans.flatMap(plan => plan.newRows);
   if (data.length) await request('/values:batchUpdate', { method: 'POST', body: JSON.stringify({ valueInputOption: 'RAW', data }) });
   if (newRows.length) await request(`/values/${encodeURIComponent(range + '!A1')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, { method: 'POST', body: JSON.stringify({ values: newRows }) });
-  return session.samples.length;
+  return sessions.reduce((count, session) => count + session.samples.length, 0);
 };
+
+export const syncSessionToSheet = (session, credential, fetcher = fetch) => syncSessionsToSheet([session], credential, fetcher);
 
 export const sessionsFromSheetRows = rows => {
   const headers = rows[0] || [];

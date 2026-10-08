@@ -1,145 +1,79 @@
 import { useEffect, useRef, useState } from 'react';
-import { GOOGLE_CLIENT_ID, SHEETS_SCOPE, loadGoogleIdentity, syncSessionToSheet, recallSheetSessions } from '../lib/googleSheets.js';
+import { SYNC_API_URL, saveSharedSessions, sessionChanges } from '../lib/sharedSync.js';
 
-const ACK_KEY = 'cupping_sheet_acknowledged_v1';
+const ACK_KEY = 'cupping_shared_sync_acknowledged_v1';
 export const sessionFingerprint = session => JSON.stringify({ syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode, samples: session.samples });
 
-export default function useGoogleSheets(history, onRecall) {
+export default function useGoogleSheets(history) {
   const [online, setOnline] = useState(navigator.onLine);
-  const [offlineReady, setOfflineReady] = useState(false);
-  const hadConnection = useRef(false);
-  const [ready, setReady] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [status, setStatus] = useState('googleDisconnected');
-  const [error, setError] = useState('');
-  const [revision, setRevision] = useState(0);
-  const client = useRef(null), credential = useRef(null), pending = useRef(new Map());
-  const timer = useRef(null), expiryTimer = useRef(null), busy = useRef(false), mounted = useRef(true);
-  const latest = useRef(history), recallCallback = useRef(onRecall), needsRecall = useRef(false);
-  const acknowledged = useRef(null);
+  const acknowledged = useRef(null), latest = useRef(history);
+  const busy = useRef(false), timer = useRef(null), mounted = useRef(true);
+  const retryAt = useRef(0), failures = useRef(0), lastUpload = useRef(0);
+  const controller = useRef(null);
   if (!acknowledged.current) {
-    try { const saved = JSON.parse(localStorage.getItem(ACK_KEY) || '{}'); acknowledged.current = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}; } catch { acknowledged.current = {}; }
+    try { const saved = JSON.parse(localStorage.getItem(ACK_KEY) || '{}'); acknowledged.current = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}; }
+    catch { acknowledged.current = {}; }
   }
-  latest.current = history; recallCallback.current = onRecall;
+  latest.current = history;
   const saveAcknowledged = () => localStorage.setItem(ACK_KEY, JSON.stringify(acknowledged.current));
+  const dirty = () => latest.current.filter(entry => entry.samples.length && acknowledged.current[entry.syncId] !== sessionFingerprint(entry));
 
   const flush = async () => {
-    if (busy.current || !credential.current || !navigator.onLine || (!pending.current.size && !needsRecall.current)) return;
+    if (busy.current || !SYNC_API_URL || !navigator.onLine || !mounted.current) return;
+    const remaining = Math.max(retryAt.current, lastUpload.current + 30000) - Date.now();
+    if (remaining > 0) { clearTimeout(timer.current); timer.current = setTimeout(flush, remaining); return; }
+    if (!dirty().length) return;
     busy.current = true;
-    const auth = credential.current;
-    setStatus('googleSyncing'); setError('');
+    controller.current = new AbortController();
     try {
-      while (pending.current.size && credential.current === auth) {
-        const [id, entry] = pending.current.entries().next().value;
-        await syncSessionToSheet(entry, { ...auth, isCurrent: () => mounted.current && credential.current === auth });
-        acknowledged.current[id] = sessionFingerprint(entry);
-        saveAcknowledged();
-        // A newer version may have arrived during the request. Send it next.
-        if (pending.current.get(id) === entry) pending.current.delete(id);
+      const batch = [], changes = [];
+      let bytes = 0;
+      for (const entry of dirty().slice(0, 20)) {
+        const delta = sessionChanges(entry, acknowledged.current[entry.syncId]);
+        const size = new TextEncoder().encode(JSON.stringify(delta)).length;
+        if (batch.length && bytes + size > 750000) break;
+        batch.push(entry); changes.push(delta); bytes += size;
       }
-      if (needsRecall.current && credential.current === auth) {
-        const remote = await recallSheetSessions({ ...auth, isCurrent: () => mounted.current && credential.current === auth });
-        if (credential.current !== auth || !mounted.current) return;
-        // Pending local edits win; clean sessions can be restored from the sheet.
-        const local = latest.current;
-        const merged = [...local];
-        for (const entry of remote) {
-          const index = local.findIndex(item => item.syncId === entry.syncId);
-          if (index >= 0 && acknowledged.current[entry.syncId] !== sessionFingerprint(local[index])) continue;
-          const restored = index >= 0 ? { ...entry, id: local[index].id } : entry;
-          acknowledged.current[restored.syncId] = sessionFingerprint(restored);
-          if (index >= 0) merged[index] = restored; else merged.push(restored);
-        }
+      if (batch.length) {
+        if (changes.some(entry => entry.samples.length)) await saveSharedSessions(changes.filter(entry => entry.samples.length), controller.current.signal);
+        lastUpload.current = Date.now();
+        for (const entry of batch) acknowledged.current[entry.syncId] = sessionFingerprint(entry);
         saveAcknowledged();
-        recallCallback.current(merged);
-        needsRecall.current = false;
       }
-      if (mounted.current && credential.current === auth) setStatus('googleSynced');
+      failures.current = 0; retryAt.current = 0;
     } catch (failure) {
-      if (mounted.current && credential.current === auth) {
-        const key = failure.message?.startsWith('google') ? failure.message : 'googleNetworkError';
-        setError(key); setStatus(navigator.onLine ? 'googleSyncFailed' : 'googleOffline');
-        if (['googleNetworkError', 'googleQuotaError'].includes(key)) { clearTimeout(timer.current); timer.current = setTimeout(flush, 30000); }
-        if (key === 'googleReconnect') { credential.current = null; setConnected(false); }
-      }
+      if (!mounted.current || failure.name === 'AbortError') return;
+      failures.current++;
+      retryAt.current = Date.now() + Math.min(300000, 15000 * 2 ** Math.min(failures.current - 1, 5));
     } finally {
       busy.current = false;
-      if (mounted.current && credential.current && credential.current !== auth) timer.current = setTimeout(flush, 2000);
+      if (mounted.current && SYNC_API_URL && navigator.onLine) {
+        clearTimeout(timer.current);
+        timer.current = setTimeout(flush, Math.max(30000, retryAt.current - Date.now()));
+      }
     }
-  };
-
-  const prepare = () => {
-    setError('');
-    loadGoogleIdentity().then(oauth => {
-      if (!mounted.current) return;
-      client.current = oauth.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID, scope: SHEETS_SCOPE,
-        callback: response => {
-          if (!mounted.current) return;
-          if (response.error || !response.access_token || !oauth.hasGrantedAllScopes(response, SHEETS_SCOPE)) {
-            setError('googleAuthError'); setStatus('googleDisconnected'); return;
-          }
-          const auth = { token: response.access_token, expiresAt: Date.now() + Number(response.expires_in) * 1000 - 30000 };
-          credential.current = auth; hadConnection.current = true;
-          clearTimeout(expiryTimer.current);
-          expiryTimer.current = setTimeout(() => {
-            if (credential.current !== auth || !mounted.current) return;
-            credential.current = null; setConnected(false); setStatus('googleReconnect');
-          }, Math.max(0, auth.expiresAt - Date.now()));
-          needsRecall.current = true;
-          setConnected(true); setStatus('googleConnected'); setError(''); setRevision(value => value + 1);
-        },
-        error_callback: () => { if (mounted.current) { setError('googlePopupError'); setStatus('googleDisconnected'); } }
-      });
-      setReady(true);
-    }).catch(() => { if (mounted.current) { setReady(false); setError('googleLoadError'); } });
   };
 
   useEffect(() => {
     mounted.current = true;
-    if ('serviceWorker' in navigator) navigator.serviceWorker.ready.then(() => { if (mounted.current) setOfflineReady(true); });
-    if (navigator.onLine) prepare(); else setStatus('googleOffline');
-    const updateOnline = () => {
+    const changeOnline = () => {
       setOnline(navigator.onLine);
-      if (navigator.onLine && !client.current) prepare();
+      if (navigator.onLine) { retryAt.current = 0; flush(); }
     };
-    window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline);
+    const visible = () => { if (document.visibilityState === 'visible') flush(); };
+    window.addEventListener('online', changeOnline); window.addEventListener('offline', changeOnline);
+    document.addEventListener('visibilitychange', visible);
     return () => {
-      window.removeEventListener('online', updateOnline); window.removeEventListener('offline', updateOnline);
-      mounted.current = false; credential.current = null;
-      clearTimeout(timer.current); clearTimeout(expiryTimer.current);
+      mounted.current = false; clearTimeout(timer.current); controller.current?.abort();
+      window.removeEventListener('online', changeOnline); window.removeEventListener('offline', changeOnline);
+      document.removeEventListener('visibilitychange', visible);
     };
   }, []);
 
   useEffect(() => {
-    const ids = new Set(history.map(entry => entry.syncId));
-    for (const id of pending.current.keys()) if (!ids.has(id)) pending.current.delete(id);
-    for (const entry of history) {
-      if (entry.samples.length && acknowledged.current[entry.syncId] !== sessionFingerprint(entry)) pending.current.set(entry.syncId, entry);
-    }
+    if (!online || !SYNC_API_URL) return;
     clearTimeout(timer.current);
-    if (!online) { setStatus('googleOffline'); return; }
-    if (!connected) { setStatus(hadConnection.current ? 'googleReconnect' : 'googleDisconnected'); return; }
-    setStatus(pending.current.size ? 'googlePending' : needsRecall.current ? 'googleConnected' : 'googleSynced');
     timer.current = setTimeout(flush, 2000);
-  }, [history, connected, online, revision]);
+  }, [history, online]);
 
-  const connect = () => {
-    if (!ready) { prepare(); return; }
-    setError(''); setStatus('googleConnecting');
-    client.current.requestAccessToken({ prompt: '' });
-  };
-  const disconnect = () => {
-    const token = credential.current?.token;
-    credential.current = null; hadConnection.current = false; pending.current.clear();
-    clearTimeout(timer.current); clearTimeout(expiryTimer.current);
-    setConnected(false); setStatus('googleDisconnected'); setError('');
-    if (token) window.google.accounts.oauth2.revoke(token, () => {});
-  };
-  const retry = () => {
-    for (const entry of latest.current) if (acknowledged.current[entry.syncId] !== sessionFingerprint(entry)) pending.current.set(entry.syncId, entry);
-    needsRecall.current = true;
-    clearTimeout(timer.current); flush();
-  };
-  return { ready, offlineReady, online, connected, status, error, connect, disconnect, retry };
 }
