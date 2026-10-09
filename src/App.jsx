@@ -1429,7 +1429,7 @@ const App = () => {
                             onClick={event => { event.stopPropagation(); prepareHistoryCoffeePdf(item, sample, idx); }}
                             title={t('openPdf')}
                             aria-label={`${t('openPdf')}: ${sample.ositoId || sample.lotName || `${t('coffee')} ${idx + 1}`}`}
-                            className="inline-flex items-center rounded-full bg-stone-100 border border-stone-200 px-3 py-1 text-[10px] font-black text-stone-600 uppercase tracking-wider"
+                            className="history-coffee-token inline-flex items-center rounded-full bg-stone-100 border border-stone-200 px-3 py-1 text-[10px] font-black text-stone-600 uppercase tracking-wider"
                           >
                             #{idx + 1} {sample.lotName || t('coffee')}{sample.ositoId ? ` · ${sample.ositoId}` : ''}
                           </button>
