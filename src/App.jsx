@@ -1510,7 +1510,7 @@ const App = () => {
             <div className="flex items-center gap-3">
               <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact />
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact />
-              <button onClick={() => setAppState('setup')} className="text-stone-400 font-bold hover:text-stone-900 text-sm">
+              <button type="button" onClick={() => setAppState('setup')} className="eink-toggle eink-toggle-compact">
                 <Icon name="home" size={16} /> {t('home')}
               </button>
             </div>
