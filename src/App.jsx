@@ -23,6 +23,7 @@ import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
+import CoffeeReportModal from './components/CoffeeReportModal';
 import HandsLogo from '../assets/hands.png';
 import LevelSelector from './components/LevelSelector';
 import {
@@ -97,6 +98,7 @@ const App = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isExportingPdfs, setIsExportingPdfs] = useState(false);
   const [preparedPdf, setPreparedPdf] = useState(null);
+  const [historyPreview, setHistoryPreview] = useState(null);
   const historyPdfRequest = useRef(0);
   const closePreparedPdf = () => {
     historyPdfRequest.current += 1;
@@ -1368,9 +1370,139 @@ const App = () => {
     );
   }
 
+
+  const renderCoffeeReport = (s, idx, reportDate) => (
+                <div
+                  key={s.id}
+                  className="sample-spec-sheet mb-14 md:mb-32 border-b-2 border-stone-100 pb-10 md:pb-16 last:border-0 last:mb-0 last:pb-0 print:border-stone-900 print:border-2 print:p-[0.8cm] print:mb-0 print:pb-0"
+                >
+                  <div className="print-page-header print-only">
+                    <div className="print-page-heading-group">
+                      <p className="print-page-title">{t('labSummary')}</p>
+                      <p className="print-page-subtitle">{t('qualityControl')}</p>
+                    </div>
+                    <div className="print-page-date">{reportDate}</div>
+                  </div>
+                  <div className="print-identity-block flex flex-col sm:flex-row items-stretch justify-between border border-stone-900 mb-6">
+                    <div className="report-identity-copy flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
+                      <div className="report-identity-id-row flex items-center gap-3 mb-1">
+                        {!s.lotName && (
+                          <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">{t('sample')} 0{idx + 1}</span>
+                        )}
+                        <span className="report-coffee-id text-base font-bold text-stone-900">
+                          {s.ositoId || t('noId')}
+                        </span>
+                      </div>
+                      <h2 className="report-coffee-name text-xl sm:text-2xl md:text-4xl font-bold text-stone-900 leading-tight">
+                        {s.lotName ? s.lotName : `${t('sample')} 0${idx + 1}`}
+                      </h2>
+                      <div className="report-lot-details">
+                        {['country', 'sampleType', 'roastId'].filter((field) => s[field]?.trim()).map((field) => (
+                          <span key={field} className="break-words"><span className="font-bold">{t(field)}:</span> {s[field]}</span>
+                         ))}
+                      </div>
+                      <div className="report-identity-metadata flex flex-wrap items-center gap-4 sm:gap-6 pt-2">
+                        <div className="flex flex-col">
+                          <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">{t('processing')}</span>
+                          <span className="text-[12px] font-bold text-stone-600 uppercase">
+                            {s.processing !== 'Select One'
+                              ? s.processing === 'Other'
+                                ? s.processingOther
+                                : translateProcessing(language, s.processing)
+                              : t('undefined')}
+                          </span>
+                        </div>
+                        {s.waterActivity && (
+                          <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest whitespace-nowrap">{t('waterActivity')}</span>
+                            <span className="text-[12px] font-bold text-stone-600 tabular-nums">{formatWaterActivity(s.waterActivity)}</span>
+                          </div>
+                        )}
+                        {s.moisture && (
+                          <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">{t('moisture')}</span>
+                            <span className="text-[12px] font-bold text-stone-600 tabular-nums">{formatMoisture(s.moisture)}%</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grade-display w-full sm:w-auto shrink-0 flex flex-col items-center justify-center bg-stone-900 px-6 sm:px-10 py-4 sm:min-w-[200px]">
+                      <p className="text-[9px] font-black text-stone-400 uppercase tracking-[0.4em] mb-1">{t(s.noScore ? 'noScore' : 'finalScore')}</p>
+                      <p className="text-4xl sm:text-5xl md:text-6xl font-black tabular-nums text-white leading-none">{calculateTotal(s)}</p>
+                    </div>
+                  </div>
+
+                  <div className="spec-grid print-spec-grid flex flex-col lg:grid lg:grid-cols-[auto_1fr] gap-8 md:gap-12 lg:gap-16">
+                    <div className="print-visual-row flex flex-col sm:flex-row items-center sm:items-start justify-center lg:justify-start gap-8 md:gap-8 visual-row">
+                      <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
+                        <p className="section-header mb-6">{t('attributeMap')}</p>
+                        {s.noScore ? <div className="flex items-center justify-center" style={{ width: reportRadarSize, height: reportRadarSize }}>{t('noScore')}</div> : <SpiderGraph scores={s.scores} size={reportRadarSize} einkMode={isEinkMode} language={language} />}
+                      </div>
+                      <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
+                        <p className="section-header mb-6">{t('flavorProfile')}</p>
+                        <div className="report-wheel-panel">
+                          <FlavorWheel
+                            notes={s.notes}
+                            einkMode={isEinkMode}
+                            language={language}
+                            t={t}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-8 data-column">
+                      <div className="space-y-6 print-tag-sections">
+                        <ReportTags label={t('fragranceAroma')} tags={s.notes.fragAromaTags} alwaysShow language={language} t={t} />
+                        <ReportTags label={t('inCup')} tags={s.notes.inCupTags} alwaysShow language={language} t={t} />
+                        <ReportTags label={t('negative')} tags={s.notes.negativeTags} alwaysShow language={language} t={t} />
+                      </div>
+
+                      <div className="pt-6 border-t border-stone-100 print-notes-block">
+                        <p className="section-header text-stone-900 mb-3">{t('otherObservations')}</p>
+                        {(s.notes.acidityLevel || s.notes.sweetnessLevel) && (
+                          <div className="report-observation-levels flex flex-wrap gap-2 mb-2 text-stone-800">
+                            {s.notes.acidityLevel && (
+                              <span>
+                                {t('acidity')}: {translateLevel(language, s.notes.acidityLevel)}
+                              </span>
+                            )}
+                            {s.notes.sweetnessLevel && (
+                              <span>
+                                {t('sweetness')}: {translateLevel(language, s.notes.sweetnessLevel)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <div className="text-[13px] leading-relaxed text-stone-700 italic pr-4 print-notes-body">
+                          {s.notes.otherText ? s.notes.otherText : s.notes.acidityLevel || s.notes.sweetnessLevel ? '' : (
+                            <span className="text-stone-300 italic opacity-50">{t('noneRecordedPeriod')}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="print-page-footer print-only">
+                    <p className="print-footer-text">{t('authorizedAnalysis')} • {t('protocol')}</p>
+                    <div className="print-logo">
+                      <img src={HandsLogo} alt={t('handsLogo')} />
+                    </div>
+                  </div>
+                </div>
+  );
+
   if (appState === 'history') {
     return (
       <div className="min-h-screen bg-stone-100 p-6 md:p-12">
+        {historyPreview && <CoffeeReportModal
+          title={[historyPreview.sample.ositoId, historyPreview.sample.lotName || `${t('coffee')} ${historyPreview.index + 1}`].filter(Boolean).join(' · ')}
+          onClose={() => { closePreparedPdf(); setHistoryPreview(null); }}
+          onCreatePdf={() => prepareHistoryCoffeePdf(historyPreview.session, historyPreview.sample, historyPreview.index)}
+          suspended={Boolean(preparedPdf)} t={t}
+        >
+          <div className="report-title"><div><h1>{t('labSummary')}</h1><p>{t('qualityControl')}</p></div><div className="report-title-date">{historyPreview.session.startTime || historyPreview.session.date}</div></div>
+          {renderCoffeeReport(historyPreview.sample, historyPreview.index, historyPreview.session.startTime || historyPreview.session.date)}
+        </CoffeeReportModal>}
         {renderPdfReadyDialog()}
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -1426,9 +1558,9 @@ const App = () => {
                           <button
                             type="button"
                             key={`${item.id}-${idx}`}
-                            onClick={event => { event.stopPropagation(); prepareHistoryCoffeePdf(item, sample, idx); }}
-                            title={t('openPdf')}
-                            aria-label={`${t('openPdf')}: ${sample.ositoId || sample.lotName || `${t('coffee')} ${idx + 1}`}`}
+                            onClick={event => { event.stopPropagation(); setHistoryPreview({ session: item, sample, index: idx }); }}
+                            title={t('viewReport')}
+                            aria-label={`${t('viewReport')}: ${sample.ositoId || sample.lotName || `${t('coffee')} ${idx + 1}`}`}
                             className="history-coffee-token inline-flex items-center rounded-full bg-stone-100 border border-stone-200 px-3 py-1 text-[10px] font-black text-stone-600 uppercase tracking-wider"
                           >
                             #{idx + 1} {sample.lotName || t('coffee')}{sample.ositoId ? ` · ${sample.ositoId}` : ''}
@@ -1919,125 +2051,7 @@ const App = () => {
               <div className="report-title-date">{sessionStartTime}</div>
             </div>
             <div className="report-pages space-y-0">
-              {samples.map((s, idx) => (
-                <div
-                  key={s.id}
-                  className="sample-spec-sheet mb-14 md:mb-32 border-b-2 border-stone-100 pb-10 md:pb-16 last:border-0 last:mb-0 last:pb-0 print:border-stone-900 print:border-2 print:p-[0.8cm] print:mb-0 print:pb-0"
-                >
-                  <div className="print-page-header print-only">
-                    <div className="print-page-heading-group">
-                      <p className="print-page-title">{t('labSummary')}</p>
-                      <p className="print-page-subtitle">{t('qualityControl')}</p>
-                    </div>
-                    <div className="print-page-date">{sessionStartTime}</div>
-                  </div>
-                  <div className="print-identity-block flex flex-col sm:flex-row items-stretch justify-between border border-stone-900 mb-6">
-                    <div className="report-identity-copy flex-1 p-4 md:p-5 bg-stone-50/30 flex flex-col justify-center">
-                      <div className="report-identity-id-row flex items-center gap-3 mb-1">
-                        {!s.lotName && (
-                          <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest">{t('sample')} 0{idx + 1}</span>
-                        )}
-                        <span className="report-coffee-id text-base font-bold text-stone-900">
-                          {s.ositoId || t('noId')}
-                        </span>
-                      </div>
-                      <h2 className="report-coffee-name text-xl sm:text-2xl md:text-4xl font-bold text-stone-900 leading-tight">
-                        {s.lotName ? s.lotName : `${t('sample')} 0${idx + 1}`}
-                      </h2>
-                      <div className="report-lot-details">
-                        {['country', 'sampleType', 'roastId'].filter((field) => s[field]?.trim()).map((field) => (
-                          <span key={field} className="break-words"><span className="font-bold">{t(field)}:</span> {s[field]}</span>
-                        ))}
-                      </div>
-                      <div className="report-identity-metadata flex flex-wrap items-center gap-4 sm:gap-6 pt-2">
-                        <div className="flex flex-col">
-                          <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">{t('processing')}</span>
-                          <span className="text-[12px] font-bold text-stone-600 uppercase">
-                            {s.processing !== 'Select One'
-                              ? s.processing === 'Other'
-                                ? s.processingOther
-                                : translateProcessing(language, s.processing)
-                              : t('undefined')}
-                          </span>
-                        </div>
-                        {s.waterActivity && (
-                          <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest whitespace-nowrap">{t('waterActivity')}</span>
-                            <span className="text-[12px] font-bold text-stone-600 tabular-nums">{formatWaterActivity(s.waterActivity)}</span>
-                          </div>
-                        )}
-                        {s.moisture && (
-                          <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-stone-300 uppercase tracking-widest">{t('moisture')}</span>
-                            <span className="text-[12px] font-bold text-stone-600 tabular-nums">{formatMoisture(s.moisture)}%</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="grade-display w-full sm:w-auto shrink-0 flex flex-col items-center justify-center bg-stone-900 px-6 sm:px-10 py-4 sm:min-w-[200px]">
-                      <p className="text-[9px] font-black text-stone-400 uppercase tracking-[0.4em] mb-1">{t(s.noScore ? 'noScore' : 'finalScore')}</p>
-                      <p className="text-4xl sm:text-5xl md:text-6xl font-black tabular-nums text-white leading-none">{calculateTotal(s)}</p>
-                    </div>
-                  </div>
-
-                  <div className="spec-grid print-spec-grid flex flex-col lg:grid lg:grid-cols-[auto_1fr] gap-8 md:gap-12 lg:gap-16">
-                    <div className="print-visual-row flex flex-col sm:flex-row items-center sm:items-start justify-center lg:justify-start gap-8 md:gap-8 visual-row">
-                      <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
-                        <p className="section-header mb-6">{t('attributeMap')}</p>
-                        {s.noScore ? <div className="flex items-center justify-center" style={{ width: reportRadarSize, height: reportRadarSize }}>{t('noScore')}</div> : <SpiderGraph scores={s.scores} size={reportRadarSize} einkMode={isEinkMode} language={language} />}
-                      </div>
-                      <div className="print-chart-panel flex flex-col items-center w-full sm:w-auto">
-                        <p className="section-header mb-6">{t('flavorProfile')}</p>
-                        <div className="report-wheel-panel">
-                          <FlavorWheel
-                            notes={s.notes}
-                            einkMode={isEinkMode}
-                            language={language}
-                            t={t}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-8 data-column">
-                      <div className="space-y-6 print-tag-sections">
-                        <ReportTags label={t('fragranceAroma')} tags={s.notes.fragAromaTags} alwaysShow language={language} t={t} />
-                        <ReportTags label={t('inCup')} tags={s.notes.inCupTags} alwaysShow language={language} t={t} />
-                        <ReportTags label={t('negative')} tags={s.notes.negativeTags} alwaysShow language={language} t={t} />
-                      </div>
-
-                      <div className="pt-6 border-t border-stone-100 print-notes-block">
-                        <p className="section-header text-stone-900 mb-3">{t('otherObservations')}</p>
-                        {(s.notes.acidityLevel || s.notes.sweetnessLevel) && (
-                          <div className="report-observation-levels flex flex-wrap gap-2 mb-2 text-stone-800">
-                            {s.notes.acidityLevel && (
-                              <span>
-                                {t('acidity')}: {translateLevel(language, s.notes.acidityLevel)}
-                              </span>
-                            )}
-                            {s.notes.sweetnessLevel && (
-                              <span>
-                                {t('sweetness')}: {translateLevel(language, s.notes.sweetnessLevel)}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <div className="text-[13px] leading-relaxed text-stone-700 italic pr-4 print-notes-body">
-                          {s.notes.otherText ? s.notes.otherText : s.notes.acidityLevel || s.notes.sweetnessLevel ? '' : (
-                            <span className="text-stone-300 italic opacity-50">{t('noneRecordedPeriod')}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="print-page-footer print-only">
-                    <p className="print-footer-text">{t('authorizedAnalysis')} • {t('protocol')}</p>
-                    <div className="print-logo">
-                      <img src={HandsLogo} alt={t('handsLogo')} />
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {samples.map((s, idx) => renderCoffeeReport(s, idx, sessionStartTime))}
             </div>
 
             <div className="report-signoff mt-12 pt-4 border-t border-stone-100 text-center print-hidden">

@@ -1,5 +1,6 @@
 // Built-in Brazilian Portuguese. Coffee terminology is editorial, not an official WCR translation.
 export const UI_PT = {
+  createPdf: 'Criar PDF', closeReport: 'Fechar relatório',
     sharedSavedLocal: "Salvo neste dispositivo",
     sharedSaving: "Sincronizando…",
     sharedPending: "Salvo · sincronização pendente",

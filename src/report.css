@@ -1,3 +1,21 @@
+.coffee-preview-backdrop { position: fixed; inset: 0; z-index: 120; background: #0008; display: grid; place-items: center; padding: 24px; }
+.coffee-preview { width: min(1200px, 100%); max-height: calc(100dvh - 48px); display: flex; flex-direction: column; background: #fff; border: 1px solid #bbb; border-radius: 8px; overflow: hidden; box-shadow: 0 16px 64px #0003; }
+.coffee-preview-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #ccc; flex-shrink: 0; }
+.coffee-preview-header h2 { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.coffee-preview-header button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid #bbb; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; }
+.coffee-preview-pdf { background: #000; color: #fff; flex-shrink: 0; }
+.coffee-preview-close { width: 44px; flex-shrink: 0; color: #000; background: #fff; }
+.coffee-preview-body { overflow-y: auto; overscroll-behavior: contain; padding: 24px; min-height: 0; }
+.coffee-preview-header button:focus-visible { outline: 2px solid #000; outline-offset: 3px; }
+@media (max-width: 639px) {
+  .coffee-preview-backdrop { padding: 8px; }
+  .coffee-preview { max-height: calc(100dvh - 16px); }
+  .coffee-preview-header { padding: 12px; flex-wrap: wrap; gap: 8px; }
+  .coffee-preview-header h2 { flex-basis: calc(100% - 60px); order: 0; }
+  .coffee-preview-close { order: 1; }
+  .coffee-preview-pdf { order: 2; }
+  .coffee-preview-body { padding: 16px; }
+}
 .report-screen .report-surface {
   border: 0;
   border-radius: 0;

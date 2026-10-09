@@ -14,6 +14,7 @@ export const LANGUAGE_OPTIONS = {
 export const UI_TEXT = {
   'pt-BR': UI_PT,
   en: {
+    createPdf: 'Create PDF', closeReport: 'Close report',
     sharedSavedLocal: "Saved on this device",
     sharedSaving: "Syncing…",
     sharedPending: "Saved · sync pending",
@@ -206,6 +207,7 @@ export const UI_TEXT = {
     handsLogo: 'Osito logo'
   },
   es: {
+    createPdf: 'Crear PDF', closeReport: 'Cerrar informe',
     sharedSavedLocal: "Guardado en este dispositivo",
     sharedSaving: "Sincronizando…",
     sharedPending: "Guardado · sincronización pendiente",
