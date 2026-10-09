@@ -16,7 +16,7 @@ import { newSyncId, normalizeSessionIdentity } from './lib/googleSheets';
 import SearchableSelect from './components/SearchableSelect';
 import { COUNTRY_OPTIONS, SAMPLE_TYPE_OPTIONS } from './lib/lotOptions';
 import FlavorWheel from './components/FlavorWheel';
-import { reportPdfFilename } from './lib/reportFilenames';
+import { reportPdfFilename, uniquePdfFilename } from './lib/reportFilenames';
 import { canModifyTag, nextTagModifier } from './lib/tagModifiers';
 import Icon from './components/Icon';
 import LexiconSearch from './components/LexiconSearch';
@@ -97,6 +97,11 @@ const App = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isExportingPdfs, setIsExportingPdfs] = useState(false);
   const [preparedPdf, setPreparedPdf] = useState(null);
+  const historyPdfRequest = useRef(0);
+  const closePreparedPdf = () => {
+    historyPdfRequest.current += 1;
+    setPreparedPdf(null);
+  };
   const [isDragActive, setIsDragActive] = useState(false);
   const [sampleDrag, setSampleDrag] = useState(null);
   const importInputRef = useRef(null);
@@ -105,7 +110,7 @@ const App = () => {
   const sampleDragRef = useRef(null);
 
   useEffect(() => () => {
-    if (preparedPdf) URL.revokeObjectURL(preparedPdf.url);
+    if (preparedPdf?.url) URL.revokeObjectURL(preparedPdf.url);
   }, [preparedPdf]);
 
   useEffect(() => {
@@ -407,6 +412,45 @@ const App = () => {
       setIsExportingPdfs(false);
     }
   };
+
+  const prepareHistoryCoffeePdf = async (session, sample, index) => {
+    const request = ++historyPdfRequest.current;
+    const name = uniquePdfFilename(sample, index, new Map());
+    setPreparedPdf({ name, url: null });
+    try {
+      const { buildCombinedReportPdf } = await import('./lib/pdfReport');
+      const bytes = await buildCombinedReportPdf([sample], {
+        sessionStartTime: session.startTime || session.date || '', language, logoSrc: HandsLogo
+      });
+      if (request !== historyPdfRequest.current) return;
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      setPreparedPdf({ name, url });
+    } catch (error) {
+      if (request !== historyPdfRequest.current) return;
+      console.error(error);
+      setPreparedPdf(null);
+      window.alert(t('pdfExportError'));
+    }
+  };
+
+  const renderPdfReadyDialog = () => preparedPdf && <div className="pdf-ready-backdrop print-hidden">
+    <section role="dialog" aria-modal="true" aria-labelledby="pdf-ready-title" className="pdf-ready-dialog" onKeyDown={event => {
+      if (event.key === 'Escape') closePreparedPdf();
+      if (event.key === 'Tab') {
+        const controls = event.currentTarget.querySelectorAll('button, a');
+        if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls[controls.length - 1].focus(); }
+        else if (!event.shiftKey && document.activeElement === controls[controls.length - 1]) { event.preventDefault(); controls[0].focus(); }
+      }
+    }}>
+      <button type="button" className="pdf-ready-close" onClick={closePreparedPdf} aria-label={t('closePdf')} autoFocus><Icon name="x" size={20} /></button>
+      <h2 id="pdf-ready-title" aria-live="polite">{t(preparedPdf.url ? 'pdfReady' : 'exportingPdfs')}</h2>
+      <p>{preparedPdf.name}</p>
+      {preparedPdf.url && <div className="pdf-ready-actions">
+        <a href={preparedPdf.url} download={preparedPdf.name}><Icon name="download" size={18} />{t('downloadPdf')}</a>
+        <a href={preparedPdf.url} target="_blank" rel="noopener noreferrer"><Icon name="printer" size={18} />{t('openPdf')}</a>
+      </div>}
+    </section>
+  </div>;
 
   const downloadPdfSet = async () => {
     if (isExportingPdfs || samples.length === 0) return;
@@ -1327,6 +1371,7 @@ const App = () => {
   if (appState === 'history') {
     return (
       <div className="min-h-screen bg-stone-100 p-6 md:p-12">
+        {renderPdfReadyDialog()}
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">{t('savedSessions')}</h1>
@@ -1378,12 +1423,16 @@ const App = () => {
                     {coffeeMatches.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {coffeeMatches.slice(0, 3).map(({ sample, idx }) => (
-                          <span
+                          <button
+                            type="button"
                             key={`${item.id}-${idx}`}
+                            onClick={event => { event.stopPropagation(); prepareHistoryCoffeePdf(item, sample, idx); }}
+                            title={t('openPdf')}
+                            aria-label={`${t('openPdf')}: ${sample.ositoId || sample.lotName || `${t('coffee')} ${idx + 1}`}`}
                             className="inline-flex items-center rounded-full bg-stone-100 border border-stone-200 px-3 py-1 text-[10px] font-black text-stone-600 uppercase tracking-wider"
                           >
                             #{idx + 1} {sample.lotName || t('coffee')}{sample.ositoId ? ` · ${sample.ositoId}` : ''}
-                          </span>
+                          </button>
                         ))}
                         {coffeeMatches.length > 3 && (
                           <span className="inline-flex items-center rounded-full bg-stone-900 px-3 py-1 text-[10px] font-black text-white uppercase tracking-wider">
@@ -1798,24 +1847,7 @@ const App = () => {
     return (
       <div className="report-screen min-h-screen bg-stone-100 p-4 md:p-8 relative">
         {renderSaveSessionModal()}
-        {preparedPdf && <div className="pdf-ready-backdrop print-hidden">
-          <section role="dialog" aria-modal="true" aria-labelledby="pdf-ready-title" className="pdf-ready-dialog" onKeyDown={event => {
-            if (event.key === 'Escape') setPreparedPdf(null);
-            if (event.key === 'Tab') {
-              const controls = event.currentTarget.querySelectorAll('button, a');
-              if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls[controls.length - 1].focus(); }
-              else if (!event.shiftKey && document.activeElement === controls[controls.length - 1]) { event.preventDefault(); controls[0].focus(); }
-            }
-          }}>
-            <button type="button" className="pdf-ready-close" onClick={() => setPreparedPdf(null)} aria-label={t('closePdf')} autoFocus><Icon name="x" size={20} /></button>
-            <h2 id="pdf-ready-title">{t('pdfReady')}</h2>
-            <p>{preparedPdf.name}</p>
-            <div className="pdf-ready-actions">
-              <a href={preparedPdf.url} download={preparedPdf.name}><Icon name="download" size={18} />{t('downloadPdf')}</a>
-              <a href={preparedPdf.url} target="_blank" rel="noopener noreferrer"><Icon name="printer" size={18} />{t('openPdf')}</a>
-            </div>
-          </section>
-        </div>}
+        {renderPdfReadyDialog()}
         <div className="max-w-[1400px] mx-auto space-y-4 pb-28 md:pb-20 report-container">
           <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
