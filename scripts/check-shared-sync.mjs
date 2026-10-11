@@ -18,11 +18,13 @@ const headers = [...Object.keys(sampleSheetValues(session, session.samples[0], 0
 let rows = [headers], writeCount = 0;
 const receipts = new Map();
 const sheet = {
+ getFilter: () => null,
+ getLastColumn: () => headers.length,
  getSheetId: () => 58722764,
  getMaxColumns: () => headers.length,
  getMaxRows: () => 100,
  getDataRange: () => ({ getValues: () => rows.map(row => [...row]), getFormulas: () => rows.map((row, index) => row.map((_, col) => index && col === headers.length - 1 ? '=1+1' : '')) }),
- getRange: (r, c, n, width) => ({ setValues: values => { writeCount++; values.forEach((values, index) => { rows[r + index - 1] ||= []; values.forEach((value, col) => rows[r + index - 1][c + col - 1] = value); }); } }),
+ getRange: (r, c, n, width) => ({ createFilter: () => ({ setColumnFilterCriteria() {} }), setValues: values => { writeCount++; values.forEach((values, index) => { rows[r + index - 1] ||= []; values.forEach((value, col) => rows[r + index - 1][c + col - 1] = value); }); } }),
 };
 const output = text => ({ text, setMimeType() { return this; } });
 const runtime = vm.createContext({

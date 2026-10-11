@@ -16,6 +16,94 @@ function readCupping_(sheet) {
   return { values: range.getValues(), formulas: range.getFormulas() };
 }
 
+function extendCuppingFilter_(sheet) {
+  const filter = sheet.getFilter();
+  const oldRange = filter && filter.getRange();
+  const width = sheet.getLastColumn(), height = sheet.getMaxRows();
+  if (oldRange && oldRange.getRow() === 1 && oldRange.getColumn() === 1 && oldRange.getNumColumns() === width && oldRange.getNumRows() === height) return;
+  const criteria = [];
+  if (filter) {
+    for (let col = oldRange.getColumn(); col < oldRange.getColumn() + oldRange.getNumColumns(); col++) {
+      const criterion = filter.getColumnFilterCriteria(col);
+      if (criterion) criteria.push([col, criterion]);
+    }
+    filter.remove();
+  }
+  const expanded = sheet.getRange(1, 1, height, width).createFilter();
+  criteria.forEach(([col, criterion]) => expanded.setColumnFilterCriteria(col, criterion));
+}
+
+// Run manually in the Apps Script editor, never through the public endpoint.
+// The snapshot is authoritative for app-owned fields; manual sheet edits remain in the backup.
+function repairCuppingSheet() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('busy');
+  try {
+    const sheet = cuppingSheet_(), data = readCupping_(sheet);
+    const headers = data.values[0];
+    if (new Set(headers).size !== headers.length || OWNED_COLUMNS.some(name => !headers.includes(name))) throw new Error('Check sheet headers before repairing');
+    const col = name => headers.indexOf(name), seen = new Set(), owners = new Map();
+    const sessions = new Map();
+    const records = data.values.slice(1).map((row, index) => {
+      if (!row[col('App Data')]) {
+        if (row[col('Session ID')] || row[col('Sample ID')]) throw new Error('Missing App Data on row ' + (index + 2));
+        return null;
+      }
+      const entry = JSON.parse(row[col('App Data')]);
+      const session = entry.session, sample = entry.sample;
+      validateBatch_({ requestId: 'manual-repair-validation', sessions: [{ ...session, samples: [sample] }] });
+      if (session.syncId !== row[col('Session ID')] || sample.syncId !== row[col('Sample ID')]) throw new Error('Identity mismatch on row ' + (index + 2));
+      const key = JSON.stringify([session.syncId, sample.syncId]);
+      if (seen.has(key)) throw new Error('Duplicate identity on row ' + (index + 2));
+      seen.add(key);
+      const code = row[col('Session Code')] || '';
+      if (code && owners.has(code) && owners.get(code) !== session.syncId) throw new Error('Session code collision');
+      if (code) owners.set(code, session.syncId);
+      session.sessionCode = code;
+      const record = { row, index, entry, session, sample };
+      if (!sessions.has(session.syncId)) sessions.set(session.syncId, []);
+      sessions.get(session.syncId).push(record);
+      return record;
+    });
+    const fallbackSessions = [];
+    sessions.forEach(group => {
+      if (new Set(group.map(record => record.session.sessionCode)).size !== 1) throw new Error('Inconsistent session codes');
+      group.forEach(record => {
+        const expected = valuesForSample_(record.session, record.sample, 0);
+        // Match the displaced visible record, excluding dates whose cell formatting can differ.
+        const fields = headers.filter(name => Object.prototype.hasOwnProperty.call(expected, name) && !OWNED_COLUMNS.includes(name) && !['Table Position', 'Date Cupped', 'Session Name'].includes(name));
+        const candidates = data.values.slice(1).filter(row => fields.every(name => typeof expected[name] === 'number'
+          ? row[col(name)] !== '' && Number(row[col(name)]) === expected[name]
+          : String(row[col(name)] == null ? '' : row[col(name)]) === String(expected[name] == null ? '' : expected[name])));
+        const positions = [...new Set(candidates.map(row => Number(row[col('Table Position')])) )];
+        record.position = record.entry.position || (positions.length === 1 ? positions[0] : null);
+      });
+      const positions = group.map(record => record.position);
+      if (positions.some(position => !Number.isInteger(position) || position < 1 || position > group.length) || new Set(positions).size !== group.length) {
+        // Older snapshots did not store order. Use original coffee numbering only if unambiguous.
+        const ids = group.map(record => Number(record.sample.id));
+        if (ids.some(id => !Number.isInteger(id) || id < 1) || new Set(ids).size !== group.length) throw new Error('Cannot safely recover order for ' + group[0].session.name);
+        const orderedIds = ids.slice().sort((a, b) => a - b);
+        group.forEach(record => { record.position = orderedIds.indexOf(Number(record.sample.id)) + 1; });
+        fallbackSessions.push(group[0].session.name || group[0].session.syncId);
+      }
+    });
+    const restored = data.values.slice(1).map((row, index) => {
+      const record = records[index];
+      const values = record && valuesForSample_(record.session, record.sample, record.position - 1);
+      return headers.map((header, c) => values && Object.prototype.hasOwnProperty.call(values, header)
+        ? literal_(values[header]) : data.formulas[index + 1][c] || literal_(row[c]));
+    });
+    // Complete validation before making a backup or changing any cells.
+    const backup = sheet.copyTo(sheet.getParent());
+    backup.setName('Cupping backup ' + Date.now());
+    if (restored.length) sheet.getRange(2, 1, restored.length, headers.length).setValues(restored);
+    extendCuppingFilter_(sheet);
+    SpreadsheetApp.flush();
+    console.log(JSON.stringify({ backup: backup.getName(), restoredRows: seen.size, originalNumberingRestoredFor: fallbackSessions }));
+  } finally { lock.releaseLock(); }
+}
+
 function literal_(value) {
   if (value == null) return '';
   // Submitted text is never allowed to become a spreadsheet formula.
@@ -40,7 +128,7 @@ function valuesForSample_(session, sample, index) {
     Negative: notes.negativeTags.join('; '),
     'General Notes': [notes.sweetnessLevel && notes.sweetnessLevel + ' sweetness', notes.acidityLevel && notes.acidityLevel + ' acidity', notes.otherText].filter(Boolean).join('; '),
     'Session ID': session.syncId, 'Sample ID': sample.syncId, 'Session Code': session.sessionCode,
-    'App Data': JSON.stringify({ version: 1, session: { syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode }, sample }),
+    'App Data': JSON.stringify({ version: 2, position: index + 1, session: { syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode }, sample }),
     'Session Name': session.name || '', 'Water Activity': sample.waterActivity || '', Moisture: sample.moisture || '',
     Lexicon: session.lexiconMode || 'osito', 'Scoring Status': sample.noScore ? 'No Score' : 'Scored'
   };
@@ -147,6 +235,7 @@ function doPost(event) {
       while (i < updates.length && updates[i].rowNumber === start + values.length) values.push(updates[i++].row);
       sheet.getRange(start, 1, values.length, headers.length).setValues(values);
     }
+    extendCuppingFilter_(sheet);
     SpreadsheetApp.flush();
     cache.put(receiptKey, JSON.stringify({ saved: body.sessions.map(session => session.syncId), codes: Object.fromEntries(body.sessions.map(session => [session.syncId, session.sessionCode])) }), 600);
     return ContentService.createTextOutput('received');
@@ -176,7 +265,8 @@ function doGet(event) {
       const match = rows.find(row => row[codeCol] === code);
       if (!match) throw new Error('sessionNotFound');
       const selected = rows.filter(row => row[idCol] === match[idCol]).sort((a, b) => Number(a[posCol]) - Number(b[posCol]));
-      const entries = selected.map(row => JSON.parse(row[dataCol]));
+      const entries = selected.map(row => ({ ...JSON.parse(row[dataCol]), legacyPosition: Number(row[posCol]) }));
+      entries.sort((a, b) => (a.position || a.legacyPosition) - (b.position || b.legacyPosition));
       result = { session: { ...entries[0].session, sessionCode: code, samples: entries.map(entry => entry.sample) } };
     } else result = { error: 'invalidAction' };
   } catch (error) { result = { error: String(error.message || 'unavailable') }; }
