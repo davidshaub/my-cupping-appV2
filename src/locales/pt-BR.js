@@ -1,5 +1,6 @@
 // Built-in Brazilian Portuguese. Coffee terminology is editorial, not an official WCR translation.
 export const UI_PT = {
+  exportCsv: 'Exportar CSV', downloadCsv: 'Baixar CSV', shareCsv: 'Compartilhar arquivo CSV', copyCsv: 'Copiar CSV', viewCsv: 'Ver CSV', closeCsv: 'Fechar exportação CSV', csvCopied: 'CSV copiado.', csvExportError: 'O navegador não conseguiu concluir a exportação. Tente outra opção.',
   createPdf: 'Criar PDF', closeReport: 'Fechar relatório',
     sharedSavedLocal: "Salvo neste dispositivo",
     sharedSaving: "Sincronizando…",

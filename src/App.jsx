@@ -6,7 +6,8 @@ import {
 import { LEXICON_OPTIONS, normalizeLexiconMode } from './lib/lexicon';
 import {
   calculateTotal,
-  downloadCSV,
+  buildSessionCSV,
+  csvFilename,
   getBaseTag,
   importSessionFromCSV,
   initializeSamples
@@ -23,6 +24,7 @@ import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
 import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
+import CsvExportDialog from './components/CsvExportDialog';
 import CoffeeReportModal from './components/CoffeeReportModal';
 import HandsLogo from '../assets/hands.png';
 import LevelSelector from './components/LevelSelector';
@@ -98,6 +100,11 @@ const App = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isExportingPdfs, setIsExportingPdfs] = useState(false);
   const [preparedPdf, setPreparedPdf] = useState(null);
+  const [preparedCsv, setPreparedCsv] = useState(null);
+  const openCsvExport = () => setPreparedCsv({
+    text: buildSessionCSV(samples, sessionStartTime, lexiconMode, activeSavedSession?.syncId || ''),
+    name: csvFilename(activeSessionName)
+  });
   const [historyPreview, setHistoryPreview] = useState(null);
   const historyPdfRequest = useRef(0);
   const closePreparedPdf = () => {
@@ -1978,6 +1985,7 @@ const App = () => {
   if (appState === 'report') {
     return (
       <div className="report-screen min-h-screen bg-stone-100 p-4 md:p-8 relative">
+        {preparedCsv && <CsvExportDialog data={preparedCsv} onClose={() => setPreparedCsv(null)} t={t} />}
         {renderSaveSessionModal()}
         {renderPdfReadyDialog()}
         <div className="max-w-[1400px] mx-auto space-y-4 pb-28 md:pb-20 report-container">
@@ -2018,7 +2026,7 @@ const App = () => {
                 {t('lots')}
               </button>
               <button
-                onClick={() => downloadCSV(samples, sessionStartTime, activeSessionName, lexiconMode, activeSavedSession?.syncId || '')}
+                onClick={openCsvExport}
                 className="flex items-center gap-2 bg-stone-200 px-4 py-2 rounded-xl font-bold text-stone-800 active:scale-95 text-xs"
               >
                 <Icon name="download" size={16} />
@@ -2090,7 +2098,7 @@ const App = () => {
               {t('save')}
             </button>
             <button
-              onClick={() => downloadCSV(samples, sessionStartTime, activeSessionName, lexiconMode, activeSavedSession?.syncId || '')}
+              onClick={openCsvExport}
               className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-stone-200 text-stone-800 text-[10px] font-black uppercase tracking-wider"
             >
               <Icon name="download" size={14} />

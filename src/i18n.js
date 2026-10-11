@@ -14,6 +14,7 @@ export const LANGUAGE_OPTIONS = {
 export const UI_TEXT = {
   'pt-BR': UI_PT,
   en: {
+    exportCsv: 'Export CSV', downloadCsv: 'Download CSV', shareCsv: 'Share CSV file', copyCsv: 'Copy CSV', viewCsv: 'View CSV', closeCsv: 'Close CSV export', csvCopied: 'CSV copied.', csvExportError: 'This browser could not complete the export. Try another export option.',
     createPdf: 'Create PDF', closeReport: 'Close report',
     sharedSavedLocal: "Saved on this device",
     sharedSaving: "Syncing…",
@@ -207,6 +208,7 @@ export const UI_TEXT = {
     handsLogo: 'Osito logo'
   },
   es: {
+    exportCsv: 'Exportar CSV', downloadCsv: 'Descargar CSV', shareCsv: 'Compartir archivo CSV', copyCsv: 'Copiar CSV', viewCsv: 'Ver CSV', closeCsv: 'Cerrar exportación CSV', csvCopied: 'CSV copiado.', csvExportError: 'El navegador no pudo completar la exportación. Prueba otra opción.',
     createPdf: 'Crear PDF', closeReport: 'Cerrar informe',
     sharedSavedLocal: "Guardado en este dispositivo",
     sharedSaving: "Sincronizando…",

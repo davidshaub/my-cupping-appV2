@@ -352,19 +352,23 @@ export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito'
   return [headers.join(','), ...rows].join('\n');
 };
 
-export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode = 'osito', sessionId = '') => {
-  const csvContent = buildSessionCSV(samples, sessionStartTime, lexiconMode, sessionId);
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
+export const csvFilename = (sessionName) => {
   const stamp = new Date()
     .toLocaleString()
     .replace(/[/:]/g, '-')
     .replace(/,/g, '')
     .replace(/\s+/g, '_');
   const safeSessionName = toSafeFilenamePart(sessionName);
-  link.download = safeSessionName ? `${safeSessionName}.csv` : `Cupping_Report_${stamp}.csv`;
+  return safeSessionName ? `${safeSessionName}.csv` : `Cupping_Report_${stamp}.csv`;
+};
+
+export const downloadCSV = (samples, sessionStartTime, sessionName, lexiconMode = 'osito', sessionId = '') => {
+  const csvContent = buildSessionCSV(samples, sessionStartTime, lexiconMode, sessionId);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = csvFilename(sessionName);
   link.hidden = true;
   document.body.appendChild(link);
   try {
