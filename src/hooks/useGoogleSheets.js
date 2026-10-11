@@ -4,7 +4,9 @@ import { SYNC_API_URL, saveSharedSessions, sessionChanges } from '../lib/sharedS
 const ACK_KEY = 'cupping_shared_sync_acknowledged_v1';
 export const sessionFingerprint = session => JSON.stringify({ syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode, samples: session.samples });
 
-export default function useGoogleSheets(history) {
+export default function useGoogleSheets(history, onCodes) {
+  const codesCallback = useRef(onCodes);
+  codesCallback.current = onCodes;
   const [online, setOnline] = useState(navigator.onLine);
   const acknowledged = useRef(null), latest = useRef(history);
   const busy = useRef(false), timer = useRef(null), mounted = useRef(true);
@@ -16,7 +18,7 @@ export default function useGoogleSheets(history) {
   }
   latest.current = history;
   const saveAcknowledged = () => localStorage.setItem(ACK_KEY, JSON.stringify(acknowledged.current));
-  const dirty = () => latest.current.filter(entry => entry.samples.length && acknowledged.current[entry.syncId] !== sessionFingerprint(entry));
+  const dirty = () => latest.current.filter(entry => entry.samples.length && (!entry.sessionCode || acknowledged.current[entry.syncId] !== sessionFingerprint(entry)));
 
   const flush = async () => {
     if (busy.current || !SYNC_API_URL || !navigator.onLine || !mounted.current) return;
@@ -29,13 +31,16 @@ export default function useGoogleSheets(history) {
       const batch = [], changes = [];
       let bytes = 0;
       for (const entry of dirty().slice(0, 20)) {
-        const delta = sessionChanges(entry, acknowledged.current[entry.syncId]);
+        const delta = sessionChanges(entry, entry.sessionCode ? acknowledged.current[entry.syncId] : null);
         const size = new TextEncoder().encode(JSON.stringify(delta)).length;
         if (batch.length && bytes + size > 750000) break;
         batch.push(entry); changes.push(delta); bytes += size;
       }
       if (batch.length) {
-        if (changes.some(entry => entry.samples.length)) await saveSharedSessions(changes.filter(entry => entry.samples.length), controller.current.signal);
+        if (changes.some(entry => entry.samples.length)) {
+          const receipt = await saveSharedSessions(changes.filter(entry => entry.samples.length), controller.current.signal);
+          if (receipt.codes) codesCallback.current?.(receipt.codes);
+        }
         lastUpload.current = Date.now();
         for (const entry of batch) acknowledged.current[entry.syncId] = sessionFingerprint(entry);
         saveAcknowledged();

@@ -13,6 +13,8 @@ import {
   initializeSamples
 } from './lib/cupping';
 import useGoogleSheets from './hooks/useGoogleSheets';
+import { readScriptResponse } from './lib/sharedSync';
+import { normalizeSessionCode, validateRecalledSession } from './lib/sessionRecall';
 import { newSyncId, normalizeSessionIdentity } from './lib/googleSheets';
 import SearchableSelect from './components/SearchableSelect';
 import { COUNTRY_OPTIONS, SAMPLE_TYPE_OPTIONS } from './lib/lotOptions';
@@ -100,6 +102,10 @@ const App = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [isExportingPdfs, setIsExportingPdfs] = useState(false);
   const [preparedPdf, setPreparedPdf] = useState(null);
+  const [recallCode, setRecallCode] = useState('');
+  const [recalling, setRecalling] = useState(false);
+  const recallRequest = useRef(0);
+  useEffect(() => { recallRequest.current += 1; }, [appState]);
   const [preparedCsv, setPreparedCsv] = useState(null);
   const openCsvExport = () => setPreparedCsv({
     text: buildSessionCSV(samples, sessionStartTime, lexiconMode, activeSavedSession?.syncId || ''),
@@ -247,7 +253,11 @@ const App = () => {
     setHistory(updatedHistory);
   };
 
-  useGoogleSheets(history);
+  useGoogleSheets(history, codes => setHistory(current => {
+    const updated = current.map(entry => codes[entry.syncId] ? { ...entry, sessionCode: codes[entry.syncId] } : entry);
+    localStorage.setItem('cupping_history', JSON.stringify(updated));
+    return updated;
+  }));
 
   const createAutosavedSession = (sourceSamples, startTime) => {
     const autosaveName = startTime || new Date().toLocaleString();
@@ -373,6 +383,25 @@ const App = () => {
   };
 
   const isCsvFile = (file) => String(file?.name ?? '').toLowerCase().endsWith('.csv');
+  const recallSession = async event => {
+    event.preventDefault();
+    const request = ++recallRequest.current;
+    setRecalling(true);
+    setImportError('');
+    try {
+      const code = normalizeSessionCode(recallCode);
+      const result = await readScriptResponse({ action: 'recall', code });
+      if (request !== recallRequest.current) return;
+      const session = validateRecalledSession(result.session, code);
+      const existing = history.find(entry => entry.syncId === session.syncId);
+      if (existing && !window.confirm(t('replaceRecalledSession'))) return;
+      const entry = { ...session, id: existing?.id ?? newSyncId(), name: session.name || session.startTime || code };
+      persistHistory(existing ? history.map(item => item.id === existing.id ? entry : item) : [entry, ...history]);
+      loadSession(entry);
+    } catch (error) {
+      if (request === recallRequest.current) setImportError(t(error.message === 'invalidSessionCode' ? 'invalidSessionCode' : 'recallFailed'));
+    } finally { setRecalling(false); }
+  };
 
   const importSessionCsvFile = async (file) => {
     if (!file) return;
@@ -411,7 +440,7 @@ const App = () => {
     setIsExportingPdfs(true);
     try {
       const { buildCombinedReportPdf } = await import('./lib/pdfReport');
-      const bytes = await buildCombinedReportPdf(samples, { sessionStartTime, language, logoSrc: HandsLogo });
+      const bytes = await buildCombinedReportPdf(samples, { sessionStartTime: reportDateWithCode(sessionStartTime, activeSavedSession), language, logoSrc: HandsLogo });
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
       setPreparedPdf({ url, name: reportPdfFilename(samples, activeSessionName) });
     } catch (error) {
@@ -429,7 +458,7 @@ const App = () => {
     try {
       const { buildCombinedReportPdf } = await import('./lib/pdfReport');
       const bytes = await buildCombinedReportPdf([sample], {
-        sessionStartTime: session.startTime || session.date || '', language, logoSrc: HandsLogo
+        sessionStartTime: reportDateWithCode(session.startTime || session.date || '', session), language, logoSrc: HandsLogo
       });
       if (request !== historyPdfRequest.current) return;
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
@@ -468,7 +497,7 @@ const App = () => {
     try {
       const { downloadReportPdfZip } = await import('./lib/pdfReport');
       await downloadReportPdfZip(samples, {
-        sessionStartTime,
+        sessionStartTime: reportDateWithCode(sessionStartTime, activeSavedSession),
         sessionName: activeSessionName,
         language,
         logoSrc: HandsLogo
@@ -1220,15 +1249,14 @@ const App = () => {
                   setImportError('');
                   setAppState('import');
                 }}
-                aria-label={t('uploadSession')}
+                aria-label={t('recallSession')}
                 className="group min-h-[104px] rounded-2xl bg-white border border-stone-200 shadow-sm hover:border-stone-300 hover:shadow-md active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-3 px-2 text-center"
               >
                 <span className="w-9 h-9 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                   <Icon name="upload" size={18} />
                 </span>
                 <span className="font-black text-[9px] sm:text-[10px] text-stone-700 uppercase tracking-[0.16em] leading-[1.05]">
-                  <span className="block">{t('upload')}</span>
-                  <span className="block">{t('session')}</span>
+                  <span className="block">{t('recallSession')}</span>
                 </span>
               </button>
               <button
@@ -1277,9 +1305,9 @@ const App = () => {
                 <Icon name="upload" size={20} />
               </div>
               <div className="pt-0.5">
-                <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">{t('uploadSession')}</h1>
+                <h1 className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight">{t('recallSession')}</h1>
                 <p className="text-stone-400 font-black text-[10px] uppercase tracking-widest mt-2">
-                  {t('importCsvSubtitle')}
+                  {t('sessionCode')} / CSV
                 </p>
               </div>
             </div>
@@ -1296,6 +1324,11 @@ const App = () => {
             </div>
           </div>
 
+          <form onSubmit={recallSession} className="recall-code-form">
+            <label htmlFor="recall-code">{t('sessionCode')}</label>
+            <div><input id="recall-code" value={recallCode} onChange={event => setRecallCode(event.target.value)} placeholder="K7MR-4X2P" autoCapitalize="characters" autoComplete="off" spellCheck={false} required maxLength={20} />
+            <button type="submit" disabled={recalling || isImporting}>{t(recalling ? 'recallingSession' : 'openSessionCode')}</button></div>
+          </form>
           <p className="text-sm text-stone-600 font-bold leading-relaxed">
             {t('importDescription')}
           </p>
@@ -1378,6 +1411,7 @@ const App = () => {
   }
 
 
+  const reportDateWithCode = (date, session) => session?.sessionCode ? `${date || ''} | ${t('sessionCode')}: ${session.sessionCode}` : date || '';
   const renderCoffeeReport = (s, idx, reportDate) => (
                 <div
                   key={s.id}
@@ -1507,8 +1541,8 @@ const App = () => {
           onCreatePdf={() => prepareHistoryCoffeePdf(historyPreview.session, historyPreview.sample, historyPreview.index)}
           suspended={Boolean(preparedPdf)} t={t}
         >
-          <div className="report-title"><div><h1>{t('labSummary')}</h1><p>{t('qualityControl')}</p></div><div className="report-title-date">{historyPreview.session.startTime || historyPreview.session.date}</div></div>
-          {renderCoffeeReport(historyPreview.sample, historyPreview.index, historyPreview.session.startTime || historyPreview.session.date)}
+          <div className="report-title"><div><h1>{t('labSummary')}</h1><p>{t('qualityControl')}</p></div><div className="report-title-date">{reportDateWithCode(historyPreview.session.startTime || historyPreview.session.date, historyPreview.session)}</div></div>
+          {renderCoffeeReport(historyPreview.sample, historyPreview.index, reportDateWithCode(historyPreview.session.startTime || historyPreview.session.date, historyPreview.session))}
         </CoffeeReportModal>}
         {renderPdfReadyDialog()}
         <div className="max-w-4xl mx-auto space-y-8">
@@ -1558,6 +1592,7 @@ const App = () => {
                       </button>
                     </div>
                     <h3 className="text-lg font-black text-stone-900 leading-tight pr-4">{item.name}</h3>
+                    <p className="session-code">{t('sessionCode')}: {item.sessionCode || t('codePending')}</p>
                     <p className="text-xs font-bold text-stone-400 uppercase mt-2">{item.count} {t('samples')}</p>
                     {coffeeMatches.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
@@ -2056,10 +2091,10 @@ const App = () => {
                 <h1>{t('labSummary')}</h1>
                 <p>{t('qualityControl')}</p>
               </div>
-              <div className="report-title-date">{sessionStartTime}</div>
+              <div className="report-title-date">{reportDateWithCode(sessionStartTime, activeSavedSession)}</div>
             </div>
             <div className="report-pages space-y-0">
-              {samples.map((s, idx) => renderCoffeeReport(s, idx, sessionStartTime))}
+              {samples.map((s, idx) => renderCoffeeReport(s, idx, reportDateWithCode(sessionStartTime, activeSavedSession)))}
             </div>
 
             <div className="report-signoff mt-12 pt-4 border-t border-stone-100 text-center print-hidden">

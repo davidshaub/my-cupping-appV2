@@ -3,7 +3,7 @@
 // Only this fixed spreadsheet and tab can be read or written by the endpoint.
 const CUPPING_SPREADSHEET = '1jSQkBTxNKAtdRXns9rY_5GrskRfF3MpsB6Z1ntYcdqE';
 const CUPPING_TAB = 58722764;
-const OWNED_COLUMNS = ['Session ID', 'Sample ID', 'App Data'];
+const OWNED_COLUMNS = ['Session ID', 'Sample ID', 'App Data', 'Session Code'];
 
 function cuppingSheet_() {
   const sheet = SpreadsheetApp.openById(CUPPING_SPREADSHEET).getSheets().find(s => s.getSheetId() === CUPPING_TAB);
@@ -39,7 +39,7 @@ function valuesForSample_(session, sample, index) {
     'Fragrance/Aroma': notes.fragAromaTags.join('; '), 'On the Palate': notes.inCupTags.join('; '),
     Negative: notes.negativeTags.join('; '),
     'General Notes': [notes.sweetnessLevel && notes.sweetnessLevel + ' sweetness', notes.acidityLevel && notes.acidityLevel + ' acidity', notes.otherText].filter(Boolean).join('; '),
-    'Session ID': session.syncId, 'Sample ID': sample.syncId,
+    'Session ID': session.syncId, 'Sample ID': sample.syncId, 'Session Code': session.sessionCode,
     'App Data': JSON.stringify({ version: 1, session: { syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode }, sample }),
     'Session Name': session.name || '', 'Water Activity': sample.waterActivity || '', Moisture: sample.moisture || '',
     Lexicon: session.lexiconMode || 'osito', 'Scoring Status': sample.noScore ? 'No Score' : 'Scored'
@@ -86,7 +86,7 @@ function doPost(event) {
       const needed = headers.length + missing.length - sheet.getMaxColumns();
       if (needed > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), needed);
       sheet.getRange(1, firstColumn, 1, missing.length).setValues([missing]);
-      sheet.hideColumns(firstColumn, missing.length);
+      missing.forEach((name, index) => { if (name !== 'Session Code') sheet.hideColumns(firstColumn + index, 1); });
       headers.push.apply(headers, missing);
     }
     const columns = new Map();
@@ -105,6 +105,25 @@ function doPost(event) {
       existing.set(key, index + 2);
     });
     let nextRow = Math.max(2, data.values.length + 1);
+    const codes = {}, owners = new Map(), codeColumn = columns.get('Session Code');
+    data.values.slice(1).forEach(row => {
+      if (row[codeColumn] && row[sessionColumn]) {
+        codes[row[sessionColumn]] = String(row[codeColumn]);
+        owners.set(String(row[codeColumn]), row[sessionColumn]);
+      }
+    });
+    body.sessions.forEach(session => {
+      let code = codes[session.syncId];
+      while (!code || (owners.has(code) && owners.get(code) !== session.syncId)) {
+        const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, Utilities.getUuid());
+        const raw = bytes.slice(0, 8).map(b => alphabet[(b + 256) % alphabet.length]).join('');
+        code = raw.slice(0, 4) + '-' + raw.slice(4);
+      }
+      session.sessionCode = code;
+      codes[session.syncId] = code;
+      owners.set(code, session.syncId);
+    });
     const updates = [];
     body.sessions.forEach(session => session.samples.forEach((sample, index) => {
       const position = session.positions && session.positions[sample.syncId] || index + 1;
@@ -129,7 +148,7 @@ function doPost(event) {
       sheet.getRange(start, 1, values.length, headers.length).setValues(values);
     }
     SpreadsheetApp.flush();
-    cache.put(receiptKey, JSON.stringify({ saved: body.sessions.map(session => session.syncId) }), 600);
+    cache.put(receiptKey, JSON.stringify({ saved: body.sessions.map(session => session.syncId), codes: Object.fromEntries(body.sessions.map(session => [session.syncId, session.sessionCode])) }), 600);
     return ContentService.createTextOutput('received');
   } catch (error) {
     if (body && /^[a-zA-Z0-9_-]{10,100}$/.test(body.requestId || '')) CacheService.getScriptCache().put('receipt:' + body.requestId, JSON.stringify({ error: String(error.message || 'unavailable') }), 600);
@@ -147,6 +166,18 @@ function doGet(event) {
       if (!/^[a-zA-Z0-9_-]{10,100}$/.test(id)) throw new Error('invalidRequest');
       const receipt = CacheService.getScriptCache().get('receipt:' + id);
       result = receipt ? JSON.parse(receipt) : { pending: true };
+    } else if (event.parameter.action === 'recall') {
+      const raw = String(event.parameter.code || '').toUpperCase().replace(/[-\s]/g, '');
+      if (!/^[2-9A-HJ-NP-Z]{8}$/.test(raw)) throw new Error('sessionNotFound');
+      const code = raw.slice(0, 4) + '-' + raw.slice(4);
+      const rows = cuppingSheet_().getDataRange().getValues(), headers = rows.shift();
+      const codeCol = headers.indexOf('Session Code'), idCol = headers.indexOf('Session ID'), dataCol = headers.indexOf('App Data'), posCol = headers.indexOf('Table Position');
+      if (codeCol < 0 || dataCol < 0 || idCol < 0) throw new Error('sessionNotFound');
+      const match = rows.find(row => row[codeCol] === code);
+      if (!match) throw new Error('sessionNotFound');
+      const selected = rows.filter(row => row[idCol] === match[idCol]).sort((a, b) => Number(a[posCol]) - Number(b[posCol]));
+      const entries = selected.map(row => JSON.parse(row[dataCol]));
+      result = { session: { ...entries[0].session, sessionCode: code, samples: entries.map(entry => entry.sample) } };
     } else result = { error: 'invalidAction' };
   } catch (error) { result = { error: String(error.message || 'unavailable') }; }
   const json = JSON.stringify(result).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');

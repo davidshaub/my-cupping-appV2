@@ -1,5 +1,6 @@
 // Built-in Brazilian Portuguese. Coffee terminology is editorial, not an official WCR translation.
 export const UI_PT = {
+  recallSession: 'Recuperar sessão', sessionCode: 'Código da sessão', codePending: 'Sincronização pendente', openSessionCode: 'Abrir sessão', recallingSession: 'Recuperando...', invalidSessionCode: 'Digite um código de oito caracteres.', recallFailed: 'Não foi possível recuperar a sessão. Verifique o código, a conexão e a sincronização do dispositivo original.', replaceRecalledSession: 'Esta sessão já existe neste dispositivo. Substituir a versão local? Alterações apenas locais serão substituídas.',
   exportCsv: 'Exportar CSV', downloadCsv: 'Baixar CSV', shareCsv: 'Compartilhar arquivo CSV', copyCsv: 'Copiar CSV', viewCsv: 'Ver CSV', closeCsv: 'Fechar exportação CSV', csvCopied: 'CSV copiado.', csvExportError: 'O navegador não conseguiu concluir a exportação. Tente outra opção.',
   createPdf: 'Criar PDF', closeReport: 'Fechar relatório',
     sharedSavedLocal: "Salvo neste dispositivo",

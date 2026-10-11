@@ -36,7 +36,7 @@ export const sampleSheetValues = (session, sample, index) => {
     'Fragrance/Aroma': (notes.fragAromaTags || []).join('; '), 'On the Palate': (notes.inCupTags || []).join('; '),
     Negative: (notes.negativeTags || []).join('; '),
     'General Notes': [notes.sweetnessLevel && `${notes.sweetnessLevel} sweetness`, notes.acidityLevel && `${notes.acidityLevel} acidity`, notes.otherText].filter(Boolean).join('; '),
-    'Session ID': session.syncId, 'Sample ID': sample.syncId,
+    'Session ID': session.syncId, 'Sample ID': sample.syncId, 'Session Code': session.sessionCode || '',
     'App Data': JSON.stringify({ version: 1, session: { syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode }, sample }),
     // Optional columns: populate them if present without changing the sheet layout.
     'Session Name': session.name || '', 'Water Activity': numberOrBlank(sample.waterActivity), Moisture: numberOrBlank(sample.moisture),

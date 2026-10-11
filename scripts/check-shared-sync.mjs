@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { initializeSamples } from '../src/lib/cupping.js';
 import { normalizeSessionIdentity, sampleSheetValues } from '../src/lib/googleSheets.js';
@@ -25,6 +26,7 @@ const sheet = {
 };
 const output = text => ({ text, setMimeType() { return this; } });
 const runtime = vm.createContext({
+ Utilities: { DigestAlgorithm: { SHA_256: 'sha256' }, getUuid: randomUUID, computeDigest: (algorithm, value) => [...createHash(algorithm).update(value).digest()] },
  SpreadsheetApp: { openById: () => ({ getSheets: () => [sheet] }), flush() {} },
  CacheService: { getScriptCache: () => ({ get: key => receipts.get(key), put: (key, value) => receipts.set(key, value) }) },
  LockService: { getScriptLock: () => ({ tryLock: () => true, hasLock: () => true, releaseLock() {} }) },
@@ -57,4 +59,14 @@ assert.doesNotMatch(app, /renderGoogleSync|GoogleSheetsSync/);
 const hook = await readFile('src/hooks/useGoogleSheets.js', 'utf8');
 assert.doesNotMatch(hook, /readSharedSessions|onRecall/);
 assert.match(hook, /lastUpload.current \+ 30000/);
-console.log('Passed: changed samples only, stable positions, idempotent server writes, formula preservation, upload-only endpoint, receipt verification, no sync UI, and upload cooldown.');
+const code = rows[1][headers.indexOf('Session Code')];
+assert.match(code, /^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/);
+assert.equal(rows[2][headers.indexOf('Session Code')], code);
+const recalledText = runtime.doGet({ parameter: { action: 'recall', code: code.toLowerCase().replace('-', ''), callback: 'ositoSyncTest' } }).text;
+const recalled = JSON.parse(recalledText.slice('ositoSyncTest('.length, -2)).session;
+assert.equal(recalled.syncId, session.syncId);
+assert.equal(recalled.samples.length, 2);
+assert.equal(recalled.samples[1].scores.consistency, 9);
+assert.equal(recalled.sessionCode, code);
+assert.match(runtime.doGet({ parameter: { action: 'recall', code: '1', callback: 'ositoSyncTest' } }).text, /sessionNotFound/);
+console.log('Passed: stable codes, single-session recall, order, updated scores, invalid codes, delta uploads, formula preservation, receipts, and cooldown.');
