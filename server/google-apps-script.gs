@@ -60,6 +60,8 @@ function repairCuppingSheet() {
       if (code && owners.has(code) && owners.get(code) !== session.syncId) throw new Error('Session code collision');
       if (code) owners.set(code, session.syncId);
       session.sessionCode = code;
+      session.sharedRevision = entry.sharedRevision || 0;
+      session.sharedUpdatedAt = entry.sharedUpdatedAt || null;
       const record = { row, index, entry, session, sample };
       if (!sessions.has(session.syncId)) sessions.set(session.syncId, []);
       sessions.get(session.syncId).push(record);
@@ -128,7 +130,7 @@ function valuesForSample_(session, sample, index) {
     Negative: notes.negativeTags.join('; '),
     'General Notes': [notes.sweetnessLevel && notes.sweetnessLevel + ' sweetness', notes.acidityLevel && notes.acidityLevel + ' acidity', notes.otherText].filter(Boolean).join('; '),
     'Session ID': session.syncId, 'Sample ID': sample.syncId, 'Session Code': session.sessionCode,
-    'App Data': JSON.stringify({ version: 2, position: index + 1, session: { syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode }, sample }),
+    'App Data': JSON.stringify({ version: 3, position: index + 1, sharedRevision: session.sharedRevision || 0, sharedUpdatedAt: session.sharedUpdatedAt || null, session: { syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode }, sample }),
     'Session Name': session.name || '', 'Water Activity': sample.waterActivity || '', Moisture: sample.moisture || '',
     Lexicon: session.lexiconMode || 'osito', 'Scoring Status': sample.noScore ? 'No Score' : 'Scored'
   };
@@ -140,6 +142,7 @@ function validateBatch_(body) {
   body.sessions.forEach(session => {
     if (!session || !/^[a-zA-Z0-9_-]{10,100}$/.test(session.syncId || '') || sessions.has(session.syncId) || !Array.isArray(session.samples) || !session.samples.length || session.samples.length > 100) throw new Error('invalidSession');
     sessions.add(session.syncId);
+    if (session.sharedRevision != null && (!Number.isSafeInteger(session.sharedRevision) || session.sharedRevision < 0)) throw new Error('invalidSession');
     ['name', 'startTime', 'date', 'lexiconMode'].forEach(key => { if (session[key] != null && typeof session[key] !== 'string') throw new Error('invalidSession'); });
     const ids = new Set();
     session.samples.forEach(sample => {
@@ -193,6 +196,17 @@ function doPost(event) {
       existing.set(key, index + 2);
     });
     let nextRow = Math.max(2, data.values.length + 1);
+    // Compare-and-swap under the same lock as the writes. Older clients cannot bypass it.
+    const dataColumn = columns.get('App Data');
+    body.sessions.forEach(session => {
+      const stored = data.values.slice(1).filter(row => row[sessionColumn] === session.syncId);
+      const revisions = stored.map(row => JSON.parse(row[dataColumn]).sharedRevision || 0);
+      const revision = Math.max(0, ...revisions);
+      if (stored.length && (body.protocol !== 2 || !Number.isSafeInteger(session.sharedRevision) || session.sharedRevision !== revision)) throw new Error('sharedConflict');
+      if (!stored.length && session.sharedRevision > 0) throw new Error('sharedConflict');
+      session.sharedRevision = revision + 1;
+      session.sharedUpdatedAt = new Date().toISOString();
+    });
     const codes = {}, owners = new Map(), codeColumn = columns.get('Session Code');
     data.values.slice(1).forEach(row => {
       if (row[codeColumn] && row[sessionColumn]) {
@@ -227,6 +241,18 @@ function doPost(event) {
       });
       if (headers.some((header, col) => Object.prototype.hasOwnProperty.call(values, header) && String(original[col] == null ? '' : original[col]) !== String(values[header]))) updates.push({ rowNumber, row });
     }));
+    // A delta still advances the entire session's revision, including unchanged coffees.
+    const changedRows = new Set(updates.map(update => update.rowNumber));
+    body.sessions.forEach(session => data.values.slice(1).forEach((original, index) => {
+      const rowNumber = index + 2;
+      if (original[sessionColumn] !== session.syncId || changedRows.has(rowNumber)) return;
+      const entry = JSON.parse(original[dataColumn]);
+      entry.sharedRevision = session.sharedRevision;
+      entry.sharedUpdatedAt = session.sharedUpdatedAt;
+      const row = headers.map((_, col) => data.formulas[rowNumber - 1]?.[col] || literal_(original[col]));
+      row[dataColumn] = JSON.stringify(entry);
+      updates.push({ rowNumber, row });
+    }));
     if (nextRow - 1 > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), nextRow - 1 - sheet.getMaxRows());
     updates.sort((a, b) => a.rowNumber - b.rowNumber);
     // Write adjacent rows together instead of making requests for every cell.
@@ -237,7 +263,7 @@ function doPost(event) {
     }
     extendCuppingFilter_(sheet);
     SpreadsheetApp.flush();
-    cache.put(receiptKey, JSON.stringify({ saved: body.sessions.map(session => session.syncId), codes: Object.fromEntries(body.sessions.map(session => [session.syncId, session.sessionCode])) }), 600);
+    cache.put(receiptKey, JSON.stringify({ saved: body.sessions.map(session => session.syncId), codes: Object.fromEntries(body.sessions.map(session => [session.syncId, session.sessionCode])), versions: Object.fromEntries(body.sessions.map(session => [session.syncId, { sharedRevision: session.sharedRevision, sharedUpdatedAt: session.sharedUpdatedAt }])) }), 600);
     return ContentService.createTextOutput('received');
   } catch (error) {
     if (body && /^[a-zA-Z0-9_-]{10,100}$/.test(body.requestId || '')) CacheService.getScriptCache().put('receipt:' + body.requestId, JSON.stringify({ error: String(error.message || 'unavailable') }), 600);
@@ -248,7 +274,7 @@ function doPost(event) {
 function doGet(event) {
   const callback = event.parameter.callback || '';
   if (!/^ositoSync[A-Za-z0-9_]+$/.test(callback)) return ContentService.createTextOutput('invalidCallback');
-  let result;
+  let result, lock;
   try {
     if (event.parameter.action === 'receipt') {
       const id = event.parameter.requestId || '';
@@ -256,6 +282,8 @@ function doGet(event) {
       const receipt = CacheService.getScriptCache().get('receipt:' + id);
       result = receipt ? JSON.parse(receipt) : { pending: true };
     } else if (event.parameter.action === 'recall') {
+      lock = LockService.getScriptLock();
+      if (!lock.tryLock(10000)) throw new Error('busy');
       const raw = String(event.parameter.code || '').toUpperCase().replace(/[-\s]/g, '');
       if (!/^[2-9A-HJ-NP-Z]{8}$/.test(raw)) throw new Error('sessionNotFound');
       const code = raw.slice(0, 4) + '-' + raw.slice(4);
@@ -267,9 +295,11 @@ function doGet(event) {
       const selected = rows.filter(row => row[idCol] === match[idCol]).sort((a, b) => Number(a[posCol]) - Number(b[posCol]));
       const entries = selected.map(row => ({ ...JSON.parse(row[dataCol]), legacyPosition: Number(row[posCol]) }));
       entries.sort((a, b) => (a.position || a.legacyPosition) - (b.position || b.legacyPosition));
-      result = { session: { ...entries[0].session, sessionCode: code, samples: entries.map(entry => entry.sample) } };
+      const newest = entries.reduce((a, b) => (a.sharedRevision || 0) >= (b.sharedRevision || 0) ? a : b);
+      result = { protocol: 2, session: { ...newest.session, sharedRevision: newest.sharedRevision || 0, sharedUpdatedAt: newest.sharedUpdatedAt || null, sessionCode: code, samples: entries.map(entry => entry.sample) } };
     } else result = { error: 'invalidAction' };
   } catch (error) { result = { error: String(error.message || 'unavailable') }; }
+  finally { if (lock && lock.hasLock()) lock.releaseLock(); }
   const json = JSON.stringify(result).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   return ContentService.createTextOutput(callback + '(' + json + ');').setMimeType(ContentService.MimeType.JAVASCRIPT);
 }

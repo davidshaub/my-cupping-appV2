@@ -5,6 +5,8 @@ export const normalizeSessionCode = value => {
 };
 
 export const validateRecalledSession = (value, code) => {
+  if (value?.sharedRevision != null && (!Number.isSafeInteger(value.sharedRevision) || value.sharedRevision < 0)) throw new Error('sharedInvalidData');
+  if (value?.sharedUpdatedAt != null && (typeof value.sharedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(value.sharedUpdatedAt)))) throw new Error('sharedInvalidData');
   if (!value || typeof value.syncId !== 'string' || !value.syncId || !Array.isArray(value.samples) || !value.samples.length || value.samples.length > 100) throw new Error('sharedInvalidData');
   const ids = new Set();
   for (const sample of value.samples) {

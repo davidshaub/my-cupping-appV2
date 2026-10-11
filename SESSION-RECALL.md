@@ -1,5 +1,19 @@
 # Session recall deployment
 
+## Session Update rollout
+
+For the version-protected Session Update feature, deploy the updated Apps Script **before** publishing the frontend. Replace the existing source, save, then Deploy > Manage deployments > pencil > New version > Deploy, retaining the existing URL. Do not run the repair function again. No new sheet column is required.
+
+Then publish the frontend and reload it on each device. Existing sessions without a known revision must be checked through **Update Session** in their report (or recalled by code) before editing can sync. This is intentional: an older local copy cannot safely be treated as current. Unknown-version clients are prevented from overwriting existing shared sessions.
+
+The report shows the last server-assigned sync time and offers a confirmation before loading a newer version. Unsynced local edits receive an explicit replacement warning; cancel leaves them intact. Save a separate session or export CSV before replacing edits you want to retain. A current local revision with unsynced edits is left alone to upload normally. Offline/error checks never replace local data.
+
+Google assigns an integer revision and UTC timestamp on each accepted upload. Revision comparison and writes run under one script lock. A stale upload is rejected, not merged, and the report prompts the user to check for updates. Recalling a session acknowledges it locally so opening it does not upload it again. The shared session ID, coffee IDs, and code remain unchanged.
+
+These versions track **app uploads**, not manual spreadsheet edits. Edit session content in the app. This remains explicit refresh, not live collaborative editing.
+
+Verification: `node scripts/check-shared-sync.mjs`, `node scripts/check-sheet-repair.mjs`, `node --test tests/*.test.js`, and `npm run build`. `scripts/check-session-update-ui.mjs` additionally exercises isolated mobile/desktop browser contexts with mocked Google responses (requires Playwright and Chrome). It never contacts the live spreadsheet.
+
 1. In the existing Google Sheet, open Extensions > Apps Script.
 2. Replace the script with `server/google-apps-script.gs` from this project.
 3. Use Deploy > Manage deployments, edit the existing web-app deployment, choose New version, then Deploy. Keep the same URL, execute-as-owner setting, and Anyone access.

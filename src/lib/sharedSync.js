@@ -1,6 +1,7 @@
 // Public upload endpoint; authorization stays in Google Apps Script.
 const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyiZl-h9amh--1Rnw3JlEyjudA-flDAdrKORF17-1LPBlzo5mea48rYCaWYnSJO2q0JXw/exec';
 export const SYNC_API_URL = (import.meta.env?.VITE_SYNC_API_URL || DEFAULT_SYNC_URL).replace(/\/$/, '');
+export const sessionFingerprint = session => JSON.stringify({ syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode, samples: session.samples });
 
 export const readScriptResponse = (params, signal, endpoint = SYNC_API_URL) => new Promise((resolve, reject) => {
   const callback = `ositoSync${crypto.randomUUID().replace(/-/g, '')}`;
@@ -10,7 +11,7 @@ export const readScriptResponse = (params, signal, endpoint = SYNC_API_URL) => n
   const timeout = setTimeout(() => { cleanup(); reject(new Error('sharedUnavailable')); }, 20000);
   window[callback] = value => {
     cleanup();
-    if (value?.error) reject(new Error(['invalidSession', 'invalidAppData', 'missingColumns', 'duplicateRows', 'duplicateHeaders'].includes(value.error) ? 'sharedInvalidData' : value.error === 'sessionTooLarge' ? 'sharedTooLarge' : 'sharedUnavailable'));
+    if (value?.error) reject(new Error(value.error === 'sharedConflict' ? 'sharedConflict' : ['invalidSession', 'invalidAppData', 'missingColumns', 'duplicateRows', 'duplicateHeaders'].includes(value.error) ? 'sharedInvalidData' : value.error === 'sessionTooLarge' ? 'sharedTooLarge' : 'sharedUnavailable'));
     else resolve(value);
   };
   script.onerror = () => { cleanup(); reject(new Error('sharedUnavailable')); };
@@ -45,7 +46,7 @@ export const sessionChanges = (session, previousFingerprint) => {
 
 export const saveSharedSessions = async (sessions, signal, fetcher = fetch, endpoint = SYNC_API_URL, reader = readScriptResponse) => {
   const requestId = crypto.randomUUID();
-  const body = JSON.stringify({ requestId, sessions });
+  const body = JSON.stringify({ protocol: 2, requestId, sessions });
   if (new TextEncoder().encode(body).length > 1000000) throw new Error('sharedTooLarge');
   try {
     await fetcher(endpoint, { method: 'POST', mode: 'no-cors', credentials: 'omit', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, signal: AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(25000)]) });

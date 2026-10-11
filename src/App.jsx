@@ -28,6 +28,7 @@ import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
 import CsvExportDialog from './components/CsvExportDialog';
 import CoffeeReportModal from './components/CoffeeReportModal';
+import SessionUpdate from './components/SessionUpdate';
 import HandsLogo from '../assets/hands.png';
 import LevelSelector from './components/LevelSelector';
 import {
@@ -241,7 +242,7 @@ const App = () => {
     id,
     syncId: existingEntry.syncId || newSyncId(),
     name,
-    date: new Date().toLocaleDateString(),
+    date: existingEntry.date || new Date().toLocaleDateString(),
     startTime,
     lexiconMode,
     samples: cloneSamplesForSave(sourceSamples),
@@ -253,8 +254,8 @@ const App = () => {
     setHistory(updatedHistory);
   };
 
-  useGoogleSheets(history, codes => setHistory(current => {
-    const updated = current.map(entry => codes[entry.syncId] ? { ...entry, sessionCode: codes[entry.syncId] } : entry);
+  const sharedSync = useGoogleSheets(history, (codes, versions) => setHistory(current => {
+    const updated = current.map(entry => codes[entry.syncId] ? { ...entry, sessionCode: codes[entry.syncId], ...versions?.[entry.syncId] } : entry);
     localStorage.setItem('cupping_history', JSON.stringify(updated));
     return updated;
   }));
@@ -389,18 +390,21 @@ const App = () => {
     setRecalling(true);
     setImportError('');
     try {
+      sharedSync.holdRecall();
       const code = normalizeSessionCode(recallCode);
       const result = await readScriptResponse({ action: 'recall', code });
+      if (result.protocol !== 2) throw new Error('sharedUpgrade');
       if (request !== recallRequest.current) return;
       const session = validateRecalledSession(result.session, code);
       const existing = history.find(entry => entry.syncId === session.syncId);
       if (existing && !window.confirm(t('replaceRecalledSession'))) return;
       const entry = { ...session, id: existing?.id ?? newSyncId(), name: session.name || session.startTime || code };
       persistHistory(existing ? history.map(item => item.id === existing.id ? entry : item) : [entry, ...history]);
+      sharedSync.acceptRemote(entry);
       loadSession(entry);
     } catch (error) {
       if (request === recallRequest.current) setImportError(t(error.message === 'invalidSessionCode' ? 'invalidSessionCode' : 'recallFailed'));
-    } finally { setRecalling(false); }
+    } finally { sharedSync.release('*'); setRecalling(false); }
   };
 
   const importSessionCsvFile = async (file) => {
@@ -2085,6 +2089,18 @@ const App = () => {
             </div>
           </header>
 
+          {activeSavedSession?.sessionCode && <SessionUpdate
+            key={activeSavedSession.syncId}
+            session={activeSavedSession}
+            sync={sharedSync}
+            language={language}
+            onReplace={remote => {
+              const entry = { ...remote, id: activeSavedSession.id };
+              persistHistory(history.map(item => item.id === entry.id ? entry : item));
+              sharedSync.acceptRemote(entry);
+              loadSession(entry);
+            }}
+          />}
           <div className="report-surface bg-white p-4 md:p-10 rounded-3xl shadow-sm border border-stone-200 print:p-0 print:border-none print:shadow-none">
             <div className="report-title print-hidden">
               <div>
