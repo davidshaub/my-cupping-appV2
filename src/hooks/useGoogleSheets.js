@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { SYNC_API_URL, saveSharedSessions, sessionChanges, sessionFingerprint, readScriptResponse } from '../lib/sharedSync.js';
+import { SYNC_API_URL, saveSharedSessions, sessionChanges, sessionFingerprint, sessionSyncState, readScriptResponse } from '../lib/sharedSync.js';
 import { validateRecalledSession } from '../lib/sessionRecall.js';
 
 const ACK_KEY = 'cupping_shared_sync_acknowledged_v1';
@@ -21,7 +21,7 @@ export default function useGoogleSheets(history, onCodes) {
   }
   latest.current = history;
   const saveAcknowledged = () => localStorage.setItem(ACK_KEY, JSON.stringify(acknowledged.current));
-  const dirty = () => latest.current.filter(entry => !paused.current.has('*') && !paused.current.has(entry.syncId) && !blocked.current.has(entry.syncId) && (!entry.sessionCode || Number.isSafeInteger(entry.sharedRevision)) && entry.samples.length && (!entry.sessionCode || acknowledged.current[entry.syncId] !== sessionFingerprint(entry)));
+  const dirty = () => latest.current.filter(entry => !paused.current.has('*') && !paused.current.has(entry.syncId) && !blocked.current.has(entry.syncId) && entry.samples.length && sessionSyncState(entry, acknowledged.current[entry.syncId]) === 'dirty');
 
   const flush = async () => {
     if (busy.current || !SYNC_API_URL || !navigator.onLine || !mounted.current) return;
@@ -106,13 +106,16 @@ export default function useGoogleSheets(history, onCodes) {
       if (result.protocol !== 2) throw new Error('sharedUpgrade');
       const remote = validateRecalledSession(result.session, session.sessionCode);
       if (remote.syncId !== session.syncId || !Number.isSafeInteger(remote.sharedRevision) || remote.sharedRevision < (session.sharedRevision || 0)) throw new Error('sharedInvalidData');
-      return { remote, dirty: acknowledged.current[session.syncId] !== sessionFingerprint(session) };
+      const state = sessionSyncState(session, acknowledged.current[session.syncId]);
+      return { remote, dirty: state !== 'current', baselineKnown: state !== 'unknown' };
     } catch (error) {
       paused.current.delete(session.syncId);
       throw error;
     }
   };
-  return { conflicts, acceptRemote, checkRemote, release: id => paused.current.delete(id), holdRecall: () => {
+  const warnings = { ...conflicts };
+  for (const entry of history) if (entry.sessionCode && sessionSyncState(entry, acknowledged.current[entry.syncId]) === 'unknown') warnings[entry.syncId] = 'sharedBaselineMissing';
+  return { conflicts: warnings, acceptRemote, checkRemote, release: id => paused.current.delete(id), holdRecall: () => {
     if (busy.current) throw new Error('updateBusy');
     paused.current.add('*');
   } };

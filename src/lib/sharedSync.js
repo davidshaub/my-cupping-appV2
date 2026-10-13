@@ -1,7 +1,18 @@
 // Public upload endpoint; authorization stays in Google Apps Script.
 const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyiZl-h9amh--1Rnw3JlEyjudA-flDAdrKORF17-1LPBlzo5mea48rYCaWYnSJO2q0JXw/exec';
 export const SYNC_API_URL = (import.meta.env?.VITE_SYNC_API_URL || DEFAULT_SYNC_URL).replace(/\/$/, '');
-export const sessionFingerprint = session => JSON.stringify({ syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode, samples: session.samples });
+const stableJson = value => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
+  ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
+export const sessionFingerprint = session => stableJson({ syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode, samples: session.samples });
+export const sessionSyncState = (session, baseline) => {
+  if (!session.sessionCode) return 'dirty';
+  if (!Number.isSafeInteger(session.sharedRevision)) return 'unknown';
+  try {
+    const previous = JSON.parse(baseline);
+    if (previous?.syncId !== session.syncId || !Array.isArray(previous.samples)) return 'unknown';
+    return sessionFingerprint(previous) === sessionFingerprint(session) ? 'current' : 'dirty';
+  } catch { return 'unknown'; }
+};
 
 export const readScriptResponse = (params, signal, endpoint = SYNC_API_URL, timeoutMs = 20000) => new Promise((resolve, reject) => {
   const callback = `ositoSync${crypto.randomUUID().replace(/-/g, '')}`;
@@ -39,7 +50,7 @@ export const sessionChanges = (session, previousFingerprint) => {
   const prior = new Map((Array.isArray(previous?.samples) ? previous.samples : []).map((sample, index) => [sample.syncId, { sample, index }]));
   const changed = samples.filter((sample, index) => {
     const old = prior.get(sample.syncId);
-    return !sameMetadata || !old || old.index !== index || JSON.stringify(old.sample) !== JSON.stringify(sample);
+    return !sameMetadata || !old || old.index !== index || stableJson(old.sample) !== stableJson(sample);
   });
   return { ...metadata, samples: changed, positions: Object.fromEntries(samples.map((sample, index) => [sample.syncId, index + 1])) };
 };

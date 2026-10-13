@@ -11,6 +11,7 @@ const text = {
     replaceInfo: 'Load the latest saved names, scores, and notes onto this device?',
     updated: 'Last synced', unknown: 'Previous sync time unavailable', legacy: 'Check the saved version before continuing',
     sharedConflict: 'Another device updated this session. Check for updates before continuing.',
+    sharedBaselineMissing: 'Check Update Session before syncing. This device cannot verify its last synced copy.',
     sharedUpgrade: 'The Google Apps Script needs its new version deployed before session updates can be used.',
     updateOffline: 'You are offline. Your local session is unchanged.', updateBusy: 'An upload is finishing. Please try again in a moment.',
     failed: 'Could not check for updates. Your local session is unchanged.',
@@ -23,6 +24,7 @@ const text = {
     replaceInfo: '¿Cargar los últimos nombres, puntuaciones y notas guardados en este dispositivo?',
     updated: 'Última sincronización', unknown: 'Hora de sincronización anterior no disponible', legacy: 'Revisa la versión guardada antes de continuar',
     sharedConflict: 'Otro dispositivo actualizó esta sesión. Busca actualizaciones antes de continuar.',
+    sharedBaselineMissing: 'Consulta Actualizar sesión antes de sincronizar. Este dispositivo no puede verificar su última copia sincronizada.',
     sharedUpgrade: 'Debes implementar la nueva versión de Google Apps Script para actualizar sesiones.',
     updateOffline: 'Sin conexión. La sesión local no cambió.', updateBusy: 'Se está completando una subida. Inténtalo de nuevo en un momento.',
     failed: 'No se pudieron buscar actualizaciones. La sesión local no cambió.',
@@ -35,6 +37,7 @@ const text = {
     replaceInfo: 'Carregar os últimos nomes, notas e observações salvos neste dispositivo?',
     updated: 'Última sincronização', unknown: 'Horário da sincronização anterior indisponível', legacy: 'Confira a versão salva antes de continuar',
     sharedConflict: 'Outro dispositivo atualizou esta sessão. Verifique as atualizações antes de continuar.',
+    sharedBaselineMissing: 'Confira Atualizar sessão antes de sincronizar. Este dispositivo não pode verificar sua última cópia sincronizada.',
     sharedUpgrade: 'É necessário implantar a nova versão do Google Apps Script para atualizar sessões.',
     updateOffline: 'Você está offline. A sessão local não foi alterada.', updateBusy: 'Um envio está sendo concluído. Tente novamente em instantes.',
     failed: 'Não foi possível verificar as atualizações. A sessão local não foi alterada.',
@@ -61,13 +64,13 @@ export default function SessionUpdate({ session, sync, onReplace, language }) {
     const token = ++request.current;
     setState({ kind: 'checking' });
     try {
-      const { remote, dirty } = await sync.checkRemote(session);
+      const { remote, dirty, baselineKnown } = await sync.checkRemote(session);
       if (token !== request.current) return;
       const same = sessionFingerprint(remote) === sessionFingerprint(session);
       if (same) {
         onReplace(remote);
         setState({ kind: 'current' });
-      } else if (Number.isSafeInteger(session.sharedRevision) && remote.sharedRevision === session.sharedRevision) {
+      } else if (baselineKnown && Number.isSafeInteger(session.sharedRevision) && remote.sharedRevision === session.sharedRevision) {
         setState({ kind: 'pending' });
       } else {
         setState({ kind: 'newer', remote, dirty });
@@ -80,7 +83,7 @@ export default function SessionUpdate({ session, sync, onReplace, language }) {
   const legacy = !Number.isSafeInteger(session.sharedRevision);
   return <div className="session-update print-hidden">
     <button type="button" onClick={check} disabled={!!state} className="session-update-button" title={t('button')}>
-      <Icon name="history" size={16} />{t('button')}
+      <Icon name="refresh-cw" size={16} />{t('button')}
     </button>
     <span role="status">{conflict ? t(conflict) : legacy ? t('legacy') : session.sharedUpdatedAt ? `${t('updated')}: ${new Date(session.sharedUpdatedAt).toLocaleString(language)}` : ''}</span>
     <dialog ref={dialog} className="session-update-dialog" aria-labelledby="session-update-title" onCancel={event => { event.preventDefault(); close(); }}>

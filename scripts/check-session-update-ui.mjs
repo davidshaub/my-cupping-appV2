@@ -7,21 +7,25 @@ import { sessionFingerprint } from '../src/lib/sharedSync.js';
 const { chromium } = createRequire(import.meta.url)('playwright');
 const browser = await chromium.launch({ headless: true, channel: 'chrome' });
 try {
-  for (const width of [390, 1280]) {
+  for (const width of [390, 768, 1280]) {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     const session = normalizeSessionIdentity({ id: 123, name: 'Update QA', startTime: '10/11/2026, 10:00:00 AM', date: '10/11/2026', lexiconMode: 'osito', sessionCode: 'Z598-9J6R', sharedRevision: 1, sharedUpdatedAt: '2026-10-11T14:00:00.000Z', samples: initializeSamples(2) });
     session.samples[0].lotName = 'Boox coffee';
+    if (width === 768) {
+      delete session.date;
+      delete session.lexiconMode;
+    }
     let remote = structuredClone(session);
-    remote.sharedRevision = 2;
+    remote.sharedRevision = width === 768 ? 1 : 2;
     remote.sharedUpdatedAt = '2026-10-11T15:00:00.000Z';
     remote.samples[0].lotName = 'Desktop coffee';
     const fingerprint = sessionFingerprint(session);
     if (width === 1280) session.samples[0].notes.otherText = 'Unsynced local note';
     let uploads = 0;
-    await context.addInitScript(({ session, fingerprint }) => {
+    await context.addInitScript(({ session, fingerprint, width }) => {
       localStorage.setItem('cupping_history', JSON.stringify([session]));
-      localStorage.setItem('cupping_shared_sync_acknowledged_v1', JSON.stringify({ [session.syncId]: fingerprint }));
-    }, { session, fingerprint });
+      if (width !== 768) localStorage.setItem('cupping_shared_sync_acknowledged_v1', JSON.stringify({ [session.syncId]: fingerprint }));
+    }, { session, fingerprint, width });
     await context.route('https://script.google.com/**', async route => {
       if (route.request().method() === 'POST') {
         uploads++;
@@ -38,6 +42,11 @@ try {
     await page.goto('http://127.0.0.1:5173/my-cupping-appV2/');
     await page.getByRole('button', { name: /saved sessions|history/i }).click();
     await page.getByText('Update QA', { exact: true }).click();
+    if (width !== 1280) {
+      await page.waitForTimeout(2500);
+      assert.equal(uploads, 0, 'Opening a shared session without editing must not upload');
+      assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.cupping_history)[0]), session, 'Viewing must not rewrite saved session data');
+    }
     await page.getByRole('button', { name: 'Update Session', exact: true }).click();
     await page.getByText('A newer session is available', { exact: true }).waitFor();
     if (width === 1280) await page.getByText(/including any unsynced changes/).waitFor();

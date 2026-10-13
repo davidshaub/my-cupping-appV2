@@ -24,7 +24,7 @@ export default function LotLookupStatus({ sample, lookup, language, compact = fa
       <button type="button" onClick={() => lookup.dismiss(sample.syncId)}>{t.keep}</button>
     </details> : <div role="status">
       <span>{t[state.status]}</span>
-      {['failed', 'offline', 'missing', 'ambiguous'].includes(state.status) && <button type="button" className="lot-lookup-retry" title={t.retry} aria-label={t.retry} onClick={() => lookup.retry(sample)}><Icon name="history" size={16} /></button>}
+      {['failed', 'offline', 'missing', 'ambiguous'].includes(state.status) && <button type="button" className="lot-lookup-retry" title={t.retry} aria-label={t.retry} onClick={() => lookup.retry(sample)}><Icon name="refresh-cw" size={16} /></button>}
     </div>}
   </div>;
 }

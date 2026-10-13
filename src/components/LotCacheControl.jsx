@@ -12,7 +12,7 @@ export default function LotCacheControl({ lookup, language }) {
   const { catalog } = lookup;
   return <div className="lot-cache-control">
     <button type="button" className="eink-toggle eink-toggle-compact" onClick={lookup.refresh} disabled={catalog.status === 'loading'}>
-      <Icon name="history" size={16} />{t.refresh}
+      <Icon name="refresh-cw" size={16} />{t.refresh}
     </button>
     <span role="status">{['loading', 'failed', 'offline', 'memory'].includes(catalog.status) ? t[catalog.status] : catalog.refreshedAt ? `${t.saved}: ${new Date(catalog.refreshedAt).toLocaleString(language)}` : t.empty}</span>
   </div>;

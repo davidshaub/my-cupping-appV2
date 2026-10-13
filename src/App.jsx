@@ -13,7 +13,7 @@ import {
   initializeSamples
 } from './lib/cupping';
 import useGoogleSheets from './hooks/useGoogleSheets';
-import { readScriptResponse } from './lib/sharedSync';
+import { readScriptResponse, sessionFingerprint } from './lib/sharedSync';
 import { normalizeSessionCode, validateRecalledSession } from './lib/sessionRecall';
 import { newSyncId, normalizeSessionIdentity } from './lib/googleSheets';
 import SearchableSelect from './components/SearchableSelect';
@@ -71,6 +71,7 @@ const LanguageToggle = ({ language, onToggle, t, compact = false, className = ''
 );
 
 const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther', 'country', 'sampleType', 'roastId'];
+const draftFingerprint = (id, name, startTime, lexiconMode, samples) => sessionFingerprint({ syncId: id, name, startTime, lexiconMode, samples });
 const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
 
 const parseClipboardRows = (text) => {
@@ -94,6 +95,7 @@ const App = () => {
   const [samples, setSamples] = useState([]);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [history, setHistory] = useState([]);
+  const lastPersistedDraft = useRef(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [sessionName, setSessionName] = useState('');
   const [activeSessionName, setActiveSessionName] = useState('');
@@ -203,7 +205,7 @@ const App = () => {
 
   const resetToHome = () => {
     // Flush the latest edits before clearing the active session, including lot setup.
-    if (samples.length) {
+    if (samples.length && lastPersistedDraft.current !== draftFingerprint(activeSavedSessionId, activeSessionName, sessionStartTime, lexiconMode, samples)) {
       try {
         const existing = history.find(item => item.id === activeSavedSessionId);
         const startTime = sessionStartTime || new Date().toLocaleString();
@@ -277,6 +279,8 @@ const App = () => {
 
   useEffect(() => {
     if (activeSavedSessionId === null || !sessionStartTime || samples.length === 0) return;
+    const draft = draftFingerprint(activeSavedSessionId, activeSessionName, sessionStartTime, lexiconMode, samples);
+    if (lastPersistedDraft.current === draft) return;
 
     setHistory((currentHistory) => {
       const existingIndex = currentHistory.findIndex((item) => item.id === activeSavedSessionId);
@@ -292,6 +296,7 @@ const App = () => {
       );
       const updatedHistory = currentHistory.map((item, idx) => (idx === existingIndex ? updatedEntry : item));
       localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+      lastPersistedDraft.current = draft;
       return updatedHistory;
     });
   }, [samples, sessionStartTime, activeSavedSessionId, activeSessionName, lexiconMode]);
@@ -343,6 +348,7 @@ const App = () => {
     setLexiconMode(normalizeLexiconMode(session.lexiconMode));
     const sessionSamples = Array.isArray(session.samples) ? session.samples : [];
     const loadedStartTime = session.startTime || new Date().toLocaleString();
+    lastPersistedDraft.current = draftFingerprint(session.id ?? null, session.name || '', loadedStartTime, normalizeLexiconMode(session.lexiconMode), sessionSamples);
     setSamples(sessionSamples);
     setNumSamples(sessionSamples.length || 1);
     setActiveSampleIndex(0);
@@ -2085,7 +2091,7 @@ const App = () => {
                 disabled={isExportingPdfs}
                 className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-stone-800 border border-stone-200 active:scale-95 disabled:opacity-60 disabled:active:scale-100 text-xs"
               >
-                <Icon name="file-archive" size={16} />
+                <Icon name="file-text" size={16} />
                 {isExportingPdfs ? t('exportingPdfs') : t('downloadPdfSet')}
               </button>
               <button
@@ -2169,7 +2175,7 @@ const App = () => {
               disabled={isExportingPdfs}
               className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl bg-white text-stone-800 border border-stone-200 text-[10px] font-black uppercase tracking-wider disabled:opacity-60"
             >
-              <Icon name="file-archive" size={14} />
+              <Icon name="file-text" size={14} />
               {isExportingPdfs ? '...' : t('pdfs')}
             </button>
             <button
