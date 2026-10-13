@@ -40,6 +40,7 @@ test('server finds the header below summary rows, uses displayed IDs, and return
     return { getSheets: () => [sheet] };
   } } });
   vm.runInContext(readFileSync('server/google-apps-script.gs', 'utf8'), runtime);
+  assert.deepEqual(JSON.parse(JSON.stringify(runtime.lotCatalog_())), [['145.26', 'Kebena', 'Natural', 'Ethiopia'], ['0145.26', 'Other lot', 'Washed', 'Brazil']]);
   assert.deepEqual(JSON.parse(JSON.stringify(runtime.lookupLot_('145.26'))), { status: 'found', id: '145.26', lot: { lotName: 'Kebena', processing: 'Natural', country: 'Ethiopia' } });
   assert.equal(runtime.lookupLot_('145').status, 'missing');
   assert.equal(runtime.lookupLot_('0145.26').lot.lotName, 'Other lot');

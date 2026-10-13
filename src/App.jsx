@@ -30,6 +30,7 @@ import CsvExportDialog from './components/CsvExportDialog';
 import CoffeeReportModal from './components/CoffeeReportModal';
 import SessionUpdate from './components/SessionUpdate';
 import LotLookupStatus from './components/LotLookupStatus';
+import LotCacheControl from './components/LotCacheControl';
 import useLotLookup from './hooks/useLotLookup';
 import HandsLogo from '../assets/hands.png';
 import LevelSelector from './components/LevelSelector';
@@ -1709,6 +1710,7 @@ const App = () => {
           </div>
 
           <div className="max-w-sm">{renderLexiconSelector()}</div>
+          <LotCacheControl lookup={lotLookup} language={language} />
           {metadataTableMode ? (
             <div className="metadata-table-shell">
               <table className="metadata-spreadsheet text-left text-sm" role="grid">

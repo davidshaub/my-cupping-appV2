@@ -11,14 +11,7 @@ const LOT_SOURCE_TAB = 1244711014;
 function lookupLot_(rawId) {
   const id = String(rawId || '').trim();
   if (!id || id.length > 64 || /[\x00-\x1f]/.test(id)) throw new Error('invalidLotId');
-  const sheet = SpreadsheetApp.openById(LOT_SOURCE_SPREADSHEET).getSheets().find(s => s.getSheetId() === LOT_SOURCE_TAB);
-  if (!sheet) throw new Error('lotSourceMissing');
-  const names = ['Lot ID', 'Mark', 'Processing', 'Origin'];
-  const top = sheet.getRange(1, 1, Math.min(20, sheet.getLastRow()), sheet.getLastColumn()).getDisplayValues();
-  const headerIndex = top.findIndex(row => names.every(name => row.filter(cell => cell.trim() === name).length === 1));
-  if (headerIndex < 0) throw new Error('lotColumnsMissing');
-  const headers = top[headerIndex].map(cell => cell.trim());
-  const firstRow = headerIndex + 2, count = sheet.getLastRow() - firstRow + 1;
+  const { sheet, headers, firstRow, count } = lotSource_();
   if (count <= 0) return { status: 'missing', id };
   const ids = sheet.getRange(firstRow, headers.indexOf('Lot ID') + 1, count, 1).getDisplayValues();
   const matches = [];
@@ -30,6 +23,26 @@ function lookupLot_(rawId) {
   if (!matches.length) return { status: 'missing', id };
   if (new Set(matches.map(value => JSON.stringify(value))).size > 1) return { status: 'ambiguous', id };
   return { status: 'found', id, lot: matches[0] };
+}
+
+function lotSource_() {
+  const sheet = SpreadsheetApp.openById(LOT_SOURCE_SPREADSHEET).getSheets().find(s => s.getSheetId() === LOT_SOURCE_TAB);
+  if (!sheet) throw new Error('lotSourceMissing');
+  const names = ['Lot ID', 'Mark', 'Processing', 'Origin'];
+  const top = sheet.getRange(1, 1, Math.min(20, sheet.getLastRow()), sheet.getLastColumn()).getDisplayValues();
+  const headerIndex = top.findIndex(row => names.every(name => row.filter(cell => cell.trim() === name).length === 1));
+  if (headerIndex < 0) throw new Error('lotColumnsMissing');
+  const headers = top[headerIndex].map(cell => cell.trim());
+  const firstRow = headerIndex + 2, count = sheet.getLastRow() - firstRow + 1;
+  return { sheet, headers, firstRow, count };
+}
+
+function lotCatalog_() {
+  const { sheet, headers, firstRow, count } = lotSource_();
+  if (count <= 0) return [];
+  const columns = ['Lot ID', 'Mark', 'Processing', 'Origin'].map(name =>
+    sheet.getRange(firstRow, headers.indexOf(name) + 1, count, 1).getDisplayValues());
+  return columns[0].map((_, index) => columns.map(column => column[index][0].trim())).filter(row => row[0]);
 }
 
 function cuppingSheet_() {
@@ -303,7 +316,9 @@ function doGet(event) {
   if (!/^ositoSync[A-Za-z0-9_]+$/.test(callback)) return ContentService.createTextOutput('invalidCallback');
   let result, lock;
   try {
-    if (event.parameter.action === 'lookupLot') {
+    if (event.parameter.action === 'lotCatalog') {
+      result = { lotCatalog: lotCatalog_() };
+    } else if (event.parameter.action === 'lookupLot') {
       result = { lotLookup: lookupLot_(event.parameter.id) };
     } else if (event.parameter.action === 'receipt') {
       const id = event.parameter.requestId || '';

@@ -1628,3 +1628,7 @@ h3 {
 .lot-lookup-status .lot-lookup-apply { border: 1px solid currentColor; border-radius: 4px; font-weight: 600; }
 .lot-lookup-status .lot-lookup-retry { display: grid; place-items: center; flex: 0 0 36px; }
 .lot-lookup-status button:focus-visible, .lot-lookup-status summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.lot-cache-control { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.lot-cache-control > span { font-size: 12px; line-height: 1.5; flex: 1 1 200px; color: #404040; }
+.lot-cache-control button { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; }
+.lot-cache-control button:disabled { opacity: .65; cursor: wait; }

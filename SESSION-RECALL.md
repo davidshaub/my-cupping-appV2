@@ -2,15 +2,25 @@
 
 ## Lot Summary lookup
 
+### Device cache
+
+Deploy the updated Apps Script first, then publish the frontend. No repair is needed. The read-only `lotCatalog` action returns only four strings per record: Lot ID, Mark, Processing, Origin. It deliberately bypasses any server cache so manual refresh sees the current sheet. Conflicting duplicate IDs remain identifiable in this list.
+
+The app keeps a dedicated local cache (`cupping_lot_catalog_v1`) with only these values, duplicate-status markers, and its last full-refresh timestamp. It builds an in-memory ID index once, reuses it offline, and attempts a background refresh at startup/online return when older than one hour, plus hourly while open. A cached lookup waits only a short 250ms typing pause; it makes no network call. Unknown IDs use the live exact-ID endpoint and successful results join the cache. Missing IDs are never negatively cached.
+
+**Refresh Lot Data** in Lot Information always requests a fresh full list. Afterward it checks the current lots using the usual manual-edit review safeguards. Background refresh alone never changes session fields. Refresh failures retain the existing cache; storage-quota failures retain it in memory and report that it could not be saved between visits. Session storage is separate and never cleared by this feature.
+
+First download and live cache misses can still be slow on Google Apps Script; the speed improvement applies to the locally cached list. No pricing, inventory, or other sheet columns are included in the catalog.
+
 The existing Apps Script now supports a read-only `lookupLot` action using spreadsheet `1hyfuTZSRZP1SQc5c-pQ3MpfRS_lJazK9Nww6HFvOskE`, tab ID `1244711014` (Lot Summary). It detects the header within the first 20 rows (currently row 3): Lot ID -> Osito ID, Mark -> Lot Name, Processing -> Processing, Origin -> Country. The deployment owner's Google account must have read access. Replace/save/redeploy the existing script as a new version before publishing the frontend. No repair, added columns, or changes to the source sheet are needed.
 
 IDs match their displayed text exactly after trimming surrounding whitespace. Leading zeroes, punctuation and year suffixes are not discarded. Matching duplicate IDs with different mapped data are flagged; identical mapped duplicates are harmless. Only the three requested fields are returned. The existing public endpoint means anyone with a matching Lot ID can request these three fields, but no other source columns or whole-sheet listing are exposed.
 
-After an ID changes in either lot editor, a 650ms typing pause starts the lookup. Opening an existing session alone does not start lookups. Blank sheet cells never erase entries. Existing differing details require explicit review/replacement. Washed, Natural, Honey and Other match ignoring case/outer whitespace; every other nonblank processing value becomes Other, with its full text retained in processing details. No fuzzy process mapping occurs.
+After an ID changes in either lot editor, a 250ms typing pause starts a cached lookup; an uncached ID uses a 650ms pause before its live request. Opening an existing session alone does not start field lookups. Blank sheet cells never erase entries. Existing differing details require explicit review/replacement. Washed, Natural, Honey and Other match ignoring case/outer whitespace; every other nonblank processing value becomes Other, with its full text retained in processing details. No fuzzy process mapping occurs.
 
 Requests are cancelled when the ID, session, or view changes, and results are tied to stable coffee IDs rather than row numbers. Manual entry works offline or when lookup fails; an inline retry is provided. No lookup modifies scores, notes, session IDs, or the source sheet. Accepted details go through the normal local autosave and version-protected session sync.
 
-Tests: `node --test tests/lot-lookup.test.js` and `scripts/check-lot-lookup-ui.mjs` (Playwright/Chrome, mocked network, local port 5174). The source-sheet check found conflicting duplicate IDs `41` and `356`; these are not selected automatically.
+Tests: `node --test tests/lot-lookup.test.js tests/lot-cache.test.js` and `scripts/check-lot-lookup-ui.mjs` (Playwright/Chrome, mocked network, local port 5175 or `LOT_TEST_URL`). The source-sheet check found conflicting duplicate IDs `41` and `356`; these are not selected automatically.
 
 ## Session Update rollout
 
