@@ -20,7 +20,8 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
     job.timer = setTimeout(async () => {
       try {
         if (!navigator.onLine) throw new Error('offline');
-        const result = await readScriptResponse({ action: 'lookupLot', id }, job.controller.signal);
+        // The larger inventory workbook can take longer to open on a cold Apps Script run.
+        const result = await readScriptResponse({ action: 'lookupLot', id }, job.controller.signal, undefined, 45000);
         if (jobs.current.get(key) !== job) return;
         const sample = latest.current.find(item => item.syncId === key && lotId(item.ositoId) === id);
         if (!sample) return;

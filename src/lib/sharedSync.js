@@ -3,12 +3,12 @@ const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyiZl-h9amh--1
 export const SYNC_API_URL = (import.meta.env?.VITE_SYNC_API_URL || DEFAULT_SYNC_URL).replace(/\/$/, '');
 export const sessionFingerprint = session => JSON.stringify({ syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode, samples: session.samples });
 
-export const readScriptResponse = (params, signal, endpoint = SYNC_API_URL) => new Promise((resolve, reject) => {
+export const readScriptResponse = (params, signal, endpoint = SYNC_API_URL, timeoutMs = 20000) => new Promise((resolve, reject) => {
   const callback = `ositoSync${crypto.randomUUID().replace(/-/g, '')}`;
   const script = document.createElement('script');
   const cleanup = () => { clearTimeout(timeout); script.remove(); delete window[callback]; signal?.removeEventListener('abort', abort); };
   const abort = () => { cleanup(); reject(new DOMException('Aborted', 'AbortError')); };
-  const timeout = setTimeout(() => { cleanup(); reject(new Error('sharedUnavailable')); }, 20000);
+  const timeout = setTimeout(() => { cleanup(); reject(new Error('sharedUnavailable')); }, timeoutMs);
   window[callback] = value => {
     cleanup();
     if (value?.error) reject(new Error(value.error === 'sharedConflict' ? 'sharedConflict' : ['invalidSession', 'invalidAppData', 'missingColumns', 'duplicateRows', 'duplicateHeaders'].includes(value.error) ? 'sharedInvalidData' : value.error === 'sessionTooLarge' ? 'sharedTooLarge' : 'sharedUnavailable'));
