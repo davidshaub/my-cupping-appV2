@@ -12,6 +12,7 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
   active.current = { enabled, scope };
   const latest = useRef(samples), previous = useRef({ scope, ids: new Map() });
   const jobs = useRef(new Map());
+  const edited = useRef(new Set());
   latest.current = samples;
   const cancel = key => {
     const job = jobs.current.get(key);
@@ -19,6 +20,7 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
   };
   const stop = () => { for (const key of jobs.current.keys()) cancel(key); };
   const lookup = (key, id, delay = 0, force = false) => {
+    edited.current.delete(key);
     cancel(key);
     const job = { controller: new AbortController() };
     jobs.current.set(key, job);
@@ -49,13 +51,15 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
     const ids = new Map(samples.map(sample => [sample.syncId, lotId(sample.ositoId)]));
     if (!enabled || previous.current.scope !== scope) {
       stop();
+      edited.current.clear();
       setStates({});
     } else {
       for (const [key, id] of ids) {
         if (!previous.current.ids.has(key) || previous.current.ids.get(key) === id) continue;
         cancel(key);
         setStates(current => ({ ...current, [key]: null }));
-        if (id && id.length <= 64) lookup(key, id, cache.current.has(id) ? 250 : 650);
+        if (id && id.length <= 64) edited.current.add(key);
+        else edited.current.delete(key);
       }
       for (const key of jobs.current.keys()) if (!ids.has(key)) cancel(key);
     }
@@ -90,6 +94,13 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
   return {
     states,
     catalog,
+    commit: () => {
+      if (!active.current.enabled) return;
+      // Leaving an ID field also commits IDs pasted into a multi-row table selection.
+      for (const sample of latest.current) {
+        if (edited.current.has(sample.syncId)) lookup(sample.syncId, lotId(sample.ositoId));
+      }
+    },
     refresh: () => refresh(true),
     retry: sample => lookup(sample.syncId, lotId(sample.ositoId), 0, true),
     dismiss: key => setStates(current => ({ ...current, [key]: null })),

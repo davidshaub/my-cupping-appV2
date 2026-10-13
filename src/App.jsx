@@ -1789,15 +1789,16 @@ const App = () => {
                           </button>
                         </td>
                         <th scope="row" className="metadata-row-number text-center">{idx + 1}</th>
-                        <td {...getTableCellProps(idx, 0)}>
+                        <td {...getTableCellProps(idx, 0, 'lot-id-cell')}>
                           <input
                             {...getTableInputProps(idx, 0)}
                             value={s.ositoId || ''}
                             onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
+                            onBlur={lotLookup.commit}
                             placeholder="OS-ID..."
                             aria-label={`${t('ositoId')} ${idx + 1}`}
                           />
-                          <LotLookupStatus sample={s} lookup={lotLookup} language={language} />
+                          <LotLookupStatus sample={s} lookup={lotLookup} language={language} compact />
                         </td>
                         <td {...getTableCellProps(idx, 1)}>
                           <input
@@ -1905,6 +1906,7 @@ const App = () => {
                     <input
                       value={s.ositoId}
                       onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
+                      onBlur={lotLookup.commit}
                       placeholder="OS-ID..."
                       className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
                     />

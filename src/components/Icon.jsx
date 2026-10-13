@@ -2,6 +2,7 @@ import React from 'react';
 
 const Icon = ({ name, size = 20, className = '' }) => {
   const paths = {
+    check: <path d="m20 6-11 11-5-5" />,
     coffee: <path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8zM6 2v4M10 2v4M14 2v4" />,
     minus: <path d="M5 12h14" />,
     plus: <path d="M12 5v14M5 12h14" />,

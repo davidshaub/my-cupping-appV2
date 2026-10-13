@@ -7,10 +7,13 @@ const copy = {
   'pt-BR': { loading: 'Buscando lote...', filled: 'Dados do lote carregados', missing: 'ID não encontrado', ambiguous: 'Vários resultados. Confira Lot Summary.', failed: 'Consulta indisponível. Você pode preencher manualmente.', offline: 'Sem conexão. Preencha manualmente ou tente novamente online.', review: 'Dados da planilha disponíveis', apply: 'Substituir estes dados', keep: 'Manter dados atuais', retry: 'Tentar novamente', lotName: 'Nome do lote', country: 'País', processing: 'Processamento' },
 };
 
-export default function LotLookupStatus({ sample, lookup, language }) {
+export default function LotLookupStatus({ sample, lookup, language, compact = false }) {
   const state = lookup.states[sample.syncId];
   if (!state || state.id !== String(sample.ositoId || '').trim()) return null;
   const t = copy[language] || copy.en;
+  if (compact && state.status === 'filled') return <span className="lot-lookup-check" role="status" aria-label={t.filled} title={t.filled}>
+    <span aria-hidden="true"><Icon name="check" size={16} /></span>
+  </span>;
   return <div className="lot-lookup-status" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
     {state.status === 'review' ? <details>
       <summary>{t.review}</summary>

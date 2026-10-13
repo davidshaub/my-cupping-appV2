@@ -1632,3 +1632,6 @@ h3 {
 .lot-cache-control > span { font-size: 12px; line-height: 1.5; flex: 1 1 200px; color: #404040; }
 .lot-cache-control button { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; }
 .lot-cache-control button:disabled { opacity: .65; cursor: wait; }
+.metadata-spreadsheet .lot-id-cell { position: relative; }
+.metadata-spreadsheet .lot-id-cell input { padding-right: 34px; }
+.lot-lookup-check { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 18px; height: 18px; color: #262626; }
