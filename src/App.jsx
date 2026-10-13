@@ -29,6 +29,8 @@ import SpiderGraph from './components/SpiderGraph';
 import CsvExportDialog from './components/CsvExportDialog';
 import CoffeeReportModal from './components/CoffeeReportModal';
 import SessionUpdate from './components/SessionUpdate';
+import LotLookupStatus from './components/LotLookupStatus';
+import useLotLookup from './hooks/useLotLookup';
 import HandsLogo from '../assets/hands.png';
 import LevelSelector from './components/LevelSelector';
 import {
@@ -192,6 +194,7 @@ const App = () => {
   }, [metadataTableMode, samples.length]);
 
   const isMobile = viewportWidth < 640;
+  const lotLookup = useLotLookup(samples, setSamples, appState === 'metadata', activeSavedSessionId);
   const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
   const isEinkMode = displayMode === 'eink';
   const t = (key) => translate(language, key);
@@ -1792,6 +1795,7 @@ const App = () => {
                             placeholder="OS-ID..."
                             aria-label={`${t('ositoId')} ${idx + 1}`}
                           />
+                          <LotLookupStatus sample={s} lookup={lotLookup} language={language} />
                         </td>
                         <td {...getTableCellProps(idx, 1)}>
                           <input
@@ -1902,6 +1906,7 @@ const App = () => {
                       placeholder="OS-ID..."
                       className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
                     />
+                    <LotLookupStatus sample={s} lookup={lotLookup} language={language} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-stone-400 uppercase ml-1">{t('lotName')}</label>

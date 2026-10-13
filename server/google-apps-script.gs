@@ -4,6 +4,33 @@
 const CUPPING_SPREADSHEET = '1jSQkBTxNKAtdRXns9rY_5GrskRfF3MpsB6Z1ntYcdqE';
 const CUPPING_TAB = 58722764;
 const OWNED_COLUMNS = ['Session ID', 'Sample ID', 'App Data', 'Session Code'];
+const LOT_SOURCE_SPREADSHEET = '1hyfuTZSRZP1SQc5c-pQ3MpfRS_lJazK9Nww6HFvOskE';
+const LOT_SOURCE_TAB = 1244711014;
+
+// Read-only, exact-ID lookup. Never return unrelated inventory or financial columns.
+function lookupLot_(rawId) {
+  const id = String(rawId || '').trim();
+  if (!id || id.length > 64 || /[\x00-\x1f]/.test(id)) throw new Error('invalidLotId');
+  const sheet = SpreadsheetApp.openById(LOT_SOURCE_SPREADSHEET).getSheets().find(s => s.getSheetId() === LOT_SOURCE_TAB);
+  if (!sheet) throw new Error('lotSourceMissing');
+  const names = ['Lot ID', 'Mark', 'Processing', 'Origin'];
+  const top = sheet.getRange(1, 1, Math.min(20, sheet.getLastRow()), sheet.getLastColumn()).getDisplayValues();
+  const headerIndex = top.findIndex(row => names.every(name => row.filter(cell => cell.trim() === name).length === 1));
+  if (headerIndex < 0) throw new Error('lotColumnsMissing');
+  const headers = top[headerIndex].map(cell => cell.trim());
+  const firstRow = headerIndex + 2, count = sheet.getLastRow() - firstRow + 1;
+  if (count <= 0) return { status: 'missing', id };
+  const ids = sheet.getRange(firstRow, headers.indexOf('Lot ID') + 1, count, 1).getDisplayValues();
+  const matches = [];
+  ids.forEach((row, index) => {
+    if (row[0].trim() !== id) return;
+    const values = sheet.getRange(firstRow + index, 1, 1, headers.length).getDisplayValues()[0];
+    matches.push({ lotName: values[headers.indexOf('Mark')].trim(), processing: values[headers.indexOf('Processing')].trim(), country: values[headers.indexOf('Origin')].trim() });
+  });
+  if (!matches.length) return { status: 'missing', id };
+  if (new Set(matches.map(value => JSON.stringify(value))).size > 1) return { status: 'ambiguous', id };
+  return { status: 'found', id, lot: matches[0] };
+}
 
 function cuppingSheet_() {
   const sheet = SpreadsheetApp.openById(CUPPING_SPREADSHEET).getSheets().find(s => s.getSheetId() === CUPPING_TAB);
@@ -276,7 +303,9 @@ function doGet(event) {
   if (!/^ositoSync[A-Za-z0-9_]+$/.test(callback)) return ContentService.createTextOutput('invalidCallback');
   let result, lock;
   try {
-    if (event.parameter.action === 'receipt') {
+    if (event.parameter.action === 'lookupLot') {
+      result = { lotLookup: lookupLot_(event.parameter.id) };
+    } else if (event.parameter.action === 'receipt') {
       const id = event.parameter.requestId || '';
       if (!/^[a-zA-Z0-9_-]{10,100}$/.test(id)) throw new Error('invalidRequest');
       const receipt = CacheService.getScriptCache().get('receipt:' + id);

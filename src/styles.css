@@ -1618,3 +1618,13 @@ h3 {
 .session-update-dialog footer { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 .session-update-dialog footer button { flex: 1 1 160px; min-height: 44px; border: 1px solid #737373; border-radius: 8px; padding: 10px 14px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .session-update button:focus-visible, .session-update-dialog button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.lot-lookup-status { padding: 4px 2px; font-size: 12px; font-weight: 400; line-height: 1.45; color: #404040; white-space: normal; overflow-wrap: anywhere; }
+.lot-lookup-status > div { display: flex; align-items: center; gap: 6px; }
+.lot-lookup-status summary { cursor: pointer; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.lot-lookup-status dl { margin: 10px 0; }
+.lot-lookup-status dt { font-weight: 600; margin-top: 6px; }
+.lot-lookup-status dd { margin: 0; }
+.lot-lookup-status button { cursor: pointer; min-height: 36px; padding: 6px 8px; white-space: normal; }
+.lot-lookup-status .lot-lookup-apply { border: 1px solid currentColor; border-radius: 4px; font-weight: 600; }
+.lot-lookup-status .lot-lookup-retry { display: grid; place-items: center; flex: 0 0 36px; }
+.lot-lookup-status button:focus-visible, .lot-lookup-status summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
