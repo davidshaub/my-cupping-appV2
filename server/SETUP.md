@@ -8,8 +8,9 @@ retains local saves when the service is temporarily unavailable.
 ## One-time owner setup
 
 1. Open **Cupping Lab Data → Extensions → Apps Script**.
-2. Replace the starter code with the entire contents of
-   [google-apps-script.gs](google-apps-script.gs), and save.
+2. Run `node scripts/build-apps-script.mjs` in this repository. Replace the
+   existing script with the entire generated `output/apps-script/Code.gs` and save.
+   This combines the normal sync code with the shared cupping/Panel Report code.
 3. Choose **Deploy → New deployment → Web app**.
    Set **Execute as: Me**, and **Who has access: Anyone**.
    Deploy and authorize the script to use the spreadsheet under your account.
@@ -65,3 +66,57 @@ Run `npm run build`, `node scripts/check-sheets-sync.mjs`, and
 These verify offline caching, data mapping, idempotent uploads, receipts, upload-only behavior, and preservation of unrelated formulas. They simulate Google's
 runtime; successful deployment and a real upload must also be verified after
 the owner supplies the deployed `/exec` URL.
+
+## Shared cuppings and Panel Reports
+
+After replacing the script, choose **Deploy → Manage deployments → Edit → New
+version → Deploy**. Retain the existing web app URL. This update is required before
+the new app screens can create invitations or retrieve Panel evaluations. Deploy
+the script before publishing the updated app. No new account or paid service is used.
+
+The primary data tab gains a visible **Cupper** column automatically on the next
+normal upload. Settings stores the default name in browser local storage. Each
+evaluation retains its saved name; changing Settings does not rename history.
+
+The script creates four additional tabs as needed: **Shared Invitations**, **Shared
+Coffees**, **Shared Contributions**, and **Osito Panel Reports**. They store invitation
+metadata, frozen coffee/host snapshots, separate guest evaluations, and fixed Panel
+editions. Guest contributions never overwrite primary sample rows. A selected-coffee
+invitation exposes only that selection and has its own code, distinct from recall codes.
+
+Invitees may switch between Quick and Full forms. The quick final score and full
+attribute scores are retained independently; the active form determines the submitted
+score. Drafts are saved on the guest's device. A confirmed server receipt is required
+before showing a successful submission. Each guest can update only the row associated
+with their private browser credential. Concurrent stale edits are rejected. Closing
+submissions rejects both new entries and updates on the server. Reports remain readable.
+
+The browser that created an invitation retains a separate host credential under
+Settings → Your shared cuppings. Keep that browser's site data to retain host control.
+Guests also need their original browser/site data to edit previous entries. No login
+is needed. A code/link grants participation, not host control or other guests' editing.
+
+The Panel composer lives under **Settings → Panel Report**. The password is checked
+in Apps Script. Its requested initial value is `C0ff33`; optionally set the Script
+Property `OSITO_PANEL_PASSWORD` to change it without changing app code. The password
+is held in component memory only, never in browser persistence or a GET URL.
+Identifiers can be primary **Sample IDs**, individual shared contribution IDs, primary
+session codes, or invitation codes. A primary session-code lookup includes guest
+contributions from its invitations. Choose which evaluations represent the same coffee;
+no automatic merging occurs. Cross-session matching and roast/preparation suitability
+are the report author's decision. Empty scores are excluded from averages, descriptor
+aliases count once per cupper, and an Attribute Map is shown only when all included
+evaluations contain scored full forms. Notes are edited as a panel summary.
+
+Save a fixed edition to obtain an edition ID; reopen it using that ID and the password.
+Shared reports and Panel Reports download vector PDFs, including the existing flavor
+wheel layout, external descriptor labels, connecting lines, and color-group key.
+Group descriptors are a union; tag counts show agreement rather than wheel segment size.
+Visible reports refresh every 30 seconds while online, or via Refresh. PDF exports
+capture the currently loaded results; a saved Panel edition remains fixed.
+
+Verification: `node --test tests/*.test.js`, `node scripts/check-shared-sync.mjs`,
+`node scripts/check-sheets-sync.mjs`, and `node scripts/check-collaboration-ui.mjs`
+(the last requires Playwright/Chrome and the local Vite server). Browser checks mock
+the Google service. A live Apps Script deployment must still be verified using a real
+invitation, separate guest browser, submission, close/reopen, and Panel lookup.

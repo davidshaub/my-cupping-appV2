@@ -1,9 +1,9 @@
-// Paste this standalone file into Extensions > Apps Script in Cupping Lab Data.
+// Build the deployment with node scripts/build-apps-script.mjs, then paste output/apps-script/Code.gs.
 // Deploy as a Web app: Execute as Me, Who has access: Anyone.
-// Only this fixed spreadsheet and tab can be read or written by the endpoint.
+// Primary sync uses the fixed tab; collaboration uses dedicated tabs in the same spreadsheet.
 const CUPPING_SPREADSHEET = '1jSQkBTxNKAtdRXns9rY_5GrskRfF3MpsB6Z1ntYcdqE';
 const CUPPING_TAB = 58722764;
-const OWNED_COLUMNS = ['Session ID', 'Sample ID', 'App Data', 'Session Code'];
+const OWNED_COLUMNS = ['Session ID', 'Sample ID', 'App Data', 'Session Code', 'Cupper'];
 const LOT_SOURCE_SPREADSHEET = '1hyfuTZSRZP1SQc5c-pQ3MpfRS_lJazK9Nww6HFvOskE';
 const LOT_SOURCE_TAB = 1244711014;
 
@@ -158,6 +158,7 @@ function valuesForSample_(session, sample, index) {
   const others = ['cleanCup', 'sweetness', 'acidity', 'body', 'flavor', 'aftertaste', 'balance', 'consistency', 'overall'].reduce((sum, key) => sum + scores[key], 0);
   const total = Math.ceil((average + others - scores.defects + scores.correction) * 4) / 4;
   return {
+    Cupper: sample.cupper || session.cupper || '',
     'Table Position': index + 1, Country: sample.country || '', Coffee: sample.lotName || '',
     'Osito ID/REF#': sample.ositoId || '', 'Sample Type': sample.sampleType || '',
     Process: sample.processing === 'Other' ? sample.processingOther || 'Other' : sample.processing === 'Select One' ? '' : sample.processing || '',
@@ -204,6 +205,7 @@ function doPost(event) {
     const text = event.postData.contents;
     if (text.length > 1000000) throw new Error('sessionTooLarge');
     body = JSON.parse(text);
+    if (body.protocol === 'collaboration-v1') return collaborationPost_(body);
     validateBatch_(body);
     const cache = CacheService.getScriptCache(), receiptKey = 'receipt:' + body.requestId;
     if (cache.get(receiptKey)) return ContentService.createTextOutput('received');
@@ -217,7 +219,7 @@ function doPost(event) {
       const needed = headers.length + missing.length - sheet.getMaxColumns();
       if (needed > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), needed);
       sheet.getRange(1, firstColumn, 1, missing.length).setValues([missing]);
-      missing.forEach((name, index) => { if (name !== 'Session Code') sheet.hideColumns(firstColumn + index, 1); });
+      missing.forEach((name, index) => { if (!['Session Code', 'Cupper'].includes(name)) sheet.hideColumns(firstColumn + index, 1); });
       headers.push.apply(headers, missing);
     }
     const columns = new Map();
@@ -316,7 +318,9 @@ function doGet(event) {
   if (!/^ositoSync[A-Za-z0-9_]+$/.test(callback)) return ContentService.createTextOutput('invalidCallback');
   let result, lock;
   try {
-    if (event.parameter.action === 'lotCatalog') {
+    if (event.parameter.action === 'sharedReport') {
+      result = collaborationRead_(event.parameter);
+    } else if (event.parameter.action === 'lotCatalog') {
       result = { lotCatalog: lotCatalog_() };
     } else if (event.parameter.action === 'lookupLot') {
       result = { lotLookup: lookupLot_(event.parameter.id) };

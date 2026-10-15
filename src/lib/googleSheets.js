@@ -38,6 +38,7 @@ export const sampleSheetValues = (session, sample, index) => {
     'General Notes': [notes.sweetnessLevel && `${notes.sweetnessLevel} sweetness`, notes.acidityLevel && `${notes.acidityLevel} acidity`, notes.otherText].filter(Boolean).join('; '),
     'Session ID': session.syncId, 'Sample ID': sample.syncId, 'Session Code': session.sessionCode || '',
     'App Data': JSON.stringify({ version: 1, session: { syncId: session.syncId, name: session.name, startTime: session.startTime, date: session.date, lexiconMode: session.lexiconMode }, sample }),
+    Cupper: sample.cupper || session.cupper || '',
     // Optional columns: populate them if present without changing the sheet layout.
     'Session Name': session.name || '', 'Water Activity': numberOrBlank(sample.waterActivity), Moisture: numberOrBlank(sample.moisture),
     Lexicon: normalizeLexiconMode(session.lexiconMode), 'Scoring Status': sample.noScore ? 'No Score' : 'Scored'

@@ -1,5 +1,6 @@
 node_modules/
 dist/
+output/apps-script/
 docs/
 
 .DS_Store

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { layoutFlavorWheel, ringPoints, wheelColor, wheelProvenance } from '../lib/flavorWheel';
 
-const FlavorWheel = ({ notes, language, einkMode, t }) => {
+const FlavorWheel = ({ notes, language, einkMode, t, forceCategoryKey = false }) => {
   const ref = useRef(null);
   const [width, setWidth] = useState(560);
   useEffect(() => {
@@ -26,7 +26,7 @@ const FlavorWheel = ({ notes, language, einkMode, t }) => {
               <text x={label.x} y={label.y + label.lines.length * (wheel.fontSize + 2) + 11} textAnchor={label.side > 0 ? 'start' : 'end'} fill="#000" fontSize={width < 430 ? 9 : 11}>{wheelProvenance(label, language)}</text>
             </g>)}
           </svg>
-          {wheel.useCategoryKey && <div className="wheel-category-key">{wheel.groups.map((group) => <span key={group.category}>{einkMode ? <b>{group.index + 1}</b> : <i aria-hidden="true" style={{ backgroundColor: wheelColor(group.category) }} />}{group.name}</span>)}</div>}
+          {(wheel.useCategoryKey || forceCategoryKey) && <div className="wheel-category-key">{wheel.groups.map((group) => <span key={group.category}>{einkMode ? <b>{group.index + 1}</b> : <i aria-hidden="true" style={{ backgroundColor: wheelColor(group.category) }} />}{group.name}</span>)}</div>}
         </>
       )}
     </div>

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import Collaboration from './components/Collaboration';
+import { getCupper } from './lib/collaboration';
 import {
   CATEGORIES,
   INITIAL_SCORE
@@ -81,6 +83,10 @@ const parseClipboardRows = (text) => {
 };
 
 const App = () => {
+  const [collaboration, setCollaboration] = useState(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    return hash.has('shared') ? { initialView: 'guest', initialCode: hash.get('shared') } : null;
+  });
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
   const [displayMode, setDisplayMode] = useState('standard');
   const [language, setLanguage] = useState(() => {
@@ -248,10 +254,11 @@ const App = () => {
     id,
     syncId: existingEntry.syncId || newSyncId(),
     name,
+    cupper: existingEntry.cupper ?? getCupper(),
     date: existingEntry.date || new Date().toLocaleDateString(),
     startTime,
     lexiconMode,
-    samples: cloneSamplesForSave(sourceSamples),
+    samples: cloneSamplesForSave(sourceSamples).map(sample => ({ ...sample, cupper: sample.cupper ?? existingEntry.cupper ?? getCupper() })),
     count: sourceSamples.length
   });
 
@@ -1214,6 +1221,8 @@ const App = () => {
     </fieldset>
   );
 
+  if (collaboration) return <Collaboration {...collaboration} onClose={() => { setCollaboration(null); if (window.location.hash.startsWith('#shared=')) window.history.replaceState(null, '', window.location.pathname + window.location.search); }} />;
+
   if (appState === 'setup') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
@@ -1300,6 +1309,8 @@ const App = () => {
               </button>
             </div>
             <div className="home-display-control">
+              <button className="eink-toggle" onClick={() => setCollaboration({ initialView: 'join' })}>Join a cupping</button>
+              <button className="eink-toggle" onClick={() => setCollaboration({ initialView: 'settings' })}>Settings</button>
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} className="home-display-toggle" />
               <LanguageToggle language={language} onToggle={toggleLanguage} t={t} className="home-display-toggle" />
             </div>
@@ -1607,6 +1618,7 @@ const App = () => {
                     </div>
                     <h3 className="text-lg font-black text-stone-900 leading-tight pr-4">{item.name}</h3>
                     <p className="session-code">{t('sessionCode')}: {item.sessionCode || t('codePending')}</p>
+                    <button type="button" className="eink-toggle mt-3" onClick={event => { event.stopPropagation(); setCollaboration({ initialView: 'create', session: item }); }}>Share cupping</button>
                     <p className="text-xs font-bold text-stone-400 uppercase mt-2">{item.count} {t('samples')}</p>
                     {coffeeMatches.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
@@ -2043,6 +2055,7 @@ const App = () => {
         {renderSaveSessionModal()}
         {renderPdfReadyDialog()}
         <div className="max-w-[1400px] mx-auto space-y-4 pb-28 md:pb-20 report-container">
+          <button type="button" className="eink-toggle print-hidden" onClick={() => setCollaboration({ initialView: 'create', session: buildSessionEntry(activeSavedSessionId || Date.now(), activeSessionName || sessionStartTime || 'Cupping', activeSavedSession || {}) })}>Share cupping</button>
           <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
               <button

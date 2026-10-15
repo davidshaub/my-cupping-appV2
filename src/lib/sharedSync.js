@@ -1,5 +1,5 @@
 // Public upload endpoint; authorization stays in Google Apps Script.
-const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyiZl-h9amh--1Rnw3JlEyjudA-flDAdrKORF17-1LPBlzo5mea48rYCaWYnSJO2q0JXw/exec';
+const DEFAULT_SYNC_URL = 'https://script.google.com/macros/s/AKfycbw3ESzx8hPNN-2fFhIV29K62lXZVavy7dCExB7Lugy3ShIeG__hLEX5sI3stp9Kyj_Lew/exec';
 export const SYNC_API_URL = (import.meta.env?.VITE_SYNC_API_URL || DEFAULT_SYNC_URL).replace(/\/$/, '');
 const stableJson = value => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
   ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
@@ -22,6 +22,7 @@ export const readScriptResponse = (params, signal, endpoint = SYNC_API_URL, time
   const timeout = setTimeout(() => { cleanup(); reject(new Error('sharedUnavailable')); }, timeoutMs);
   window[callback] = value => {
     cleanup();
+    if (params.action === 'sharedReport' && value?.error) { reject(new Error(value.error === 'invalidAction' ? 'Update the Google Apps Script deployment to enable shared cuppings.' : value.error)); return; }
     if (value?.error) reject(new Error(value.error === 'sharedConflict' ? 'sharedConflict' : ['invalidSession', 'invalidAppData', 'missingColumns', 'duplicateRows', 'duplicateHeaders'].includes(value.error) ? 'sharedInvalidData' : value.error === 'sessionTooLarge' ? 'sharedTooLarge' : 'sharedUnavailable'));
     else resolve(value);
   };
