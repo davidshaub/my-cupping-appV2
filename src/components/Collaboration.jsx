@@ -4,6 +4,8 @@ import SpiderGraph from './SpiderGraph';
 import LexiconSearch from './LexiconSearch';
 import PanelPasswordDialog from './PanelPasswordDialog';
 import RecallPanelDialog from './RecallPanelDialog';
+import SharedCuppingList from './SharedCuppingList';
+import { rememberSharedCupping } from '../lib/sharedCuppingSearch';
 import CollaborationPdfDialog from './CollaborationPdfDialog';
 import { acceptsPanelPassword } from '../lib/panelAccess';
 import { CATEGORIES } from '../constants';
@@ -38,9 +40,10 @@ export default function Collaboration({ initialView='settings', session, initial
   const [showRecallPanel,setShowRecallPanel]=useState(false);
   const dirty=useRef(new Set());
   const run=async action=>{setBusy(true);setError('');setMessage('');try{return await action();}catch(e){setError(e.message||'Unable to complete this request.');return null;}finally{setBusy(false);}};
-  const load=async (currentCode=code)=>{
+  const load=async (currentCode=code,remember=true)=>{
     const result=await readSharedReport(currentCode);
     if(!result.invitation)throw new Error('Shared reports require the updated Google Apps Script deployment.');
+    if(remember)rememberSharedCupping(result);
     setData(result);setCode(result.invitation.code);setSampleId(previous=>result.coffees.some(s=>s.syncId===previous)?previous:result.coffees[0]?.syncId||'');
     setDrafts(previous=>{const next={...previous};result.entries.filter(e=>e.own).forEach(e=>{if(!dirty.current.has(e.sampleId))next[e.sampleId]=e;});return next;});setLoaded(true);return result;
   };
@@ -64,10 +67,10 @@ export default function Collaboration({ initialView='settings', session, initial
     localStorage.setItem('osito_pending_invitation',JSON.stringify(pending));
     const result=await collaborationRequest('createInvitation',{requestId,hostToken,defaultMode:mode,blind,session:{...session,cupper:session.cupper||getCupper(),samples:session.samples.filter(s=>selected.has(s.syncId))}});
     localStorage.setItem('osito_host_'+normalizeInviteCode(result.code),hostToken);
-    const confirmed=await load(result.code);
+    const confirmed=await load(result.code,false);
     if(blind&&!confirmed.invitation.blind){localStorage.removeItem('osito_pending_invitation');throw new Error('Update the Google Apps Script deployment before creating blind invitations.');}
+    rememberSharedCupping(confirmed);
     localStorage.removeItem('osito_pending_invitation');
-    const owned=JSON.parse(localStorage.getItem('osito_invitations')||'[]');owned.unshift({code:result.code,name:session.name,date:new Date().toISOString()});localStorage.setItem('osito_invitations',JSON.stringify(owned));
     setView('host');
   });
   const hostUpdate=patch=>run(async()=>{await collaborationRequest('updateInvitation',{code,hostToken:hostTokenFor(code),...patch});await load();});
@@ -111,7 +114,7 @@ export default function Collaboration({ initialView='settings', session, initial
   const showReport=()=>{setView('report');};
   return <div className="collab-shell"><div className="collab-window"><header className="collab-header"><div><span className="collab-brand">Osito Cupping Lab</span></div><button onClick={onClose}>Back to app</button></header>
     {error&&!(view==='panel'&&!panelUnlocked)&&<p className="collab-error" role="alert">{error}</p>}{message&&<p className="collab-notice" role="status">{message}</p>}{busy&&<p role="status">Working…</p>}
-    {(view==='settings'||(view==='panel'&&!panelUnlocked))&&<><h1>Your cupping preferences</h1><label>Your name<input value={name} maxLength={80} onChange={e=>changeName(e.target.value)} placeholder="Cupper name"/></label><p className="collab-muted">Remembered on this device. Included with future evaluations; historical names stay unchanged.</p><section className="collab-section"><h2>Osito Panel Report</h2><p>Construct an official report using Sample IDs or complete session codes.</p><button onClick={()=>{setPassword('');setPanelUnlocked(false);setView('panel');}}>Open Panel Report</button></section><section className="collab-section"><h2>Your shared cuppings</h2>{(()=>{try{return JSON.parse(localStorage.getItem('osito_invitations')||'[]').map(i=><button key={i.code} onClick={()=>run(async()=>{await load(i.code);setView('host');})}>{i.name} · {i.code}</button>);}catch{return null;}})()}</section></>}
+    {(view==='settings'||(view==='panel'&&!panelUnlocked))&&<><h1>Your cupping preferences</h1><label>Your name<input value={name} maxLength={80} onChange={e=>changeName(e.target.value)} placeholder="Cupper name"/></label><p className="collab-muted">Remembered on this device. Included with future evaluations; historical names stay unchanged.</p><section className="collab-section"><h2>Osito Panel Report</h2><p>Construct an official report using Sample IDs or complete session codes.</p><button onClick={()=>{setPassword('');setPanelUnlocked(false);setView('panel');}}>Open Panel Report</button></section><section className="collab-section"><h2>Your shared cuppings</h2><SharedCuppingList onOpen={entry=>run(async()=>{await load(entry.code);setView('host');})}/></section></>}
     {view==='create'&&session&&<><h1>Share cupping</h1><p>{session.name}</p><p>Select the entire session or specific coffees. Everyone receives the same link and code.</p><div className="collab-row"><button onClick={()=>setSelected(new Set(session.samples.map(s=>s.syncId)))}>Select all</button><button onClick={()=>setSelected(new Set())}>Clear selection</button></div><div className="collab-selection">{session.samples.map((s,i)=><label key={s.syncId}><input type="checkbox" checked={selected.has(s.syncId)} onChange={()=>setSelected(previous=>{const next=new Set(previous);next.has(s.syncId)?next.delete(s.syncId):next.add(s.syncId);return next;})}/><span>{i+1}. {s.lotName||'Coffee'} {s.ositoId&&`· ${s.ositoId}`}</span></label>)}</div><label className="collab-blind-option"><input type="checkbox" checked={blind} onChange={e=>setBlind(e.target.checked)}/><span>Blind cupping<small>Guests see coffee numbers until you reveal the coffee identities.</small></span></label><ModePicker value={mode} onChange={setMode} legend="Starting form for guests"/><p className="collab-muted">Guests can choose either form and switch at any time without losing their scores, tags, or notes. Results stay hidden until you reveal them.</p><button className="collab-primary" disabled={busy||!selected.size} onClick={createInvitation}>Create invitation</button></>}
     {view==='join'&&<><h1>Join a cupping</h1><label>Invitation code<input value={code} onChange={e=>setCode(e.target.value)} placeholder="ABCD-EFGH" autoCapitalize="characters"/></label><button className="collab-primary" disabled={busy||!code.trim()} onClick={()=>run(async()=>{await load();let local={};try{local=JSON.parse(localStorage.getItem('osito_drafts_'+normalizeInviteCode(code))||'{}');}catch{}setDrafts(p=>({...p,...local}));setView('guest');})}>Open cupping</button></>}
     {data&&['host','guest','report'].includes(view)&&<>

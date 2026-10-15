@@ -34,8 +34,14 @@ for(const width of [390,1024]){
     return route.fulfill({contentType:'text/javascript',body:`${url.searchParams.get('callback')}(${JSON.stringify(result)});`});
   });
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);
+  await context.addInitScript(()=>{localStorage.setItem('osito_invitations',JSON.stringify([{code:'ABCD-EFGH',name:'Supplier cupping',date:'10/15/2026'}]));localStorage.setItem('osito_host_ABCDEFGH','host-test');});
   await page.goto('http://127.0.0.1:5173/my-cupping-appV2/');
   await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('textbox',{name:'Your name'}).fill('María');
+  const sharedSearch=page.getByRole('searchbox',{name:'Search shared cuppings'});
+  await sharedSearch.fill('488.26');await page.getByRole('button',{name:/Supplier cupping.*La Esperanza/}).waitFor();
+  await sharedSearch.fill('no matching coffee');await page.getByText('No shared cuppings match your search.').waitFor();
+  await page.getByRole('button',{name:'Clear search',exact:true}).click();await page.getByRole('button',{name:/Supplier cupping.*La Esperanza/}).waitFor();
+  await page.screenshot({path:`/tmp/shared-search-${width}.png`,fullPage:true});
   await page.getByRole('button',{name:'Back to app'}).click();await page.getByRole('button',{name:'Join a cupping',exact:true}).click();await page.getByRole('textbox',{name:'Invitation code'}).fill('ABCD-EFGH');await page.getByRole('button',{name:'Open cupping',exact:true}).click();
   await page.getByRole('heading',{name:'La Esperanza',exact:true}).waitFor();assert.equal(await page.getByRole('textbox',{name:'Your name'}).inputValue(),'María');
   await page.getByRole('button',{name:'Coffee 2',exact:true}).click();await page.getByRole('heading',{name:'Second coffee',exact:true}).waitFor();await page.getByRole('button',{name:'Coffee 1',exact:true}).click();
