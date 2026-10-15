@@ -16,7 +16,10 @@ for(const width of [390,1024]){
       let result;
       if(body.action==='submitContribution'){const entry={...body.entry,id:'entry',sampleId:body.sampleId,own:true,revision:1};entries=[entry];result={saved:true,entry};}
       if(body.action==='updateInvitation'){Object.assign(invitation,Object.fromEntries(['closed','revealed','defaultMode'].filter(k=>k in body).map(k=>[k,body[k]])));result={saved:true};}
-      if(body.action==='panelLookup')result={evaluations:[record],missingSampleIds:[],missingSessionCodes:[]};
+      if(body.action==='panelLookup'){
+        if(body.password!=='C0ff33'){receipts.set(body.requestId,{collaborationError:'Incorrect Panel Report password.'});return route.fulfill({body:'received'});}
+        result={evaluations:body.sampleIds?.length||body.sessionCodes?.length?[record]:[],missingSampleIds:[],missingSessionCodes:[]};
+      }
       if(body.action==='savePanel')result={saved:true,panelId:'edition-id'};
       receipts.set(body.requestId,{collaboration:result});return route.fulfill({body:'received'});
     }
@@ -38,7 +41,12 @@ for(const width of [390,1024]){
   const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Export PDF',exact:true}).click();const download=await downloadPromise;await download.saveAs(`/tmp/shared-cupping-${width}.pdf`);
   await page.screenshot({path:`/tmp/shared-cupping-${width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow');
   await page.getByRole('button',{name:'Host controls',exact:true}).click();await page.getByRole('button',{name:'Close submissions',exact:true}).click();await page.getByRole('button',{name:'Reopen submissions',exact:true}).waitFor();await page.getByRole('button',{name:'Your impressions',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Submit impressions for this coffee'}).isDisabled(),true);
-  await page.getByRole('button',{name:'Back to app'}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Open Panel Report',exact:true}).click();await page.getByLabel('Panel password').fill('C0ff33');await page.getByLabel('Sample IDs or session codes').fill(sample.syncId);await page.getByRole('button',{name:'Retrieve evaluations'}).click();await page.getByLabel(`Group evaluation ${sample.syncId}`).selectOption('new');await page.getByLabel('Panel observations',{exact:true}).fill('A sweet, expressive coffee with a clean finish.');
+  await page.getByRole('button',{name:'Back to app'}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Open Panel Report',exact:true}).click();
+  assert.equal(await page.getByLabel('Report title').count(),0,'Composer remains absent before authentication');
+  await page.getByLabel('Panel password').fill('wrong');await page.getByRole('button',{name:'Unlock Panel Report',exact:true}).click();await page.getByRole('alert').filter({hasText:'Incorrect'}).waitFor();assert.equal(await page.getByLabel('Report title').count(),0);
+  await page.getByLabel('Panel password').fill('C0ff33');await page.getByRole('button',{name:'Unlock Panel Report',exact:true}).click();await page.getByLabel('Coffee comparisons — Sample IDs').waitFor();assert.equal(await page.getByLabel('Panel password').count(),0);
+  await page.getByLabel('Coffee comparisons — Sample IDs').fill(sample.syncId);await page.getByRole('button',{name:'Build comparisons',exact:true}).click();await page.getByLabel(`Group evaluation ${sample.syncId}`).waitFor();assert.notEqual(await page.getByLabel(`Group evaluation ${sample.syncId}`).inputValue(),'','Comparison assigned directly from input row');
+  await page.getByLabel('Panel observations',{exact:true}).fill('A sweet, expressive coffee with a clean finish.');
   const panelDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Export PDF',exact:true}).click();await (await panelDownload).saveAs(`/tmp/panel-cupping-${width}.pdf`);
   await page.getByRole('button',{name:'Save fixed edition'}).click();await page.getByRole('status').filter({hasText:'Saved fixed edition'}).waitFor();await page.screenshot({path:`/tmp/panel-cupping-${width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);await context.close();
 }

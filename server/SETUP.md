@@ -75,7 +75,11 @@ the new app screens can create invitations or retrieve Panel evaluations. Deploy
 the script before publishing the updated app. No new account or paid service is used.
 
 The primary data tab gains a visible **Cupper** column automatically on the next
-normal upload. Settings stores the default name in browser local storage. Each
+normal upload from the updated app. Deploying the script or changing Settings alone
+does not trigger an upload. Set your name, then create and save a new primary cupping
+session to trigger this; the column is appended at the right of the existing columns.
+You may also add the exact header **Cupper** manually; the sync will reuse it.
+Settings stores the default name in browser local storage. Each
 evaluation retains its saved name; changing Settings does not rename history.
 
 The script creates four additional tabs as needed: **Shared Invitations**, **Shared
@@ -96,14 +100,26 @@ Settings → Your shared cuppings. Keep that browser's site data to retain host 
 Guests also need their original browser/site data to edit previous entries. No login
 is needed. A code/link grants participation, not host control or other guests' editing.
 
-The Panel composer lives under **Settings → Panel Report**. The password is checked
-in Apps Script. Its requested initial value is `C0ff33`; optionally set the Script
+The Panel composer lives under **Settings → Panel Report**. Opening it shows a separate
+password screen; no composer fields are displayed until the server accepts the password.
+Unlocking uses an empty `panelLookup` request, compatible with the existing deployment.
+Its requested initial value is `C0ff33`; optionally set the Script
 Property `OSITO_PANEL_PASSWORD` to change it without changing app code. The password
 is held in component memory only, never in browser persistence or a GET URL.
+**Compare specific coffees** accepts one coffee comparison per line, with that coffee's
+Sample IDs separated by commas. Two cuppers tasting five coffees means five lines,
+each with the two evaluations for the same coffee. Input order sets report order;
+missing or repeated IDs must be corrected before comparisons are built. Existing
+summaries are retained when the same evaluation group is rebuilt.
+
+**Compare complete sessions** accepts session/invitation codes, separated by commas
+or new lines. Matching lot IDs are suggested as groups for review. Table positions
+and names alone never cause grouping; evaluations without a lot ID remain separate.
+The author must confirm roast/preparation suitability, inclusion, and grouping.
 Identifiers can be primary **Sample IDs**, individual shared contribution IDs, primary
 session codes, or invitation codes. A primary session-code lookup includes guest
 contributions from its invitations. Choose which evaluations represent the same coffee;
-no automatic merging occurs. Cross-session matching and roast/preparation suitability
+the author reviews all group suggestions. Cross-session matching and roast/preparation suitability
 are the report author's decision. Empty scores are excluded from averages, descriptor
 aliases count once per cupper, and an Attribute Map is shown only when all included
 evaluations contain scored full forms. Notes are edited as a panel summary.
