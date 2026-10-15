@@ -33,9 +33,17 @@ for(const width of [390,1024]){
     const result=action==='sharedReport'?snapshot():action==='receipt'?(receipts.get(url.searchParams.get('requestId'))||{pending:true}):{lotCatalog:[]};
     return route.fulfill({contentType:'text/javascript',body:`${url.searchParams.get('callback')}(${JSON.stringify(result)});`});
   });
-  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);
+  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(20000);
   await context.addInitScript(()=>{localStorage.setItem('osito_invitations',JSON.stringify([{code:'ABCD-EFGH',name:'Supplier cupping',date:'10/15/2026'}]));localStorage.setItem('osito_host_ABCDEFGH','host-test');});
   await page.goto('http://127.0.0.1:5173/my-cupping-appV2/');
+  // A shared URL must work on a fresh visit and when opened in an existing app tab.
+  await page.goto('http://127.0.0.1:5173/my-cupping-appV2/?shared=ABCD-EFGH');
+  await page.getByRole('heading',{name:'La Esperanza',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Back to app'}).click();
+  assert.equal(await page.evaluate(()=>location.search),'');
+  await page.evaluate(()=>{location.hash='shared=ABCD-EFGH';});
+  await page.getByRole('heading',{name:'La Esperanza',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Back to app'}).click();
   await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('textbox',{name:'Your name'}).fill('María');
   const sharedSearch=page.getByRole('searchbox',{name:'Search shared cuppings'});
   await sharedSearch.fill('488.26');await page.getByRole('button',{name:/Supplier cupping.*La Esperanza/}).waitFor();

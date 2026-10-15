@@ -1,3 +1,4 @@
+import { sharedCodeFromUrl, withoutSharedLink } from './lib/sharedLink';
 import SessionEvaluation from './components/SessionEvaluation';
 import React, { useEffect, useRef, useState } from 'react';
 import Collaboration from './components/Collaboration';
@@ -80,9 +81,18 @@ const parseClipboardRows = (text) => {
 
 const App = () => {
   const [collaboration, setCollaboration] = useState(() => {
-    const hash = new URLSearchParams(window.location.hash.slice(1));
-    return hash.has('shared') ? { initialView: 'guest', initialCode: hash.get('shared') } : null;
+    const code=sharedCodeFromUrl(window.location.href);
+    return code ? { initialView:'guest',initialCode:code } : null;
   });
+  useEffect(()=>{
+    const openSharedLink=()=>{
+      const code=sharedCodeFromUrl(window.location.href);
+      setCollaboration(previous=>code?{initialView:'guest',initialCode:code}:previous?.initialCode?null:previous);
+    };
+    window.addEventListener('hashchange',openSharedLink);
+    window.addEventListener('popstate',openSharedLink);
+    return()=>{window.removeEventListener('hashchange',openSharedLink);window.removeEventListener('popstate',openSharedLink);};
+  },[]);
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
   const [displayMode, setDisplayMode] = useState('standard');
   const [language, setLanguage] = useState(() => {
@@ -1221,7 +1231,7 @@ const App = () => {
     </fieldset>
   );
 
-  if (collaboration) return <Collaboration {...collaboration} onClose={() => { setCollaboration(null); if (window.location.hash.startsWith('#shared=')) window.history.replaceState(null, '', window.location.pathname + window.location.search); }} />;
+  if (collaboration) return <Collaboration key={collaboration.initialCode||'composer'} {...collaboration} onClose={() => { setCollaboration(null); window.history.replaceState(null, '', withoutSharedLink(window.location.href)); }} />;
 
   if (appState === 'setup') {
     return (

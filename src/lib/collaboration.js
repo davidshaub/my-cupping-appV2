@@ -1,3 +1,4 @@
+import { sharedInvitationUrl } from './sharedLink.js';
 import { calculateTotal, initializeSamples } from './cupping.js';
 import { canonicalTag } from './lexicon.js';
 import { readScriptResponse, SYNC_API_URL } from './sharedSync.js';
@@ -13,7 +14,7 @@ export const tokenFor = (kind, code) => {
   return value;
 };
 export const hostTokenFor = code => localStorage.getItem(`osito_host_${normalizeInviteCode(code)}`) || '';
-export const invitationUrl = code => { const url = new URL(location.href); url.hash = `shared=${encodeURIComponent(code)}`; return url.href; };
+export const invitationUrl = code => sharedInvitationUrl(location.href,code);
 export const emptyContribution = mode => {
   const sample = initializeSamples(1)[0];
   return { cupper: getCupper(), mode, quickScore: '', noScore: false, scores: sample.scores, notes: sample.notes };
