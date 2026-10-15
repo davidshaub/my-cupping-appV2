@@ -189,7 +189,10 @@ function collaborationPost_(body) {
     } else if(body.action==='updateInvitation') {
       const invite=collabInvite_(body.code);collabHost_(invite,body.hostToken);
       ['closed','revealed'].forEach(k=>{if(typeof body[k]==='boolean')invite[k]=body[k];});
+      if (typeof body.blind === 'boolean') invite.blind = body.blind;
       if (typeof body.identitiesRevealed === 'boolean') invite.identitiesRevealed = body.identitiesRevealed;
+      // Sharing results also reveals the coffees; hiding results restores blind mode.
+      if (typeof body.revealed === 'boolean' || typeof body.blind === 'boolean') invite.identitiesRevealed = !invite.blind || !!invite.revealed;
       if(['quick','full'].includes(body.defaultMode))invite.defaultMode=body.defaultMode;
       collabPut_('invites',invite.code,invite);result={saved:true};
     } else if(body.action==='panelLookup') result=collabLookup_(body);

@@ -75,7 +75,14 @@ test('blind invitations withhold identities from guest responses until an author
   assert.equal(read({hostToken}).coffees[0].lotName,'Secret coffee');
   assert.ok(b.post('updateInvitation',{code,hostToken:guestToken,identitiesRevealed:true}).collaborationError);
   b.post('updateInvitation',{code,hostToken,revealed:true});
-  assert.equal(read().coffees[0].lotName,'Coffee 1','revealing scores must not reveal identities');
+  assert.equal(read().coffees[0].lotName,'Secret coffee','sharing results reveals the coffees');
+  b.post('updateInvitation',{code,hostToken,revealed:false});
+  assert.equal(read().coffees[0].lotName,'Coffee 1');
+  assert.ok(b.post('updateInvitation',{code,hostToken:guestToken,blind:false}).collaborationError);
+  b.post('updateInvitation',{code,hostToken,blind:false});
+  assert.equal(read().coffees[0].lotName,'Secret coffee');
+  b.post('updateInvitation',{code,hostToken,blind:true});
+  assert.equal(read().coffees[0].lotName,'Coffee 1');
   b.post('updateInvitation',{code,hostToken,identitiesRevealed:true});
   assert.equal(read().coffees[0].lotName,'Secret coffee');assert.equal(read().coffees[0].ositoId,'488.26');
 });
