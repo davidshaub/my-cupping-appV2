@@ -7,6 +7,8 @@ const ScoreControl = ({ label, value, onUpdate, disabled = false, colorClass = '
     <span className="text-sm md:text-lg font-bold text-stone-700 score-label truncate">{label}</span>
     <div className="flex items-center gap-1 md:gap-6 shrink-0 score-control-group">
       <button
+        type="button"
+        aria-label={`Decrease ${label}`}
         disabled={disabled}
         onClick={() => onUpdate(-INCREMENT)}
         className="w-9 h-9 md:w-14 md:h-14 flex items-center justify-center btn-stone-light control-btn shrink-0"
@@ -17,6 +19,8 @@ const ScoreControl = ({ label, value, onUpdate, disabled = false, colorClass = '
         {value === null ? '—' : value.toFixed(2)}
       </span>
       <button
+        type="button"
+        aria-label={`Increase ${label}`}
         disabled={disabled}
         onClick={() => onUpdate(INCREMENT)}
         className="w-9 h-9 md:w-14 md:h-14 flex items-center justify-center btn-stone-light control-btn shrink-0"

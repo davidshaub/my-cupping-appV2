@@ -1,8 +1,8 @@
+import SessionEvaluation from './components/SessionEvaluation';
 import React, { useEffect, useRef, useState } from 'react';
 import Collaboration from './components/Collaboration';
 import { getCupper } from './lib/collaboration';
 import {
-  CATEGORIES,
   INITIAL_SCORE
 } from './constants';
 import { LEXICON_OPTIONS, normalizeLexiconMode } from './lib/lexicon';
@@ -24,9 +24,7 @@ import FlavorWheel from './components/FlavorWheel';
 import { reportPdfFilename, uniquePdfFilename } from './lib/reportFilenames';
 import { canModifyTag, nextTagModifier } from './lib/tagModifiers';
 import Icon from './components/Icon';
-import LexiconSearch from './components/LexiconSearch';
 import ReportTags from './components/ReportTags';
-import ScoreControl from './components/ScoreControl';
 import SpiderGraph from './components/SpiderGraph';
 import CsvExportDialog from './components/CsvExportDialog';
 import CoffeeReportModal from './components/CoffeeReportModal';
@@ -35,15 +33,13 @@ import LotLookupStatus from './components/LotLookupStatus';
 import LotCacheControl from './components/LotCacheControl';
 import useLotLookup from './hooks/useLotLookup';
 import HandsLogo from '../assets/hands.png';
-import LevelSelector from './components/LevelSelector';
 import {
   translate,
   translateLevel,
   translateProcessing,
   LANGUAGE_OPTIONS,
   nextLanguage,
-  normalizeLanguage,
-  translateScoreLabel
+  normalizeLanguage
 } from './i18n';
 
 const EInkToggle = ({ isActive, onToggle, t, compact = false, className = '' }) => (
@@ -2273,127 +2269,14 @@ const App = () => {
       </div>
 
       <main className="max-w-6xl mx-auto p-4 md:p-12 space-y-12 main-container">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-20">
-          <div className="space-y-2 md:space-y-3">
-            <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-3">
-              <Icon name="clipboard-list" size={14} />
-              {t('attributeGrading')}
-            </h3>
-            {CATEGORIES.map((cat) => (
-              <div key={cat.id} className="space-y-2">
-                <ScoreControl
-                  label={translateScoreLabel(language, cat.id, cat.label)}
-                  value={currentSample.scores[cat.id]}
-                  disabled={currentSample.noScore}
-                  onUpdate={(d) => updateScore(activeSampleIndex, cat.id, d)}
-                />
-                {cat.id === 'sweetness' && (
-                  <LevelSelector
-                    label={t('sweetnessLevel')}
-                    value={currentSample.notes?.sweetnessLevel || ''}
-                    onSelect={(val) => updateLevel(activeSampleIndex, 'sweetnessLevel', val)}
-                    language={language}
-                    t={t}
-                  />
-                )}
-                {cat.id === 'acidity' && (
-                  <LevelSelector
-                    label={t('acidityLevel')}
-                    value={currentSample.notes?.acidityLevel || ''}
-                    onSelect={(val) => updateLevel(activeSampleIndex, 'acidityLevel', val)}
-                    language={language}
-                    t={t}
-                  />
-                )}
-              </div>
-            ))}
-            <div className="pt-6 space-y-2 md:space-y-3 border-t-2 border-stone-100 mt-6">
-              <ScoreControl
-                label={t('defects')}
-                value={currentSample.scores.defects}
-                disabled={currentSample.noScore}
-                onUpdate={(d) => updateScore(activeSampleIndex, 'defects', d)}
-                colorClass="text-red-600"
-              />
-              <ScoreControl
-                label={t('cupCorrection')}
-                value={currentSample.scores.correction}
-                disabled={currentSample.noScore}
-                onUpdate={(d) => updateScore(activeSampleIndex, 'correction', d)}
-                colorClass="text-blue-600"
-              />
-              <div className="pt-2">
-                <button
-                  type="button"
-                  aria-pressed={Boolean(currentSample.noScore)}
-                  onClick={() => setSamples(prev => prev.map((sample, index) => index === activeSampleIndex ? { ...sample, noScore: !sample.noScore } : sample))}
-                  className="no-score-toggle"
-                >
-                  {t(currentSample.noScore ? 'restoreScoring' : 'noScore')}
-                </button>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-8">
-            <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-3">
-              <Icon name="tag" size={14} />
-              {t('sensoryMapping')}
-            </h3>
-            <LexiconSearch
-              label={t('fragranceAndAroma')}
-              tags={currentSample.notes.fragAromaTags}
-              options={LEXICON_OPTIONS[lexiconMode].positive}
-              onToggle={(t) => toggleTag(activeSampleIndex, 'fragAroma', t)}
-              onCycle={(t) => cycleTagModifier(activeSampleIndex, 'fragAroma', t)}
-              language={language}
-              t={t}
-            />
-            <LexiconSearch
-              label={t('inCup')}
-              tags={currentSample.notes.inCupTags}
-              options={LEXICON_OPTIONS[lexiconMode].positive}
-              onToggle={(t) => toggleTag(activeSampleIndex, 'inCup', t)}
-              onCycle={(t) => cycleTagModifier(activeSampleIndex, 'inCup', t)}
-              language={language}
-              t={t}
-            />
-            <LexiconSearch
-              label={t('negativeFactors')}
-              tags={currentSample.notes.negativeTags}
-              options={LEXICON_OPTIONS[lexiconMode].negative}
-              onToggle={(t) => toggleTag(activeSampleIndex, 'negative', t)}
-              onCycle={(t) => cycleTagModifier(activeSampleIndex, 'negative', t)}
-              language={language}
-              t={t}
-            />
-            <div className="space-y-3 pt-8 border-t-2 border-stone-100">
-              <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-2">
-                <Icon name="edit-3" size={12} />
-                {t('technicalJournal')}
-              </label>
-              <textarea
-                value={currentSample.notes.otherText}
-                onChange={(e) =>
-                  setSamples((prev) =>
-                    prev.map((item, idx) =>
-                      idx === activeSampleIndex
-                        ? {
-                            ...item,
-                            notes: {
-                              ...item.notes,
-                              otherText: e.target.value
-                            }
-                          }
-                        : item
-                    )
-                  )
-                }
-                className="w-full bg-stone-100 border-2 border-transparent rounded-[1.5rem] p-5 text-sm md:text-base focus:bg-white focus:border-stone-300 min-h-[160px] resize-none transition-all outline-none shadow-inner font-medium text-stone-700 leading-relaxed"
-                placeholder={t('detailedFeedback')}
-              />
-            </div>
-          </div>
-        </div>
+        <SessionEvaluation sample={currentSample} language={language} t={t} lexiconMode={lexiconMode}
+          onScore={(id,delta)=>updateScore(activeSampleIndex,id,delta)}
+          onLevel={(field,value)=>updateLevel(activeSampleIndex,field,value)}
+          onNoScore={()=>setSamples(prev=>prev.map((sample,index)=>index===activeSampleIndex?{...sample,noScore:!sample.noScore}:sample))}
+          onTag={(field,tag)=>toggleTag(activeSampleIndex,field,tag)}
+          onCycle={(field,tag)=>cycleTagModifier(activeSampleIndex,field,tag)}
+          onNotes={value=>setSamples(prev=>prev.map((sample,index)=>index===activeSampleIndex?{...sample,notes:{...sample.notes,otherText:value}}:sample))}
+        />
       </main>
     </div>
   );
