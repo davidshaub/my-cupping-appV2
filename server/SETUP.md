@@ -135,8 +135,11 @@ evaluations contain scored full forms. Notes are edited as a panel summary.
 
 Save a fixed edition to obtain an edition ID; reopen it using that ID and the password.
 Shared reports and Panel Reports use the same landscape vector PDF renderer, score
-block, fonts, logo/footer, and chart layout as primary reports. Roast numbers are
-omitted from these aggregate reports. The flavor wheel retains external descriptor
+block, fonts, logo/footer, and chart layout as primary reports. Their identification
+blocks contain only Osito ID, Lot/Coffee Name, and Processing. Country, sample type,
+roast ID, water activity, and moisture are omitted from previews and all aggregate
+PDF exports, including saved editions. Cupper attribution stays in its existing
+location. Primary reports and source data retain their metadata. The flavor wheel retains external descriptor
 labels, connecting lines, and the color-group key. Full-form Panels include the
 Attribute Map; other aggregate reports show individual scores in that area. Blank
 Panel observations read **None.** Fonts/logo are preloaded; a combined export embeds

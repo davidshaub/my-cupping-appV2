@@ -38,7 +38,7 @@ const drawIdentity = (pdf, sample, index, language) => {
   pdf.fillRect(scoreX, y, WIDTH - MARGIN - scoreX, 111, INK);
   pdf.text(sample.ositoId || translate(language, 'noId'), 42, y + 20, { font: 'bold', size: 10, color: INK, maxWidth: 550 });
   const name = sample.lotName || `${translate(language, 'sample')} ${index + 1}`;
-  const details = ['country', 'sampleType', 'roastId'].filter(field => String(sample[field] || '').trim());
+  const details = (sample.reportKind ? [] : ['country', 'sampleType', 'roastId']).filter(field => String(sample[field] || '').trim());
   let size = 25;
   let lines = textLines(pdf, name, 550, size, 'serifBold');
   while ((lines.length > 2 || (lines.length === 2 && size > (details.length ? 16 : 18))) && size > 12) { size--; lines = textLines(pdf, name, 550, size, 'serifBold'); }
@@ -58,8 +58,10 @@ const drawIdentity = (pdf, sample, index, language) => {
   const metadataY = details.length ? detailsY + 18 : y + 79;
   const meta = [
     [translate(language, 'processing'), sample.processing === 'Other' ? sample.processingOther || translate(language, 'other') : translateProcessing(language, sample.processing || 'Select One')],
-    [translate(language, 'waterActivity'), sample.waterActivity || ''],
-    [translate(language, 'moisture'), sample.moisture ? `${sample.moisture}%` : '']
+    ...(!sample.reportKind ? [
+      [translate(language, 'waterActivity'), sample.waterActivity || ''],
+      [translate(language, 'moisture'), sample.moisture ? `${sample.moisture}%` : '']
+    ] : [])
   ].filter(([, value]) => value);
   let metaX = 42;
   meta.forEach(([label, value]) => {

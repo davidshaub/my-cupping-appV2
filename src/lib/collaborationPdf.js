@@ -8,7 +8,8 @@ export const collaborationReportSamples = (coffees, panel) => coffees.map(item =
   const result = aggregateEvaluations(item.evaluations);
   const cuppers = [...new Set(item.evaluations.map(e => e.cupper || 'Unnamed cupper'))];
   return {
-    ...item.sample, lotName: item.name || item.sample.lotName, roastId: '',
+    ...item.sample, lotName: item.name || item.sample.lotName,
+    country: '', sampleType: '', roastId: '', waterActivity: '', moisture: '',
     reportKind: panel ? 'panel' : 'shared', reportScore: result.score,
     reportAttributesAvailable: Boolean(result.attributes),
     reportAttribution: 'Cupped by ' + cuppers.join(', '),

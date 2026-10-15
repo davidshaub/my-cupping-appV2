@@ -3,6 +3,26 @@ import assert from 'node:assert/strict';
 import { paintEditorialReport } from '../src/lib/reportDesign.js';
 import { initializeSamples } from '../src/lib/cupping.js';
 
+test('aggregate identity contains only ID, name and processing; primary metadata and attribution are preserved',()=>{
+  const [sample]=initializeSamples(1);
+  Object.assign(sample,{ositoId:'488.26',lotName:'La Esperanza',processing:'Other',processingOther:'Custom washed',country:'Country marker',sampleType:'Type marker',roastId:'Roast marker',waterActivity:'0.623',moisture:'11.7'});
+  const original=JSON.stringify(sample);
+  const draw=kind=>{
+    const marks=[];
+    const painter={measureText:(text,size)=>text.length*size*.5,fillRect(){},strokeRect(){},line(){},polygon(){},circle(){},image(){},text(value,x,y){if(y<165)marks.push(String(value));}};
+    paintEditorialReport(painter,{...sample,...(kind?{reportKind:kind,reportScore:85,reportAttributesAvailable:true,reportAttribution:'Cupped by David, María'}:{})},0);
+    return marks;
+  };
+  const excluded=['Country marker','Type marker','Roast marker','0.623','11.7%'];
+  for(const kind of ['panel','shared']){
+    const marks=draw(kind);
+    for(const value of ['488.26','La Esperanza','Custom washed','Cupped by David, María'])assert.ok(marks.includes(value));
+    excluded.forEach(value=>assert.equal(marks.includes(value),false));
+  }
+  const primary=draw();excluded.forEach(value=>assert.ok(primary.includes(value)));
+  assert.equal(JSON.stringify(sample),original);
+});
+
 test('Panel uses the official report layout and exact mean score, with None for blank observations',()=>{
   const [sample]=initializeSamples(1);
   Object.assign(sample,{reportKind:'panel',reportScore:87.125,reportAttributesAvailable:true,reportAttribution:'Cupped by David, María',roastId:''});
