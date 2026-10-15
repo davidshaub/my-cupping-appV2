@@ -4,6 +4,7 @@ function collabSheet_(kind) {
   const book = SpreadsheetApp.openById(CUPPING_SPREADSHEET), name = COLLAB_TABS[kind];
   let sheet = book.getSheetByName(name);
   if (!sheet) { sheet = book.insertSheet(name); sheet.appendRow(['ID', 'Data', 'Cupper']); }
+  if (kind === 'panels') panelSheetLayout_(sheet);
   return sheet;
 }
 function collabRows_(kind) {
@@ -16,6 +17,77 @@ function collabPut_(kind, id, data) {
   const index = rows.findIndex((row, i) => i > 0 && row[0] === id);
   const values = [id, text, literal_(data.cupper || '')];
   if (index < 0) sheet.appendRow(values); else sheet.getRange(index + 1, 1, 1, 3).setValues([values]);
+  if (kind === 'panels') {
+    const rowNumber = index < 0 ? rows.length + 1 : index + 1;
+    panelWriteSummaries_(sheet, rows[0], [{ rowNumber, data }]);
+    sheet.getRange(rowNumber, rows[0].indexOf('Date of Report') + 1, 1, 1).setNumberFormat('mmm d, yyyy h:mm AM/PM');
+    sheet.getRange(rowNumber, 1, 1, rows[0].length).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+    sheet.setRowHeightsForced(rowNumber, 1, 32);
+  }
+}
+
+const PANEL_SUMMARY_HEADERS = ['Date of Report', 'Report Title', 'Lots / Coffees', 'Osito IDs', 'Coffee Count'];
+function panelSummary_(panel) {
+  const coffees = Array.isArray(panel.coffees) ? panel.coffees : [];
+  const unique = values => [...new Set(values.filter(value => typeof value === 'string' && value.trim()).map(value => value.trim()))].join('; ');
+  const date = panel.createdAt ? new Date(panel.createdAt) : null;
+  return {
+    Cuppers: unique(coffees.flatMap(coffee => (coffee.evaluations || []).map(evaluation => evaluation.cupper))),
+    'Date of Report': date && Number.isFinite(date.getTime()) ? date : '',
+    'Report Title': typeof panel.title === 'string' ? panel.title : '',
+    'Lots / Coffees': unique(coffees.map(coffee => coffee.name || coffee.sample?.lotName)),
+    'Osito IDs': unique(coffees.map(coffee => coffee.sample?.ositoId)),
+    'Coffee Count': coffees.length
+  };
+}
+function panelWriteSummaries_(sheet, headers, entries) {
+  // Write only owned summary cells, preserving unrelated columns and formulas.
+  entries.forEach(({ rowNumber, data }) => {
+    const summary = panelSummary_(data);
+    let start = -1, values = [];
+    const flush = () => { if (start >= 0) sheet.getRange(rowNumber, start + 1, 1, values.length).setValues([values]); start = -1; values = []; };
+    headers.forEach((header, index) => {
+      if (!Object.prototype.hasOwnProperty.call(summary, header)) { flush(); return; }
+      if (start < 0) start = index;
+      values.push(literal_(summary[header]));
+    });
+    flush();
+  });
+}
+function panelSheetLayout_(sheet) {
+  const rows = sheet.getDataRange().getValues(), headers = rows[0].slice();
+  const needsMigration = headers[2] === 'Cupper' || PANEL_SUMMARY_HEADERS.some(name => !headers.includes(name));
+  if (!needsMigration) return;
+  if (headers[2] === 'Cupper') { headers[2] = 'Cuppers'; sheet.getRange(1, 3, 1, 1).setValues([['Cuppers']]); }
+  const missing = PANEL_SUMMARY_HEADERS.filter(name => !headers.includes(name));
+  if (missing.length) {
+    const needed = headers.length + missing.length - sheet.getMaxColumns();
+    if (needed > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), needed);
+    sheet.getRange(1, headers.length + 1, 1, missing.length).setValues([missing]);
+    headers.push(...missing);
+  }
+  const entries = [];
+  rows.slice(1).forEach((row, index) => {
+    if (!row[0] || !row[1]) return;
+    try { entries.push({ rowNumber: index + 2, data: JSON.parse(row[1]) }); }
+    catch (_) { /* Preserve an unreadable source row; other saved reports still migrate. */ }
+  });
+  panelWriteSummaries_(sheet, headers, entries);
+  sheet.hideColumns(2);
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  sheet.getDataRange().setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+  if (rows.length > 1) sheet.setRowHeightsForced(2, rows.length - 1, 32);
+  const widths = { ID: 260, Cuppers: 220, 'Date of Report': 175, 'Report Title': 210, 'Lots / Coffees': 300, 'Osito IDs': 180, 'Coffee Count': 110 };
+  headers.forEach((header, index) => { if (widths[header]) sheet.setColumnWidth(index + 1, widths[header]); });
+  sheet.getRange(2, headers.indexOf('Date of Report') + 1, Math.max(1, rows.length - 1), 1).setNumberFormat('mmm d, yyyy h:mm AM/PM');
+}
+// Optional one-time Run action in Apps Script to tidy existing reports immediately.
+function organizePanelReports() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('Service busy. Please retry.');
+  try { collabSheet_('panels'); SpreadsheetApp.flush(); }
+  finally { lock.releaseLock(); }
 }
 function collabHash_(value) {
   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(value)).map(b => ('0' + ((b + 256) % 256).toString(16)).slice(-2)).join('');

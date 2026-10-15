@@ -21,9 +21,25 @@ test('full-form total is independent of retained quick score; attributes require
 
 function backend(){
   const tables=new Map(),cache=new Map();
-  const makeSheet=(name,rows=[['ID','Data','Cupper']])=>{const sheet={getDataRange:()=>({getValues:()=>structuredClone(rows)}),appendRow:row=>rows.push(row),getRange:(r,c,n,w)=>({setValues:values=>values.forEach((row,i)=>{rows[r+i-1]||=[];row.forEach((value,j)=>rows[r+i-1][c+j-1]=value);})})};tables.set(name,{sheet,rows});return sheet;};
+  const makeSheet=(name,rows=[['ID','Data','Cupper']])=>{
+    const formatting={hidden:new Set(),widths:{},heights:[],formats:[]};
+    const sheet={
+      getDataRange:()=>({getValues:()=>structuredClone(rows),setWrapStrategy() {}}),
+      getMaxColumns:()=>26,insertColumnsAfter(){},
+      hideColumns:column=>formatting.hidden.add(column),
+      setFrozenRows:count=>formatting.frozen=count,
+      setColumnWidth:(column,width)=>formatting.widths[column]=width,
+      setRowHeightsForced:(row,count,height)=>formatting.heights.push({row,count,height}),
+      appendRow:row=>rows.push(row),
+      getRange:(r,c,n,w)=>({
+        setValues:values=>values.forEach((row,i)=>{rows[r+i-1]||=[];row.forEach((value,j)=>rows[r+i-1][c+j-1]=value);}),
+        setWrapStrategy(){},setFontWeight(){},
+        setNumberFormat:format=>formatting.formats.push({column:c,format})
+      })
+    };tables.set(name,{sheet,rows,formatting});return sheet;
+  };
   const book={getSheetByName:name=>tables.get(name)?.sheet,insertSheet:name=>makeSheet(name,[])};
-  const ctx=vm.createContext({CUPPING_SPREADSHEET:'test',SpreadsheetApp:{openById:()=>book,flush(){}},ContentService:{createTextOutput:text=>({text})},CacheService:{getScriptCache:()=>({get:key=>cache.get(key),put:(key,value)=>cache.set(key,value)})},LockService:{getScriptLock:()=>({tryLock:()=>true,hasLock:()=>true,releaseLock(){}})},PropertiesService:{getScriptProperties:()=>({getProperty:()=>null})},Utilities:{getUuid:randomUUID,DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(alg,s)=>[...createHash(alg).update(s).digest()]},literal_:s=>s,cuppingSheet_:()=>tables.get('Primary').sheet});
+  const ctx=vm.createContext({CUPPING_SPREADSHEET:'test',SpreadsheetApp:{openById:()=>book,flush(){},WrapStrategy:{CLIP:'CLIP'}},ContentService:{createTextOutput:text=>({text})},CacheService:{getScriptCache:()=>({get:key=>cache.get(key),put:(key,value)=>cache.set(key,value)})},LockService:{getScriptLock:()=>({tryLock:()=>true,hasLock:()=>true,releaseLock(){}})},PropertiesService:{getScriptProperties:()=>({getProperty:()=>null})},Utilities:{getUuid:randomUUID,DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(alg,s)=>[...createHash(alg).update(s).digest()]},literal_:s=>s,cuppingSheet_:()=>tables.get('Primary').sheet});
   vm.runInContext(fs.readFileSync(new URL('../server/collaboration.gs',import.meta.url),'utf8'),ctx);
   const post=(action,data={},id=randomUUID())=>{ctx.collaborationPost_({requestId:id,action,...data});return JSON.parse(cache.get('receipt:'+id));};
   return {ctx,post,tables,makeSheet};
@@ -58,4 +74,40 @@ test('panel password gates lookups and fixed editions preserve primary sources',
   panel.coffees[0].summary='Changed';
   assert.equal(b.post('loadPanel',{password:'C0ff33',panelId:id}).collaboration.panel.coffees[0].summary,'Approved');
   assert.equal(JSON.stringify(b.tables.get('Primary').rows),before);
+});
+
+test('existing Panel rows gain readable summaries without changing the snapshot or unrelated cells',()=>{
+  const b=backend();
+  const panel={title:'Supplier comparison',createdAt:'2026-10-15T18:45:00.000Z',coffees:[
+    {name:'Mutana 1 Washed',sample:{ositoId:'488.26'},evaluations:[{cupper:'David'},{cupper:'María'}]},
+    {sample:{lotName:'Other coffee',ositoId:'489.26'},evaluations:[{cupper:'David'}]}
+  ]};
+  const original=JSON.stringify(panel);
+  b.makeSheet('Osito Panel Reports',[['ID','Data','Cupper','Unrelated'],['edition',original,'','=1+1']]);
+  b.ctx.organizePanelReports();
+  const {rows,formatting}=b.tables.get('Osito Panel Reports'),header=rows[0],cell=name=>rows[1][header.indexOf(name)];
+  assert.equal(rows[1][1],original);assert.equal(rows[1][3],'=1+1');
+  assert.equal(cell('Cuppers'),'David; María');
+  assert.equal(cell('Report Title'),'Supplier comparison');
+  assert.equal(cell('Lots / Coffees'),'Mutana 1 Washed; Other coffee');
+  assert.equal(cell('Osito IDs'),'488.26; 489.26');assert.equal(cell('Coffee Count'),2);
+  assert.equal(cell('Date of Report').toISOString(),panel.createdAt);
+  assert.ok(formatting.hidden.has(2));assert.equal(formatting.frozen,1);
+  assert.ok(formatting.heights.some(entry=>entry.height===32));
+  const migrated=JSON.stringify(rows);b.ctx.organizePanelReports();assert.equal(JSON.stringify(rows),migrated);
+});
+
+test('legacy missing dates remain blank and each newly saved edition receives its own summary',()=>{
+  const b=backend();
+  b.makeSheet('Primary',[['Sample ID','Session Code','App Data','Cupper']]);
+  b.makeSheet('Osito Panel Reports',[['ID','Data','Cupper'],['old',JSON.stringify({title:'Old report',coffees:[]}), ''],['broken','invalid JSON','']]);
+  const result=b.post('savePanel',{password:'C0ff33',panel:{title:'New report',coffees:[{name:'Coffee',sample:{},evaluations:[{cupper:'Ana'}]}]}});
+  assert.equal(result.collaboration.saved,true);
+  const {rows}=b.tables.get('Osito Panel Reports'),headers=rows[0];
+  assert.equal(rows[1][headers.indexOf('Date of Report')],'');
+  assert.equal(rows[2][1],'invalid JSON');
+  assert.equal(rows[3][headers.indexOf('Report Title')],'New report');
+  assert.equal(rows[3][headers.indexOf('Cuppers')],'Ana');
+  assert.equal(rows[3][headers.indexOf('Coffee Count')],1);
+  assert.ok(Number.isFinite(rows[3][headers.indexOf('Date of Report')].getTime()));
 });

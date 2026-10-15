@@ -134,6 +134,19 @@ aliases count once per cupper, and an Attribute Map is shown only when all inclu
 evaluations contain scored full forms. Notes are edited as a panel summary.
 
 Save a fixed edition to obtain an edition ID; reopen it using that ID and the password.
+The **Osito Panel Reports** tab shows **ID**, **Cuppers**, **Date of Report**,
+**Report Title**, **Lots / Coffees**, **Osito IDs**, and **Coffee Count**. Full JSON
+snapshots remain in the hidden **Data** column. The date is the edition's saved time,
+displayed in the spreadsheet's timezone. Rows use a compact height and clipped text,
+with a frozen header and wider summary columns. Existing reports are backfilled
+without changing their saved JSON or unrelated cells; a missing legacy date stays blank.
+
+After installing this script update, select **organizePanelReports** in the Apps
+Script function dropdown and click **Run** to organize existing reports immediately.
+Then update the existing web app deployment to a new version, keeping its URL.
+Saving or reopening a Panel edition also triggers the migration automatically
+if it has not yet run. New saves populate the summary columns directly.
+
 Shared reports and Panel Reports use the same landscape vector PDF renderer, score
 block, fonts, logo/footer, and chart layout as primary reports. Their identification
 blocks contain only Osito ID, Lot/Coffee Name, and Processing. Country, sample type,
