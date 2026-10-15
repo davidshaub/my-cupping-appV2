@@ -1,4 +1,5 @@
-import { buildCombinedReportPdf, prepareReportAssets } from './pdfReport.js';
+import { buildCombinedReportPdf, createZipBytes, prepareReportAssets } from './pdfReport.js';
+import { coffeePdfFilenames, safeFilenamePart } from './reportFilenames.js';
 import { aggregateEvaluations, evaluationScore, notesFields } from './collaboration.js';
 import HandsLogo from '../../assets/hands.png';
 
@@ -20,6 +21,15 @@ export const collaborationReportSamples = (coffees, panel) => coffees.map(item =
 export async function buildCollaborationPdf({ title, coffees, panel=false }) {
   if (!coffees.length) throw new Error('Add at least one coffee before exporting.');
   return buildCombinedReportPdf(collaborationReportSamples(coffees, panel), { sessionStartTime: title || (panel ? 'Osito Panel Report' : 'Shared Cupping Report'), language: 'en', logoSrc: HandsLogo });
+}
+export async function buildCollaborationPdfSet(options) {
+  if (!options.coffees.length) throw new Error('Add at least one coffee before exporting.');
+  const names = coffeePdfFilenames(options.coffees);
+  const files = [];
+  for (let index = 0; index < options.coffees.length; index++) {
+    files.push({ name: names[index], data: await buildCollaborationPdf({ ...options, coffees: [options.coffees[index]] }) });
+  }
+  return { files, zipBytes: createZipBytes(files), zipFilename: `${safeFilenamePart(options.title, 'Osito_Report')}.zip` };
 }
 export async function downloadCollaborationPdf(options) {
   const bytes = await buildCollaborationPdf(options);

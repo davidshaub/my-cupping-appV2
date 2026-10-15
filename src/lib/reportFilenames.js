@@ -28,3 +28,15 @@ export const uniquePdfFilename = (sample, index, used) => {
 export const reportPdfFilename = (samples, sessionName) => samples.length === 1
   ? uniquePdfFilename(samples[0], 0, new Map())
   : `${safeFilenamePart(sessionName, 'Cupping_Report')}.pdf`;
+
+// Aggregate PDF sets use coffee headings, with collision-safe names even for Coffee / Coffee_2 / Coffee.
+export const coffeePdfFilenames = coffees => {
+  const used = new Set();
+  return coffees.map((coffee, index) => {
+    const base = safeFilenamePart(coffee.name || coffee.sample?.lotName, `Coffee_${String(index + 1).padStart(2, '0')}`);
+    let name = `${base}.pdf`, suffix = 2;
+    while (used.has(name.toLowerCase())) name = `${base}_${suffix++}.pdf`;
+    used.add(name.toLowerCase());
+    return name;
+  });
+};

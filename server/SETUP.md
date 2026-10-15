@@ -115,9 +115,11 @@ each with the two evaluations for the same coffee. Input order sets report order
 missing or repeated IDs must be corrected before comparisons are built. Existing
 summaries are retained when the same evaluation group is rebuilt.
 Rebuilding with already-loaded Sample IDs uses the local evaluations. To retrieve
-updated source records, use **Adjust comparisons → Refresh evaluations**. Those
+updated source records, use **Advanced options → Refresh evaluations**. Those
 optional menus move individual evaluations to another coffee or leave them out;
-their parenthesized count is the number of evaluations currently in each group.
+the combined evaluation count appears beside each coffee heading. The menus are
+collapsed by default and read **Exclude this evaluation**, **Keep as a separate
+coffee**, or **Combine under [coffee name]**.
 
 **Compare complete sessions** accepts session/invitation codes, separated by commas
 or new lines. Matching lot IDs are suggested as groups for review. Table positions
@@ -142,6 +144,12 @@ fonts once and paints all coffees directly into one document.
 Group descriptors are a union; tag counts show agreement rather than wheel segment size.
 Visible reports refresh every 30 seconds while online, or via Refresh. PDF exports
 capture the currently loaded results; a saved Panel edition remains fixed.
+
+**Export PDF** opens a dialog with **Open / Print PDF**, **Download PDF**, and
+**Download PDF set**. The first two use the combined report. The PDF set is a ZIP
+with a separate complete PDF per included coffee, named after the coffee heading
+(with safe filenames and numeric suffixes for duplicate names). Export options
+capture a snapshot when the dialog opens so all three actions use the same content.
 
 Verification: `node --test tests/*.test.js`, `node scripts/check-shared-sync.mjs`,
 `node scripts/check-sheets-sync.mjs`, and `node scripts/check-collaboration-ui.mjs`
