@@ -46,8 +46,9 @@ export async function collaborationRequest(action, data, { signal, fetcher = fet
   const requestId = data.requestId || crypto.randomUUID();
   const body = JSON.stringify({ protocol: 'collaboration-v1', requestId, action, ...data });
   if (new TextEncoder().encode(body).length > 900000) throw new Error('This request is too large. Select fewer coffees.');
-  try { await fetcher(SYNC_API_URL, { method:'POST', mode:'no-cors', credentials:'omit', headers:{'Content-Type':'text/plain;charset=utf-8'}, body, signal: signal || AbortSignal.timeout(25000) }); }
-  catch(error) { if (signal?.aborted) throw error; }
+  const post = fetcher(SYNC_API_URL, { method:'POST', mode:'no-cors', credentials:'omit', headers:{'Content-Type':'text/plain;charset=utf-8'}, body, signal: signal || AbortSignal.timeout(25000) }).catch(()=>undefined);
+  // Google's response redirect can outlast the actual write. Check receipts while it completes.
+  await Promise.race([post,new Promise(resolve=>setTimeout(resolve,500))]);
   for (let attempt=0;attempt<10;attempt++) {
     const receipt = await reader({ action:'receipt', requestId }, signal);
     if (receipt.collaborationError) throw new Error(receipt.collaborationError);

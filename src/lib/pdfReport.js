@@ -1423,6 +1423,7 @@ const createVectorSampleReportPdf = async (sample, index, options, assets) => {
   }
   return new Uint8Array(await document.save());
 };
+export const prepareReportAssets = logoSrc => loadVectorAssets(logoSrc);
 
 const zipFilename = (sessionName) => {
   const safeSessionName = safeFilenamePart(sessionName, '');
@@ -1651,12 +1652,27 @@ export const downloadReportPdfZip = async (samples, options = {}) => {
 };
 
 export const buildCombinedReportPdf = async (samples, options = {}) => {
-  const { files } = await buildVectorReportPdfSet(samples, options);
-  const combined = await PDFDocument.create();
-  for (const file of files) {
-    const source = await PDFDocument.load(file.data);
-    const pages = await combined.copyPages(source, source.getPageIndices());
-    pages.forEach((page) => combined.addPage(page));
+  // Paint into one document: fonts and logo embed once for the entire report.
+  const assets = await loadVectorAssets(options.logoSrc || null);
+  const document = await PDFDocument.create();
+  document.registerFontkit(fontkit);
+  const fonts = Object.fromEntries(await Promise.all(Object.entries(assets.fontBytes).filter(([name]) => ['regular','bold','black','serifBold'].includes(name)).map(async ([name, bytes]) => [name, await document.embedFont(bytes, { subset: true })])));
+  const images = {};
+  let logoImage = null;
+  if (assets.logoBytes) {
+    const logo = await document.embedPng(assets.logoBytes);
+    images.Im1 = logo;
+    logoImage = { name: 'Im1', width: logo.width, height: logo.height };
   }
-  return combined.save();
+  const settings = { sessionStartTime: '', language: 'en', ...options, logoImage };
+  samples.forEach((sample, index) => {
+    const page = document.addPage([PAGE.width, PAGE.height]);
+    let remaining = paintSampleReport(new VectorPdfPainter(page, fonts, images), sample, index, settings);
+    let pageNumber = 1;
+    while (remaining.length) {
+      const nextPage = document.addPage([PAGE.width, PAGE.height]);
+      remaining = paintReportContinuation(new VectorPdfPainter(nextPage, fonts, images), remaining, { ...settings, sampleName: sampleDisplayName(sample, index, settings.language) }, ++pageNumber);
+    }
+  });
+  return document.save();
 };

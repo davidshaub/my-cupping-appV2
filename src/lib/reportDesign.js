@@ -14,10 +14,11 @@ const textLines = (pdf, text, width, size = 9, font = 'regular') => String(text)
 
 const heading = (pdf, text, x, y, size = 16) => pdf.text(text, x, y, { font: 'serifBold', size, color: INK });
 
-const drawHeader = (pdf, sessionStartTime, language) => {
+const drawHeader = (pdf, sessionStartTime, language, attribution = '') => {
   pdf.text(translate(language, 'labSummary').toUpperCase(), MARGIN, 25, { size: 13, font: 'serifBold', color: INK });
   pdf.text(translate(language, 'qualityControl').toUpperCase(), MARGIN, 39, { size: 6.5, font: 'bold', color: '#7c6f5f', letterSpacing: 1.1 });
   pdf.text(sessionStartTime, WIDTH - MARGIN, 24, { size: 7, align: 'right', color: INK, maxWidth: 230 });
+  if (attribution) pdf.text(attribution, WIDTH - MARGIN, 39, { size: 6.5, align: 'right', color: INK, maxWidth: 320 });
 };
 
 const drawFooter = (pdf, language, logoImage, page = 1) => {
@@ -68,10 +69,21 @@ const drawIdentity = (pdf, sample, index, language) => {
     metaX += Math.max(pdf.measureText(label.toUpperCase(), 6, 'bold'), Math.min(pdf.measureText(value, 9), 175)) + 24;
   });
   pdf.text(translate(language, sample.noScore ? 'noScore' : 'finalScore').toUpperCase(), 691, y + 36, { size: 7, font: 'bold', color: WHITE, align: 'center' });
-  pdf.text(calculateTotal(sample), 691, y + 72, { size: 36, font: 'black', color: WHITE, align: 'center' });
+  const score = sample.reportKind ? (sample.reportScore == null ? '—' : sample.reportScore.toFixed(2)) : calculateTotal(sample);
+  pdf.text(score, 691, y + 72, { size: 36, font: 'black', color: WHITE, align: 'center' });
 };
 
 const drawRadar = (pdf, sample, language) => {
+  if (sample.reportKind && (sample.reportKind === 'shared' || !sample.reportAttributesAvailable)) {
+    heading(pdf, 'Cuppers’ scores', 24, 185);
+    const entries = sample.reportEvaluations || [];
+    entries.slice(0, 8).forEach((entry, index) => {
+      const y = 214 + index * 23;
+      pdf.text(entry.cupper, 28, y, { size: 9, maxWidth: 205, color: INK });
+      pdf.text(entry.score == null ? '—' : entry.score.toFixed(2), 292, y, { size: 10, font: 'bold', align: 'right', color: INK });
+    });
+    return entries.length > 8 ? [{ title: 'Additional cuppers', text: entries.slice(8).map(e => `${e.cupper}: ${e.score == null ? 'No score' : e.score.toFixed(2)}`).join('\n') }] : [];
+  }
   heading(pdf, translate(language, 'attributeMap'), 24, 185);
   if (sample.noScore) {
     pdf.text(translate(language, 'noScore'), 163, 305, { size: 12, color: INK, align: 'center' });
@@ -165,16 +177,16 @@ const sectionsForSample = (sample, language) => {
     { title: translate(language, 'fragranceAroma'), text: (notes.fragAromaTags ?? []).map((tag) => translateTag(language, tag)).join(' · ') || none },
     { title: translate(language, 'inCup'), text: (notes.inCupTags ?? []).map((tag) => translateTag(language, tag)).join(' · ') || none },
     { title: translate(language, 'negative'), text: (notes.negativeTags ?? []).map((tag) => translateTag(language, tag)).join(' · ') || none },
-    { title: translate(language, 'otherObservations'), text: [levels, notes.otherText].filter(Boolean).join('\n') || none }
+    { title: sample.reportKind === 'panel' ? 'Panel observations' : translate(language, 'otherObservations'), text: [levels, notes.otherText].filter(Boolean).join('\n') || (sample.reportKind ? 'None.' : none) }
   ];
 };
 
 export const paintEditorialReport = (pdf, sample, index, { language = 'en', sessionStartTime = '', logoImage = null } = {}) => {
   pdf.fillRect(0, 0, 792, 612, WHITE);
-  drawHeader(pdf, sessionStartTime, language);
+  drawHeader(pdf, sessionStartTime, language, sample.reportAttribution);
   drawIdentity(pdf, sample, index, language);
-  drawRadar(pdf, sample, language);
-  const overflow = drawWheel(pdf, sample, language);
+  const radarOverflow = drawRadar(pdf, sample, language) || [];
+  const overflow = [...radarOverflow, ...(drawWheel(pdf, sample, language) || [])];
   pdf.line(MARGIN, 437, WIDTH - MARGIN, 437, INK, 0.8);
   const sections = sectionsForSample(sample, language);
   for (let i = 0; i < sections.length; i++) {
@@ -188,6 +200,7 @@ export const paintEditorialReport = (pdf, sample, index, { language = 'en', sess
     lines.slice(0, capacity).forEach((line, row) => pdf.text(line, x, y + 17 + row * 11, { size: 8.5, color: INK }));
     if (lines.length > capacity) overflow.push({ title: section.title, text: lines.slice(capacity).join('\n') });
   }
+  if (sample.reportKind === 'shared') (sample.reportPerspectives || []).forEach(section => overflow.push(section));
   if (overflow.length) pdf.text(translate(language, 'reportContinued'), MARGIN, 541, { size: 6, color: '#555555' });
   drawFooter(pdf, language, logoImage);
   return overflow;

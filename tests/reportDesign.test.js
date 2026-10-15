@@ -3,6 +3,18 @@ import assert from 'node:assert/strict';
 import { paintEditorialReport } from '../src/lib/reportDesign.js';
 import { initializeSamples } from '../src/lib/cupping.js';
 
+test('Panel uses the official report layout and exact mean score, with None for blank observations',()=>{
+  const [sample]=initializeSamples(1);
+  Object.assign(sample,{reportKind:'panel',reportScore:87.125,reportAttributesAvailable:true,reportAttribution:'Cupped by David, María',roastId:''});
+  const words=[];
+  const painter={measureText:(text,size)=>text.length*size*.5,fillRect(){},strokeRect(){},line(){},polygon(){},circle(){},image(){},text(value){words.push(String(value));}};
+  const overflow=paintEditorialReport(painter,sample,0,{sessionStartTime:'Osito Panel Report'});
+  assert.ok(words.includes('87.13'),'mean of final scores must not be recalculated from averaged attributes');
+  assert.ok(words.includes('Panel observations'));assert.ok(words.includes('None.'));
+  assert.ok(words.includes('Cupped by David, María'));assert.equal(overflow.length,0);
+  assert.equal(words.some(word=>word.includes('Across the table')),false);
+});
+
 test('PDF legend centers both short and long keys on the wheel', () => {
   for (const tags of [['Raspberry', 'Almond', 'Peanuts', 'Molasses', 'Caramel'], ['Dried Banana', 'Phosphoric', 'Herbal', 'Terracotta', 'Brown, Roast', 'Grain', 'Cocoa']]) {
     const [sample] = initializeSamples(1);

@@ -100,17 +100,24 @@ Settings → Your shared cuppings. Keep that browser's site data to retain host 
 Guests also need their original browser/site data to edit previous entries. No login
 is needed. A code/link grants participation, not host control or other guests' editing.
 
-The Panel composer lives under **Settings → Panel Report**. Opening it shows a separate
-password screen; no composer fields are displayed until the server accepts the password.
-Unlocking uses an empty `panelLookup` request, compatible with the existing deployment.
-Its requested initial value is `C0ff33`; optionally set the Script
-Property `OSITO_PANEL_PASSWORD` to change it without changing app code. The password
+The Panel composer lives under **Settings → Panel Report**. Opening it shows a modal
+password prompt. An immediate local SHA-256 comparison opens the composer without a
+Google round trip; every evaluation lookup and edition save/load still checks the
+password independently in Apps Script. The local check is a convenience gate, not
+the authorization for spreadsheet access. The initial password is `C0ff33`. If changing
+the server's `OSITO_PANEL_PASSWORD` Script Property, also configure the matching
+`VITE_PANEL_PASSWORD_SHA256` build variable and rebuild the frontend. The password
 is held in component memory only, never in browser persistence or a GET URL.
+
 **Compare specific coffees** accepts one coffee comparison per line, with that coffee's
 Sample IDs separated by commas. Two cuppers tasting five coffees means five lines,
 each with the two evaluations for the same coffee. Input order sets report order;
 missing or repeated IDs must be corrected before comparisons are built. Existing
 summaries are retained when the same evaluation group is rebuilt.
+Rebuilding with already-loaded Sample IDs uses the local evaluations. To retrieve
+updated source records, use **Adjust comparisons → Refresh evaluations**. Those
+optional menus move individual evaluations to another coffee or leave them out;
+their parenthesized count is the number of evaluations currently in each group.
 
 **Compare complete sessions** accepts session/invitation codes, separated by commas
 or new lines. Matching lot IDs are suggested as groups for review. Table positions
@@ -125,8 +132,13 @@ aliases count once per cupper, and an Attribute Map is shown only when all inclu
 evaluations contain scored full forms. Notes are edited as a panel summary.
 
 Save a fixed edition to obtain an edition ID; reopen it using that ID and the password.
-Shared reports and Panel Reports download vector PDFs, including the existing flavor
-wheel layout, external descriptor labels, connecting lines, and color-group key.
+Shared reports and Panel Reports use the same landscape vector PDF renderer, score
+block, fonts, logo/footer, and chart layout as primary reports. Roast numbers are
+omitted from these aggregate reports. The flavor wheel retains external descriptor
+labels, connecting lines, and the color-group key. Full-form Panels include the
+Attribute Map; other aggregate reports show individual scores in that area. Blank
+Panel observations read **None.** Fonts/logo are preloaded; a combined export embeds
+fonts once and paints all coffees directly into one document.
 Group descriptors are a union; tag counts show agreement rather than wheel segment size.
 Visible reports refresh every 30 seconds while online, or via Refresh. PDF exports
 capture the currently loaded results; a saved Panel edition remains fixed.

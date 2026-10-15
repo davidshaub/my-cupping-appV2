@@ -27,6 +27,7 @@ jobs:
       - run: npm run build
         env:
           VITE_SYNC_API_URL: ${{ vars.VITE_SYNC_API_URL }}
+          VITE_PANEL_PASSWORD_SHA256: ${{ vars.VITE_PANEL_PASSWORD_SHA256 }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
