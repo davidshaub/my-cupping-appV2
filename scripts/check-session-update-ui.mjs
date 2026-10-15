@@ -11,6 +11,7 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     const session = normalizeSessionIdentity({ id: 123, name: 'Update QA', startTime: '10/11/2026, 10:00:00 AM', date: '10/11/2026', lexiconMode: 'osito', sessionCode: 'Z598-9J6R', sharedRevision: 1, sharedUpdatedAt: '2026-10-11T14:00:00.000Z', samples: initializeSamples(2) });
     session.samples[0].lotName = 'Boox coffee';
+    session.samples[1].lotName = 'Ninga 3 Honey';
     if (width === 768) {
       delete session.date;
       delete session.lexiconMode;
@@ -40,8 +41,16 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:5173/my-cupping-appV2/');
+    await page.evaluate(()=>document.fonts.ready);
+    await page.screenshot({path:`/tmp/layout-home-${width}.png`,fullPage:true});
     await page.getByRole('button', { name: /saved sessions|history/i }).click();
     await page.getByText('Update QA', { exact: true }).click();
+    await page.screenshot({path:`/tmp/layout-report-${width}.png`});
+    await page.getByRole('button',{name:'Edit Session',exact:true}).first().click();
+    await page.locator('.cupping-coffee-tabs').getByRole('button',{name:'2',exact:true}).click();
+    await page.screenshot({path:`/tmp/layout-heading-${width}.png`});
+    await page.locator('.cupping-coffee-tabs').getByRole('button',{name:'1',exact:true}).click();
+    await page.getByRole('button',{name:'Report',exact:true}).click();
     if (width !== 1280) {
       await page.waitForTimeout(2500);
       assert.equal(uploads, 0, 'Opening a shared session without editing must not upload');

@@ -1,8 +1,8 @@
 import React from 'react';
-import { RefreshCw, FileText } from 'lucide-react';
+import { RefreshCw, FileText, Users, Settings } from 'lucide-react';
 
 const Icon = ({ name, size = 20, className = '' }) => {
-  const Symbol = { 'refresh-cw': RefreshCw, 'file-text': FileText }[name];
+  const Symbol = { 'refresh-cw': RefreshCw, 'file-text': FileText, users: Users, settings: Settings }[name];
   if (Symbol) return <Symbol size={size} className={className} strokeWidth={2} style={{ flexShrink: 0 }} aria-hidden="true" />;
   const paths = {
     check: <path d="m20 6-11 11-5-5" />,

@@ -1226,7 +1226,7 @@ const App = () => {
   if (appState === 'setup') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
-        <div className="max-w-md w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 text-center border border-stone-200">
+        <div className="home-card max-w-md w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 text-center border border-stone-200">
           <div className="inline-flex p-4 rounded-3xl bg-stone-900 text-white mb-6 md:mb-8 shadow-xl">
             <Icon name="coffee" size={28} />
           </div>
@@ -1266,7 +1266,7 @@ const App = () => {
               {t('startSession')}
               <Icon name="chevron-right" />
             </button>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="home-session-actions grid grid-cols-3 gap-3">
               <button
                 onClick={() => {
                   setImportError('');
@@ -1308,11 +1308,13 @@ const App = () => {
                 </span>
               </button>
             </div>
-            <div className="home-display-control">
-              <button className="eink-toggle" onClick={() => setCollaboration({ initialView: 'join' })}>Join a cupping</button>
-              <button className="eink-toggle" onClick={() => setCollaboration({ initialView: 'settings' })}>Settings</button>
-              <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} className="home-display-toggle" />
-              <LanguageToggle language={language} onToggle={toggleLanguage} t={t} className="home-display-toggle" />
+            <div className="home-secondary-actions">
+              <button type="button" onClick={() => setCollaboration({ initialView: 'join' })}><Icon name="users" size={16} />Join a cupping</button>
+              <button type="button" onClick={() => setCollaboration({ initialView: 'settings' })}><Icon name="settings" size={16} />Settings</button>
+            </div>
+            <div className="home-display-control home-preferences">
+              <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact />
+              <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact />
             </div>
           </div>
         </div>
@@ -2055,8 +2057,7 @@ const App = () => {
         {renderSaveSessionModal()}
         {renderPdfReadyDialog()}
         <div className="max-w-[1400px] mx-auto space-y-4 pb-28 md:pb-20 report-container">
-          <button type="button" className="eink-toggle print-hidden" onClick={() => setCollaboration({ initialView: 'create', session: buildSessionEntry(activeSavedSessionId || Date.now(), activeSessionName || sessionStartTime || 'Cupping', activeSavedSession || {}) })}>Share cupping</button>
-          <header className="flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
+          <header className="report-toolbar flex flex-wrap items-center justify-between print-hidden gap-3 mb-6">
             <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={resetToHome}
@@ -2072,6 +2073,7 @@ const App = () => {
                 <Icon name="edit-3" size={16} />
                 {t('editSession')}
               </button>
+              <button type="button" className="report-share-button" onClick={() => setCollaboration({ initialView: 'create', session: buildSessionEntry(activeSavedSessionId || Date.now(), activeSessionName || sessionStartTime || 'Cupping', activeSavedSession || {}) })}><Icon name="users" size={16} />Share cupping</button>
               <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact className="flex-1 sm:flex-none eink-report-mobile-toggle" />
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact className="flex-1 sm:flex-none eink-report-mobile-toggle" />
             </div>
@@ -2153,7 +2155,7 @@ const App = () => {
           </div>
         </div>
 
-        <div className="fixed md:hidden bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200 px-3 pt-2 pb-safe print-hidden">
+        <div className="report-mobile-actions fixed md:hidden bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200 px-3 pt-2 pb-safe print-hidden">
           <div className="grid grid-cols-6 gap-2">
             <button
               onClick={() => setAppState('cupping')}
@@ -2266,7 +2268,7 @@ const App = () => {
         <div className="max-w-6xl mx-auto px-4 md:px-12 pb-4 flex justify-between items-end text-stone-900 gap-3">
           <div className="min-w-0 pl-2">
             <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] leading-none block mb-1">{t('analyzingLot')}</span>
-            <h2 className="text-base md:text-xl font-black tracking-tight leading-none truncate">
+            <h2 className="cupping-coffee-title text-base md:text-xl font-black tracking-tight">
               {currentSample.lotName || `${t('coffee')} ${activeSampleIndex + 1}`}
             </h2>
           </div>
