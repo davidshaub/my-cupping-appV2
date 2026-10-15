@@ -133,7 +133,9 @@ are the report author's decision. Empty scores are excluded from averages, descr
 aliases count once per cupper, and an Attribute Map is shown only when all included
 evaluations contain scored full forms. Notes are edited as a panel summary.
 
-Save a fixed edition to obtain an edition ID; reopen it using that ID and the password.
+Use **Save Panel Report** to save a fixed snapshot and obtain its **Report ID**.
+The **Recall Panel Report** button beside the composer heading opens a pop-up where
+you paste that ID to reopen the saved report. Back to app exits the composer.
 The **Osito Panel Reports** tab shows **ID**, **Cuppers**, **Date of Report**,
 **Report Title**, **Lots / Coffees**, **Osito IDs**, and **Coffee Count**. Full JSON
 snapshots remain in the hidden **Data** column. The date is the edition's saved time,

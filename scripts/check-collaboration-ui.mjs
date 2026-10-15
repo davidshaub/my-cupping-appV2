@@ -9,7 +9,7 @@ try{
 for(const width of [390,1024]){
   const context=await browser.newContext({viewport:{width,height:1000},acceptDownloads:true});
   const sample=initializeSamples(1)[0];Object.assign(sample,{lotName:'La Esperanza',ositoId:'488.26',country:'Colombia',processing:'Washed'});sample.notes.fragAromaTags=['Floral','Honey'];sample.notes.inCupTags=['Stone Fruit','Black Tea'];
-  let panelLookups=0;
+  let panelLookups=0,savedReport=null;
   let entries=[],invitation={code:'ABCD-EFGH',name:'Supplier cupping',defaultMode:'quick',closed:false,revealed:true},receipts=new Map();
   const record={id:sample.syncId,source:'primary',sample,cupper:'David',sessionCode:'ABCD-EFGH',date:'October 15, 2026'};
   const snapshot=()=>({invitation,coffees:[{...sample,hostEvaluation:{...sample,id:'host',mode:'full',cupper:'David'}}],entries,isHost:true});
@@ -24,7 +24,8 @@ for(const width of [390,1024]){
         if(body.password!=='C0ff33'){receipts.set(body.requestId,{collaborationError:'Incorrect Panel Report password.'});return route.fulfill({body:'received'});}
         result={evaluations:body.sampleIds?.length||body.sessionCodes?.length?[record]:[],missingSampleIds:[],missingSessionCodes:[]};
       }
-      if(body.action==='savePanel')result={saved:true,panelId:'edition-id'};
+      if(body.action==='savePanel'){savedReport=body.panel;result={saved:true,panelId:'edition-id'};}
+      if(body.action==='loadPanel'){if(body.panelId!=='edition-id'){receipts.set(body.requestId,{collaborationError:'Panel report not found.'});return route.fulfill({body:'received'});}result={panel:savedReport};}
       receipts.set(body.requestId,{collaboration:result});return route.fulfill({body:'received'});
     }
     const url=new URL(route.request().url()),action=url.searchParams.get('action');
@@ -57,7 +58,12 @@ for(const width of [390,1024]){
   await page.getByRole('button',{name:'Export PDF',exact:true}).click();await page.getByRole('link',{name:'Download PDF',exact:true}).waitFor();await page.screenshot({path:`/tmp/panel-export-${width}.png`});
   const panelDownload=page.waitForEvent('download');await page.getByRole('link',{name:'Download PDF',exact:true}).click();await (await panelDownload).saveAs(`/tmp/panel-cupping-${width}.pdf`);
   const zipDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Download PDF set',exact:true}).click();const zip=await zipDownload;assert.equal(zip.suggestedFilename(),'Osito_Panel_Report.zip');await zip.saveAs(`/tmp/panel-set-${width}.zip`);await page.getByRole('button',{name:'Close PDF export'}).click();
-  await page.getByRole('button',{name:'Save fixed edition'}).click();await page.getByRole('status').filter({hasText:'Saved fixed edition'}).waitFor();await page.screenshot({path:`/tmp/panel-cupping-${width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.getByRole('button',{name:'Save Panel Report'}).click();await page.getByRole('status').filter({hasText:'Panel report saved'}).waitFor();await page.screenshot({path:`/tmp/panel-cupping-${width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  assert.equal(await page.getByRole('button',{name:'Lock composer'}).count(),0);
+  await page.getByRole('button',{name:'Recall Panel Report',exact:true}).click();
+  await page.getByRole('dialog').waitFor();await page.getByRole('textbox',{name:'Report ID',exact:true}).fill('missing-report');await page.getByRole('button',{name:'Recall report',exact:true}).click();await page.getByRole('dialog').getByRole('alert').filter({hasText:'not found'}).waitFor();
+  await page.getByRole('button',{name:'Close report recall'}).click();await page.getByText('A sweet, expressive coffee with a clean finish.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Recall Panel Report',exact:true}).click();await page.getByRole('textbox',{name:'Report ID',exact:true}).fill(' edition-id ');await page.screenshot({path:`/tmp/panel-recall-${width}.png`});await page.getByRole('button',{name:'Recall report',exact:true}).click();await page.getByRole('status').filter({hasText:'Panel report recalled'}).waitFor();assert.equal(await page.getByRole('dialog').count(),0);await page.getByText('A sweet, expressive coffee with a clean finish.',{exact:true}).waitFor();
   if(width===1024){
     const exports=await page.evaluate(async sample=>{
       const {buildCombinedReportPdf}=await import('/my-cupping-appV2/src/lib/pdfReport.js');
