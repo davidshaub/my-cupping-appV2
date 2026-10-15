@@ -50,6 +50,15 @@ try {
     await page.locator('.cupping-coffee-tabs').getByRole('button',{name:'2',exact:true}).click();
     await page.screenshot({path:`/tmp/layout-heading-${width}.png`});
     await page.locator('.cupping-coffee-tabs').getByRole('button',{name:'1',exact:true}).click();
+    await page.getByRole('button',{name:'Lot Information',exact:true}).click();
+    await page.getByRole('button',{name:'Start Blind Session',exact:true}).click();
+    await page.locator('.cupping-coffee-tabs').getByRole('button',{name:'2',exact:true}).click();
+    assert.equal(await page.locator('.cupping-coffee-title').innerText(),'Coffee 2');
+    await page.screenshot({path:`/tmp/blind-local-${width}.png`});
+    await page.getByRole('button',{name:'Lot Information',exact:true}).click();
+    await page.getByRole('button',{name:'Start Session',exact:true}).click();
+    assert.equal(await page.locator('.cupping-coffee-title').innerText(),'Ninga 3 Honey');
+    await page.locator('.cupping-coffee-tabs').getByRole('button',{name:'1',exact:true}).click();
     await page.getByRole('button',{name:'Report',exact:true}).click();
     if (width !== 1280) {
       await page.waitForTimeout(2500);

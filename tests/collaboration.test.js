@@ -62,6 +62,23 @@ test('one invitation isolates selected coffees, hidden results, own editing, and
   b.post('updateInvitation',{code,hostToken,closed:false});assert.equal(b.post('submitContribution',{code,guestToken,sampleId:samples[0].syncId,entry,revision:2}).collaboration.saved,true);
   assert.equal(b.tables.get('Shared Contributions').rows.length,2,'one row updated rather than duplicated');
 });
+
+test('blind invitations withhold identities from guest responses until an authorized reveal',()=>{
+  const b=backend(),samples=initializeSamples(2),hostToken=randomUUID(),guestToken=randomUUID();
+  Object.assign(samples[0],{lotName:'Secret coffee',ositoId:'488.26',country:'Colombia',processing:'Washed'});
+  const {collaboration:{code}}=b.post('createInvitation',{hostToken,defaultMode:'quick',blind:true,session:{name:'Secret coffee session',samples, syncId:'source-id'}});
+  const read=extra=>JSON.parse(JSON.stringify(b.ctx.collaborationRead_({code,guestToken,...extra})));
+  const hidden=read();
+  assert.equal(hidden.invitation.name,'Blind cupping');assert.equal('sourceSessionId' in hidden.invitation,false);
+  assert.equal(hidden.coffees[0].lotName,'Coffee 1');assert.equal(hidden.coffees[1].lotName,'Coffee 2');
+  for(const key of ['ositoId','country','processing'])assert.equal(key in hidden.coffees[0],false);
+  assert.equal(read({hostToken}).coffees[0].lotName,'Secret coffee');
+  assert.ok(b.post('updateInvitation',{code,hostToken:guestToken,identitiesRevealed:true}).collaborationError);
+  b.post('updateInvitation',{code,hostToken,revealed:true});
+  assert.equal(read().coffees[0].lotName,'Coffee 1','revealing scores must not reveal identities');
+  b.post('updateInvitation',{code,hostToken,identitiesRevealed:true});
+  assert.equal(read().coffees[0].lotName,'Secret coffee');assert.equal(read().coffees[0].ositoId,'488.26');
+});
 test('panel password gates lookups and fixed editions preserve primary sources',()=>{
   const b=backend(),sample=initializeSamples(1)[0];
   b.makeSheet('Primary',[['Sample ID','Session Code','App Data','Cupper'],[sample.syncId,'ABCD-EFGH',JSON.stringify({sample,session:{syncId:'session',name:'QA'}}),'David']]);

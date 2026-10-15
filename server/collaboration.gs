@@ -116,10 +116,12 @@ function collaborationRead_(params) {
   const invite = collabInvite_(params.code);
   const host = params.hostToken && collabHash_(params.hostToken) === invite.hostHash;
   const ownHash = params.guestToken ? collabHash_(params.guestToken) : '';
-  const coffees = collabRows_('coffees').filter(row => row.data.code === invite.code).map(row => ({ ...row.data.sample, hostEvaluation: invite.revealed || host ? row.data.hostEvaluation : null }));
+  const hideIdentities = invite.blind && !invite.identitiesRevealed && !host;
+  const coffees = collabRows_('coffees').filter(row => row.data.code === invite.code).sort((a,b)=>(a.data.position||0)-(b.data.position||0)).map((row,index) => ({ ...(hideIdentities ? {syncId:row.data.sample.syncId,lotName:'Coffee '+(index+1)} : row.data.sample), hostEvaluation: invite.revealed || host ? row.data.hostEvaluation : null }));
   const all = collabRows_('entries').filter(row => row.data.code === invite.code).map(row => row.data);
   const entries = all.filter(entry => invite.revealed || host || entry.guestHash === ownHash).map(entry => ({ ...collabPublicEntry_(entry), own: entry.guestHash === ownHash }));
   const { hostHash, ...safe } = invite;
+  if (hideIdentities) { safe.name = 'Blind cupping'; delete safe.sourceSessionId; }
   return { invitation: safe, coffees, entries, isHost: Boolean(host) };
 }
 function collabLookup_(body) {
@@ -172,7 +174,7 @@ function collaborationPost_(body) {
           const metadata={};['syncId','lotName','ositoId','country','processing','processingOther','sampleType','roastId','waterActivity','moisture'].forEach(k=>metadata[k]=String(sample[k]||''));
           collabPut_('coffees',code+':'+sample.syncId,{code,sample:metadata,hostEvaluation:{id:sample.syncId,mode:'full',cupper:sample.cupper||session.cupper||'Host',date:String(session.startTime||session.date||''),scores:sample.scores,notes:sample.notes,noScore:!!sample.noScore},position:index});
         });
-        collabPut_('invites',code,{code,creationId:requestId,hostHash:collabHash_(hostToken),name:String(session.name||'Shared cupping').slice(0,160),date:String(session.date||''),sourceSessionId:String(session.syncId||''),defaultMode:body.defaultMode,closed:false,revealed:false,createdAt:new Date().toISOString()});result={code};
+        collabPut_('invites',code,{code,creationId:requestId,hostHash:collabHash_(hostToken),name:String(session.name||'Shared cupping').slice(0,160),date:String(session.date||''),sourceSessionId:String(session.syncId||''),defaultMode:body.defaultMode,blind:body.blind===true,identitiesRevealed:false,closed:false,revealed:false,createdAt:new Date().toISOString()});result={code};
       }
     } else if (body.action === 'submitContribution') {
       const invite=collabInvite_(body.code); if(invite.closed)throw new Error('Submissions are closed.');
@@ -187,6 +189,7 @@ function collaborationPost_(body) {
     } else if(body.action==='updateInvitation') {
       const invite=collabInvite_(body.code);collabHost_(invite,body.hostToken);
       ['closed','revealed'].forEach(k=>{if(typeof body[k]==='boolean')invite[k]=body[k];});
+      if (typeof body.identitiesRevealed === 'boolean') invite.identitiesRevealed = body.identitiesRevealed;
       if(['quick','full'].includes(body.defaultMode))invite.defaultMode=body.defaultMode;
       collabPut_('invites',invite.code,invite);result={saved:true};
     } else if(body.action==='panelLookup') result=collabLookup_(body);

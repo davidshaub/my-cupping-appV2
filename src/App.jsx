@@ -95,6 +95,7 @@ const App = () => {
   });
   const [appState, setAppState] = useState('setup');
   const [metadataOrigin, setMetadataOrigin] = useState('setup');
+  const [blindSession,setBlindSession]=useState(false);
   const [numSamples, setNumSamples] = useState(1);
   const [lexiconMode, setLexiconMode] = useState('osito');
   const [activeSampleIndex, setActiveSampleIndex] = useState(0);
@@ -223,6 +224,7 @@ const App = () => {
         return;
       }
     }
+    setBlindSession(false);
     setSamples([]);
     setSessionStartTime(null);
     setActiveSampleIndex(0);
@@ -352,6 +354,7 @@ const App = () => {
   };
 
   const loadSession = (session) => {
+    setBlindSession(false);
     setLexiconMode(normalizeLexiconMode(session.lexiconMode));
     const sessionSamples = Array.isArray(session.samples) ? session.samples : [];
     const loadedStartTime = session.startTime || new Date().toLocaleString();
@@ -381,6 +384,7 @@ const App = () => {
   };
 
   const startSession = () => {
+    setBlindSession(false);
     const startedAt = new Date().toLocaleString();
     const nextSamples = initializeSamples(normalizeSampleCount(numSamples));
     setSessionStartTime(startedAt);
@@ -2029,20 +2033,9 @@ const App = () => {
           </button>
           <div className="metadata-navigation">
             <div className="metadata-navigation-actions">
-              <button
-                type="button"
-                onClick={() => setAppState('cupping')}
-                className="btn-stone-dark"
-              >
-                {t(metadataOrigin === 'setup' ? 'startSession' : 'returnToSession')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setAppState('report')}
-                className="btn-stone-light"
-              >
-                {t('viewReport')}
-              </button>
+              <button type="button" onClick={()=>{setBlindSession(false);setAppState('cupping');}} className="btn-stone-dark">{t('startSession')}</button>
+              <button type="button" onClick={()=>{setBlindSession(true);setAppState('cupping');}} className="btn-stone-light">Start Blind Session</button>
+              <button type="button" onClick={()=>setAppState('report')} className="btn-stone-light">{t('viewReport')}</button>
             </div>
           </div>
         </div>
@@ -2267,9 +2260,9 @@ const App = () => {
         </header>
         <div className="max-w-6xl mx-auto px-4 md:px-12 pb-4 flex justify-between items-end text-stone-900 gap-3">
           <div className="min-w-0 pl-2">
-            <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] leading-none block mb-1">{t('analyzingLot')}</span>
+            <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] leading-none block mb-1">{blindSession?'Blind cupping':t('analyzingLot')}</span>
             <h2 className="cupping-coffee-title text-base md:text-xl font-black tracking-tight">
-              {currentSample.lotName || `${t('coffee')} ${activeSampleIndex + 1}`}
+              {blindSession?`${t('coffee')} ${activeSampleIndex+1}`:(currentSample.lotName || `${t('coffee')} ${activeSampleIndex + 1}`)}
             </h2>
           </div>
           <div className="text-right leading-none shrink-0 pl-4 pr-2">

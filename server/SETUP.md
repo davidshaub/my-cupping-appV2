@@ -160,6 +160,19 @@ Attribute Map; other aggregate reports show individual scores in that area. Blan
 Panel observations read **None.** Fonts/logo are preloaded; a combined export embeds
 fonts once and paints all coffees directly into one document.
 Group descriptors are a union; tag counts show agreement rather than wheel segment size.
+Shared coffee navigation uses numbered buttons. Select **Blind cupping** when
+creating an invitation to withhold coffee identities from guests. Until the host
+chooses **Reveal coffee identities**, guest responses contain only coffee numbers
+and opaque sample IDs; names, Osito IDs, origins, processing, and other metadata
+are withheld on the server. The host retains access to the originals. Revealing
+results and revealing identities are independent controls. A blind invitation
+requires this Apps Script version; the frontend rejects older deployments that
+cannot confirm blind mode. Existing non-blind invitations continue unchanged.
+
+For local primary sessions, lot editing provides **Start Session**, **Start Blind
+Session**, and **View Report**. Blind mode masks identities in the scoring header;
+lot editing and report viewing remain deliberate ways to see the original data.
+This is a local scoring display mode, not an access restriction on the owner's data.
 Visible reports refresh every 30 seconds while online, or via Refresh. PDF exports
 capture the currently loaded results; a saved Panel edition remains fixed.
 

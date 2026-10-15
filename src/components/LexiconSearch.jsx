@@ -152,7 +152,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                 autoComplete="off"
                 aria-label={label}
                 placeholder={t('search')}
-                className="bg-transparent border-none p-0 text-sm font-bold text-stone-800 focus:ring-0 w-full min-w-0 placeholder:text-stone-300 outline-none"
+                className="lexicon-search-input bg-transparent border-none p-0 text-sm font-bold text-stone-800 focus:ring-0 w-full min-w-0 placeholder:text-stone-300 outline-none"
               />
               {isLoading && (
                 <div className="animate-spin text-stone-400 shrink-0">
