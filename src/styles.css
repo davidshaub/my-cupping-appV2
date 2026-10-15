@@ -1660,3 +1660,6 @@ h3 {
 .cupping-toolbar>button{min-height:40px;border-radius:10px;font-weight:600;line-height:1.4;box-shadow:none}
 .report-mobile-actions button,.cupping-toolbar>button{border-color:var(--os-line)!important;color:var(--os-ink)!important}
 .report-mobile-actions button:last-child,.cupping-toolbar>button.btn-stone-dark{color:var(--os-surface)!important}
+.history-share-action{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin-top:4px;padding:8px 0;border:0;border-radius:0;background:transparent;color:var(--os-ink);font-size:12px;font-weight:600;line-height:1.4;letter-spacing:0;text-transform:none;box-shadow:none;cursor:pointer}
+.history-share-action:hover{text-decoration:underline;text-underline-offset:4px}
+.history-share-action:focus-visible{outline:2px solid currentColor;outline-offset:4px;border-radius:3px}

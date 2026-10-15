@@ -1620,7 +1620,7 @@ const App = () => {
                     </div>
                     <h3 className="text-lg font-black text-stone-900 leading-tight pr-4">{item.name}</h3>
                     <p className="session-code">{t('sessionCode')}: {item.sessionCode || t('codePending')}</p>
-                    <button type="button" className="eink-toggle mt-3" onClick={event => { event.stopPropagation(); setCollaboration({ initialView: 'create', session: item }); }}>Share cupping</button>
+                    <button type="button" className="history-share-action" onClick={event => { event.stopPropagation(); setCollaboration({ initialView: 'create', session: item }); }}>Share cupping<Icon name="chevron-right" size={14} /></button>
                     <p className="text-xs font-bold text-stone-400 uppercase mt-2">{item.count} {t('samples')}</p>
                     {coffeeMatches.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
