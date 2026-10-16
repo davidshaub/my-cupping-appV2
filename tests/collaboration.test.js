@@ -42,7 +42,7 @@ function backend(){
   const ctx=vm.createContext({CUPPING_SPREADSHEET:'test',SpreadsheetApp:{openById:()=>book,flush(){},WrapStrategy:{CLIP:'CLIP'}},ContentService:{createTextOutput:text=>({text})},CacheService:{getScriptCache:()=>({get:key=>cache.get(key),put:(key,value)=>cache.set(key,value)})},LockService:{getScriptLock:()=>({tryLock:()=>true,hasLock:()=>true,releaseLock(){}})},PropertiesService:{getScriptProperties:()=>({getProperty:()=>null})},Utilities:{getUuid:randomUUID,DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(alg,s)=>[...createHash(alg).update(s).digest()]},literal_:s=>s,cuppingSheet_:()=>tables.get('Primary').sheet});
   vm.runInContext(fs.readFileSync(new URL('../server/collaboration.gs',import.meta.url),'utf8'),ctx);
   const post=(action,data={},id=randomUUID())=>{ctx.collaborationPost_({requestId:id,action,...data});return JSON.parse(cache.get('receipt:'+id));};
-  return {ctx,post,tables,makeSheet};
+  return {ctx,post,tables,makeSheet,cache};
 }
 test('one invitation isolates selected coffees, hidden results, own editing, and host controls',()=>{
   const b=backend(),samples=initializeSamples(2),hostToken=randomUUID(),guestToken=randomUUID(),otherToken=randomUUID();
@@ -134,4 +134,26 @@ test('legacy missing dates remain blank and each newly saved edition receives it
   assert.equal(rows[3][headers.indexOf('Cuppers')],'Ana');
   assert.equal(rows[3][headers.indexOf('Coffee Count')],1);
   assert.ok(Number.isFinite(rows[3][headers.indexOf('Date of Report')].getTime()));
+});
+
+
+test('batch autosave validates before writing, enforces ownership/revisions and retries after receipt expiry',()=>{
+  const b=backend(),samples=initializeSamples(2),hostToken=randomUUID(),guestToken=randomUUID();
+  const {collaboration:{code}}=b.post('createInvitation',{hostToken,defaultMode:'quick',session:{name:'Batch',samples}});
+  const entry={...samples[0],cupper:'David',mode:'quick',quickScore:87};
+  const items=samples.map(sample=>({sampleId:sample.syncId,entry,revision:0}));
+  const requestId=randomUUID();
+  const result=b.post('saveContributions',{code,guestToken,items},requestId);
+  assert.equal(result.collaboration.entries.length,2);assert.ok(result.collaboration.entries.every(e=>e.revision===1));
+  b.cache.delete('receipt:'+requestId);
+  const retry=b.post('saveContributions',{code,guestToken,items},requestId);
+  assert.ok(retry.collaboration.entries.every(e=>e.revision===1),'Receipt expiry must not duplicate the write');
+  const invalid=[{...items[0],revision:1,entry:{...entry,quickScore:90}},{...items[1],revision:1,entry:{...entry,quickScore:200}}];
+  assert.ok(b.post('saveContributions',{code,guestToken,items:invalid}).collaborationError);
+  assert.ok(b.ctx.collaborationRead_({code,guestToken}).entries.every(e=>e.quickScore===87),'Invalid batches must not partially write');
+  // A later request cannot overwrite these entries using stale revisions.
+  assert.match(b.post('saveContributions',{code,guestToken,items}).collaborationError,/another tab/);
+  assert.equal(b.ctx.collaborationRead_({code,guestToken}).entries.length,2);
+  b.post('updateInvitation',{code,hostToken,closed:true});
+  assert.match(b.post('saveContributions',{code,guestToken,items}).collaborationError,/closed/);
 });

@@ -187,3 +187,24 @@ Verification: `node --test tests/*.test.js`, `node scripts/check-shared-sync.mjs
 (the last requires Playwright/Chrome and the local Vite server). Browser checks mock
 the Google service. A live Apps Script deployment must still be verified using a real
 invitation, separate guest browser, submission, close/reopen, and Panel lookup.
+
+
+## Shared cupping autosave and offline use
+
+Deploy the generated Apps Script as a **new version of the existing deployment**
+when updating the frontend for autosave. The `saveContributions` action batches
+changed coffees, checks revisions and host closure, and returns compact save
+acknowledgments. Retries reuse request IDs, including after receipt expiry.
+
+Each participant chooses Quick/Full once for the invitation. Name, form choice,
+observations, and pending requests are stored on that browser. Edits upload after
+a short pause without locking the form. Once the invitation and production app
+have loaded online, participants can continue and reload offline. Reconnect or
+reopen the app on that same browser to upload pending changes. A closed invitation
+or revision conflict retains local edits and displays an error rather than
+silently replacing another evaluation. Clearing browser site data removes pending
+changes and participant/host credentials.
+
+Verification: `node --test tests/*.test.js`, `npm run build`, and browser scripts
+`check-collaboration-ui.mjs` and `check-shared-offline-ui.mjs` (the latter uses
+`npm run preview -- --host 127.0.0.1 --port 4173` for service-worker testing).

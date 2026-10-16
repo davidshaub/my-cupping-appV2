@@ -176,16 +176,35 @@ function collaborationPost_(body) {
         });
         collabPut_('invites',code,{code,creationId:requestId,hostHash:collabHash_(hostToken),name:String(session.name||'Shared cupping').slice(0,160),date:String(session.date||''),sourceSessionId:String(session.syncId||''),defaultMode:body.defaultMode,blind:body.blind===true,identitiesRevealed:false,closed:false,revealed:false,createdAt:new Date().toISOString()});result={code};
       }
-    } else if (body.action === 'submitContribution') {
+    } else if (body.action === 'submitContribution' || body.action === 'saveContributions') {
       const invite=collabInvite_(body.code); if(invite.closed)throw new Error('Submissions are closed.');
       const guestHash=collabHash_(collabSecret_(body.guestToken));
-      if(!collabRows_('coffees').some(row=>row.data.code===invite.code && row.data.sample.syncId===body.sampleId))throw new Error('Coffee is not part of this invitation.');
-      collabValidateEvaluation_(body.entry);
-      const id=invite.code+':'+body.sampleId+':'+guestHash.slice(0,24);
-      const previous=collabRows_('entries').find(row=>row.id===id);
-      if(previous && body.revision!==previous.data.revision)throw new Error('This entry changed on another tab. Refresh before editing.');
-      const entry={id,code:invite.code,sampleId:body.sampleId,guestHash,cupper:body.entry.cupper.trim(),mode:body.entry.mode,noScore:!!body.entry.noScore,quickScore:body.entry.quickScore,scores:body.entry.scores,notes:body.entry.notes,revision:(previous?.data.revision||0)+1,updatedAt:new Date().toISOString()};
-      collabPut_('entries',id,entry);result={saved:true,entry:collabPublicEntry_(entry)};
+      const items=body.action==='saveContributions'?body.items:[body];
+      if(!Array.isArray(items)||!items.length||items.length>40)throw new Error('Invalid contributions.');
+      const coffees=collabRows_('coffees'),sheet=collabSheet_('entries'),raw=sheet.getDataRange().getValues(),rows=raw.slice(1).filter(row=>row[0]).map(row=>({id:String(row[0]),data:JSON.parse(row[1])})),seen=new Set();
+      // Validate the entire batch before writing anything.
+      const entries=items.map(item=>{
+        if(seen.has(item.sampleId))throw new Error('Invalid duplicate coffee.');seen.add(item.sampleId);
+        if(!coffees.some(row=>row.data.code===invite.code && row.data.sample.syncId===item.sampleId))throw new Error('Coffee is not part of this invitation.');
+        collabValidateEvaluation_(item.entry);
+        const id=invite.code+':'+item.sampleId+':'+guestHash.slice(0,24);
+        const previous=rows.find(row=>row.id===id);
+        if(previous?.data.lastRequestId===requestId)return previous.data;
+        if(previous && item.revision!==previous.data.revision)throw new Error('This entry changed on another tab. Your local changes are retained.');
+        return {id,code:invite.code,sampleId:item.sampleId,guestHash,cupper:item.entry.cupper.trim(),mode:item.entry.mode,noScore:!!item.entry.noScore,quickScore:item.entry.quickScore,scores:item.entry.scores,notes:item.entry.notes,revision:(previous?.data.revision||0)+1,lastRequestId:requestId,updatedAt:new Date().toISOString()};
+      });
+      const writes=entries.map(entry=>{
+        const text=JSON.stringify(entry);if(text.length>45000)throw new Error('This record is too large.');
+        return {index:raw.findIndex((row,i)=>i>0&&row[0]===entry.id),values:[entry.id,text,literal_(entry.cupper)]};
+      });
+      const appended=writes.filter(write=>write.index<0);
+      if(appended.length)sheet.getRange(raw.length+1,1,appended.length,3).setValues(appended.map(write=>write.values));
+      const updates=writes.filter(write=>write.index>0).sort((a,b)=>a.index-b.index);
+      for(let i=0;i<updates.length;){
+        let end=i+1;while(end<updates.length&&updates[end].index===updates[end-1].index+1)end++;
+        sheet.getRange(updates[i].index+1,1,end-i,3).setValues(updates.slice(i,end).map(write=>write.values));i=end;
+      }
+      result=body.action==='saveContributions'?{saved:true,entries:entries.map(entry=>({id:entry.id,code:entry.code,sampleId:entry.sampleId,revision:entry.revision,updatedAt:entry.updatedAt}))}:{saved:true,entry:collabPublicEntry_(entries[0])};
     } else if(body.action==='updateInvitation') {
       const invite=collabInvite_(body.code);collabHost_(invite,body.hostToken);
       ['closed','revealed'].forEach(k=>{if(typeof body[k]==='boolean')invite[k]=body[k];});
@@ -194,7 +213,7 @@ function collaborationPost_(body) {
       // Sharing results also reveals the coffees; hiding results restores blind mode.
       if (typeof body.revealed === 'boolean' || typeof body.blind === 'boolean') invite.identitiesRevealed = !invite.blind || !!invite.revealed;
       if(['quick','full'].includes(body.defaultMode))invite.defaultMode=body.defaultMode;
-      collabPut_('invites',invite.code,invite);result={saved:true};
+      collabPut_('invites',invite.code,invite);const {hostHash,...safe}=invite;result={saved:true,invitation:safe};
     } else if(body.action==='panelLookup') result=collabLookup_(body);
     else if(body.action==='savePanel' || body.action==='loadPanel') {
       collabLookup_({password:body.password});

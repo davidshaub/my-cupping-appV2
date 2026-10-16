@@ -18,6 +18,7 @@ for(const width of [390,1024]){
     if(route.request().method()==='POST'){
       const body=JSON.parse(route.request().postData());if(body.protocol!=='collaboration-v1')return route.fulfill({body:'received'});
       let result;
+      if(body.action==='saveContributions'){const saved=body.items.map(item=>({...item.entry,id:item.sampleId,sampleId:item.sampleId,own:true,revision:item.revision+1}));entries=[...entries.filter(e=>!saved.some(s=>s.sampleId===e.sampleId)),...saved];result={saved:true,entries:saved};}
       if(body.action==='submitContribution'){const entry={...body.entry,id:'entry',sampleId:body.sampleId,own:true,revision:1};entries=[entry];result={saved:true,entry};}
       if(body.action==='updateInvitation'){Object.assign(invitation,Object.fromEntries(['closed','revealed','defaultMode','identitiesRevealed','blind'].filter(k=>k in body).map(k=>[k,body[k]])));result={saved:true};}
       if(body.action==='panelLookup'){
@@ -57,8 +58,21 @@ for(const width of [390,1024]){
   await page.getByRole('radio').nth(1).check();await page.getByText('Strawberry',{exact:true}).waitFor();assert.equal(await page.locator('.session-evaluation .score-value').first().innerText(),'8.50');
   await page.getByRole('button',{name:'Increase Fragrance',exact:true}).click();await page.getByRole('button',{name:'Increase Fragrance',exact:true}).click();
   await page.screenshot({path:`/tmp/shared-full-${width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Full evaluation fits viewport');await page.getByRole('radio').nth(0).check();await page.getByRole('spinbutton',{name:'Final score'}).fill('87');await page.getByPlaceholder('Additional observations.').fill('Peach, honey, and a tea-like finish.');
-  await page.getByRole('button',{name:'Submit impressions for this coffee'}).click();await page.getByRole('status').filter({hasText:'saved'}).waitFor();
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem('osito_shared_outbox_ABCDEFGH')).pending&&Object.keys(JSON.parse(localStorage.getItem('osito_shared_outbox_ABCDEFGH')).pending).length===0);
   await page.getByRole('radio').nth(1).check();assert.equal(await page.locator('.session-evaluation .score-value').first().innerText(),'9.00');await page.getByRole('radio').nth(0).check();assert.equal(await page.getByRole('spinbutton',{name:'Final score'}).inputValue(),'87');
+  await page.evaluate(()=>{Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>false});window.dispatchEvent(new Event('offline'));});
+  await page.getByRole('button',{name:'Coffee 2',exact:true}).click();
+  assert.equal(await page.getByRole('radio').nth(0).isChecked(),true,'Form selection applies to every coffee');
+  await page.getByRole('spinbutton',{name:'Final score'}).fill('88');
+  await page.getByPlaceholder('Additional observations.').fill('Finished this coffee offline.');
+  assert.ok(await page.getByRole('status').filter({hasText:'Offline'}).count()>0);
+  await page.getByRole('radio').nth(1).check();
+  await page.getByRole('button',{name:'Coffee 1',exact:true}).click();
+  assert.equal(await page.getByRole('radio').nth(1).isChecked(),true,'Global mode also applies to previously visited coffees');
+  await page.getByRole('radio').nth(0).check();
+  await page.evaluate(()=>{Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>true});window.dispatchEvent(new Event('online'));});
+  await page.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('osito_shared_outbox_ABCDEFGH')).pending).length===0);
+  assert.equal(entries.find(e=>e.sampleId===secondSample.syncId).notes.otherText,'Finished this coffee offline.');
   await page.getByRole('button',{name:'Shared report',exact:true}).click();await page.getByRole('heading',{name:'Flavor profile'}).first().waitFor();
   await page.getByRole('button',{name:'Export PDF',exact:true}).click();await page.getByRole('dialog').getByRole('link',{name:'Open / Print PDF',exact:true}).waitFor();
   const openPopup=page.waitForEvent('popup');await page.getByRole('link',{name:'Open / Print PDF',exact:true}).click();const viewer=await openPopup;await viewer.waitForLoadState('domcontentloaded');await viewer.close();
@@ -66,7 +80,7 @@ for(const width of [390,1024]){
   await page.screenshot({path:`/tmp/shared-cupping-${width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No horizontal overflow');
   invitation.blind=true;invitation.identitiesRevealed=false;await page.getByRole('button',{name:'Refresh',exact:true}).click();await page.getByRole('button',{name:'Your impressions',exact:true}).click();await page.getByRole('heading',{name:'Coffee 1',exact:true}).waitFor();assert.equal(await page.getByRole('heading',{name:'La Esperanza',exact:true}).count(),0);await page.screenshot({path:`/tmp/blind-shared-${width}.png`});
   await page.getByRole('button',{name:'Host controls',exact:true}).click();await page.getByRole('switch',{name:/Blind cupping/}).click();await page.waitForFunction(()=>!document.querySelector('[role=switch]').checked);await page.getByRole('switch',{name:/Blind cupping/}).click();await page.waitForFunction(()=>document.querySelector('[role=switch]').checked&&!document.querySelector('[role=switch]').disabled);await page.getByRole('button',{name:'Hide results',exact:true}).click();await page.getByRole('button',{name:'Reveal results',exact:true}).click();await page.getByRole('button',{name:'Your impressions',exact:true}).click();await page.getByRole('heading',{name:'La Esperanza',exact:true}).waitFor();
-  await page.getByRole('button',{name:'Host controls',exact:true}).click();await page.getByRole('button',{name:'Close submissions',exact:true}).click();await page.getByRole('button',{name:'Reopen submissions',exact:true}).waitFor();await page.getByRole('button',{name:'Your impressions',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Submit impressions for this coffee'}).isDisabled(),true);
+  await page.getByRole('button',{name:'Host controls',exact:true}).click();await page.getByRole('button',{name:'Close submissions',exact:true}).click();await page.getByRole('button',{name:'Reopen submissions',exact:true}).waitFor();await page.getByRole('button',{name:'Your impressions',exact:true}).click();assert.equal(await page.getByRole('textbox',{name:'Your name'}).isDisabled(),true);
   await page.getByRole('button',{name:'Back to app'}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Open Panel Report',exact:true}).click();
   assert.equal(await page.getByLabel('Report title').count(),0,'Composer remains absent before authentication');
   await page.getByRole('dialog').waitFor();await page.screenshot({path:`/tmp/panel-password-${width}.png`});

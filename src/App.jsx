@@ -1,3 +1,4 @@
+import useSharedOutboxSync from './hooks/useSharedOutboxSync';
 import { sharedCodeFromUrl, withoutSharedLink } from './lib/sharedLink';
 import SessionEvaluation from './components/SessionEvaluation';
 import React, { useEffect, useRef, useState } from 'react';
@@ -80,6 +81,7 @@ const parseClipboardRows = (text) => {
 };
 
 const App = () => {
+  useSharedOutboxSync();
   const [collaboration, setCollaboration] = useState(() => {
     const code=sharedCodeFromUrl(window.location.href);
     return code ? { initialView:'guest',initialCode:code } : null;

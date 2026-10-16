@@ -52,7 +52,7 @@ export async function collaborationRequest(action, data, { signal, fetcher = fet
   await Promise.race([post,new Promise(resolve=>setTimeout(resolve,500))]);
   for (let attempt=0;attempt<10;attempt++) {
     const receipt = await reader({ action:'receipt', requestId }, signal);
-    if (receipt.collaborationError) throw new Error(receipt.collaborationError);
+    if (receipt.collaborationError) { const error=new Error(receipt.collaborationError);error.serverRejected=true;throw error; }
     if (receipt.collaboration) return receipt.collaboration;
     if (!receipt.pending) throw new Error('Update the Google Apps Script deployment to enable shared cuppings.');
     await new Promise(resolve=>setTimeout(resolve,1200));
