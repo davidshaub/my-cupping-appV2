@@ -23,4 +23,9 @@
 .collab-modes strong { display: block; }
 .collab-modes small { margin-top: 8px; line-height: 1.6; }
 
+.collab-window .collab-save-status {
+  position: static;
+  box-shadow: none;
+}
+
 .collab-action-feedback{display:inline-block;max-width:100%;font-size:13px;line-height:1.6;margin:8px;color:var(--os-muted);overflow-wrap:anywhere}.collab-action-feedback [role=alert]{color:#8d3021}.collab-save-status{position:sticky;bottom:12px;z-index:6;width:fit-content;max-width:100%;padding:9px 14px;margin:14px 0;background:var(--os-bg-soft);border:1px solid var(--os-line);border-radius:8px;font-size:12px;color:var(--os-ink);box-shadow:0 2px 8px #0001}.collab-entry+.collab-save-status{margin-top:24px}

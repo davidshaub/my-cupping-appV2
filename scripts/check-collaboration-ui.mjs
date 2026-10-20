@@ -57,6 +57,7 @@ for(const width of [390,1024]){
   const search=page.getByPlaceholder(/search|type/i).first();await search.fill('Strawberry');await page.getByRole('button',{name:'Strawberry',exact:true}).click();
   await page.getByRole('radio').nth(1).check();await page.getByText('Strawberry',{exact:true}).waitFor();assert.equal(await page.locator('.session-evaluation .score-value').first().innerText(),'8.50');
   await page.getByRole('button',{name:'Increase Fragrance',exact:true}).click();await page.getByRole('button',{name:'Increase Fragrance',exact:true}).click();
+  assert.equal(await page.locator('.collab-save-status').count(),0,'Routine autosave must stay quiet');
   await page.screenshot({path:`/tmp/shared-full-${width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Full evaluation fits viewport');await page.getByRole('radio').nth(0).check();await page.getByRole('spinbutton',{name:'Final score'}).fill('87');await page.getByPlaceholder('Additional observations.').fill('Peach, honey, and a tea-like finish.');
   await page.waitForFunction(()=>JSON.parse(localStorage.getItem('osito_shared_outbox_ABCDEFGH')).pending&&Object.keys(JSON.parse(localStorage.getItem('osito_shared_outbox_ABCDEFGH')).pending).length===0);
   await page.getByRole('radio').nth(1).check();assert.equal(await page.locator('.session-evaluation .score-value').first().innerText(),'9.00');await page.getByRole('radio').nth(0).check();assert.equal(await page.getByRole('spinbutton',{name:'Final score'}).inputValue(),'87');
