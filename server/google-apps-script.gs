@@ -237,7 +237,6 @@ function doPost(event) {
       if (existing.has(key)) throw new Error('duplicateRows');
       existing.set(key, index + 2);
     });
-    let nextRow = Math.max(2, data.values.length + 1);
     // Compare-and-swap under the same lock as the writes. Older clients cannot bypass it.
     const dataColumn = columns.get('App Data');
     body.sessions.forEach(session => {
@@ -249,6 +248,13 @@ function doPost(event) {
       session.sharedRevision = revision + 1;
       session.sharedUpdatedAt = new Date().toISOString();
     });
+    // Brand-new sessions are inserted right after the header so the newest cupping is always on top.
+    // Returning sessions (already with rows somewhere in the sheet) keep updating their existing rows in place.
+    const priorSyncIds = new Set(data.values.slice(1).map(row => row[sessionColumn]).filter(Boolean));
+    const brandNewSessionIds = new Set(body.sessions.filter(session => !priorSyncIds.has(session.syncId)).map(session => session.syncId));
+    const shift = body.sessions.reduce((sum, session) => sum + (brandNewSessionIds.has(session.syncId) ? session.samples.length : 0), 0);
+    if (shift > 0) sheet.insertRowsAfter(1, shift);
+    let nextRow = Math.max(2, data.values.length + 1) + shift, topRow = 2;
     const codes = {}, owners = new Map(), codeColumn = columns.get('Session Code');
     data.values.slice(1).forEach(row => {
       if (row[codeColumn] && row[sessionColumn]) {
@@ -274,24 +280,25 @@ function doPost(event) {
       if (!Number.isInteger(position) || position < 1 || position > 100) throw new Error('invalidSession');
       const values = valuesForSample_(session, sample, position - 1);
       const key = JSON.stringify([session.syncId, sample.syncId]);
-      const rowNumber = existing.get(key) || nextRow++;
-      const original = data.values[rowNumber - 1] || [];
+      const oldRowNumber = existing.get(key);
+      const rowNumber = oldRowNumber != null ? oldRowNumber + shift : (brandNewSessionIds.has(session.syncId) ? topRow++ : nextRow++);
+      const original = (oldRowNumber != null ? data.values[oldRowNumber - 1] : null) || [];
       const row = headers.map((header, col) => {
         if (Object.prototype.hasOwnProperty.call(values, header)) return literal_(values[header]);
         // Preserve formulas and unrelated cells in an existing row.
-        return data.formulas[rowNumber - 1] && data.formulas[rowNumber - 1][col] || (original[col] == null ? '' : original[col]);
+        return (oldRowNumber != null && data.formulas[oldRowNumber - 1] && data.formulas[oldRowNumber - 1][col]) || (original[col] == null ? '' : original[col]);
       });
       if (headers.some((header, col) => Object.prototype.hasOwnProperty.call(values, header) && String(original[col] == null ? '' : original[col]) !== String(values[header]))) updates.push({ rowNumber, row });
     }));
     // A delta still advances the entire session's revision, including unchanged coffees.
     const changedRows = new Set(updates.map(update => update.rowNumber));
     body.sessions.forEach(session => data.values.slice(1).forEach((original, index) => {
-      const rowNumber = index + 2;
+      const oldRowNumber = index + 2, rowNumber = oldRowNumber + shift;
       if (original[sessionColumn] !== session.syncId || changedRows.has(rowNumber)) return;
       const entry = JSON.parse(original[dataColumn]);
       entry.sharedRevision = session.sharedRevision;
       entry.sharedUpdatedAt = session.sharedUpdatedAt;
-      const row = headers.map((_, col) => data.formulas[rowNumber - 1]?.[col] || literal_(original[col]));
+      const row = headers.map((_, col) => data.formulas[oldRowNumber - 1]?.[col] || literal_(original[col]));
       row[dataColumn] = JSON.stringify(entry);
       updates.push({ rowNumber, row });
     }));

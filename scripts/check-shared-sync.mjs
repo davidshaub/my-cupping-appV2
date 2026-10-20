@@ -25,6 +25,7 @@ const sheet = {
  getMaxRows: () => 100,
  getDataRange: () => ({ getValues: () => rows.map(row => [...row]), getFormulas: () => rows.map((row, index) => row.map((_, col) => index && col === headers.length - 1 ? '=1+1' : '')) }),
  getRange: (r, c, n, width) => ({ createFilter: () => ({ setColumnFilterCriteria() {} }), setValues: values => { writeCount++; values.forEach((values, index) => { rows[r + index - 1] ||= []; values.forEach((value, col) => rows[r + index - 1][c + col - 1] = value); }); } }),
+ insertRowsAfter: (afterRow, count) => { rows.splice(afterRow, 0, ...Array.from({ length: count }, () => headers.map(() => ''))); },
 };
 const output = text => ({ text, setMimeType() { return this; } });
 const runtime = vm.createContext({
@@ -105,4 +106,27 @@ legacy.sharedRevision = 0;
 assert.equal(post([sessionChanges(legacy)], 'request-legacy-safe').text, 'received');
 assert.equal(JSON.parse(rows[1][dataCol]).sharedRevision, 1);
 assert.match(runtime.doGet({ parameter: { action: 'recall', code: '1', callback: 'ositoSyncTest' } }).text, /sessionNotFound/);
-console.log('Passed: stable codes, single-session recall, order, updated scores, invalid codes, delta uploads, formula preservation, receipts, and cooldown.');
+
+// A brand-new session lands right after the header, pushing older sessions down, not appended at the bottom.
+const idCol = headers.indexOf('Session ID');
+const newer = normalizeSessionIdentity({ id: 3, name: 'Newer QA', startTime: '10/10/2026', lexiconMode: 'osito', samples: initializeSamples(1) });
+assert.equal(post([sessionChanges(newer)], 'request-newer-123').text, 'received');
+assert.equal(rows.length, 4);
+assert.equal(rows[1][idCol], newer.syncId);
+assert.equal(rows[2][idCol], legacy.syncId);
+assert.equal(rows[3][idCol], legacy.syncId);
+assert.equal(rows[3][headers.length - 1], '=1+1', 'formula on a pushed-down row survives the shift');
+const newest = normalizeSessionIdentity({ id: 4, name: 'Newest QA', startTime: '10/11/2026', lexiconMode: 'osito', samples: initializeSamples(1) });
+assert.equal(post([sessionChanges(newest)], 'request-newest-123').text, 'received');
+assert.equal(rows.length, 5);
+assert.equal(rows[1][idCol], newest.syncId, 'the most recently created session is always first');
+assert.equal(rows[2][idCol], newer.syncId);
+assert.equal(rows[3][idCol], legacy.syncId);
+assert.equal(rows[4][idCol], legacy.syncId);
+// Editing an existing session updates its own rows in place; it does not jump back to the top.
+newer.sharedRevision = 1; // revision assigned by its own creation post, above
+newer.samples[0].scores.consistency = 7;
+assert.equal(post([sessionChanges(newer)], 'request-newer-edit-123').text, 'received');
+assert.equal(rows.length, 5, 'editing an existing session does not add rows');
+assert.equal(rows[2][idCol], newer.syncId, 'editing an existing session does not move its rows');
+console.log('Passed: stable codes, single-session recall, order, updated scores, invalid codes, delta uploads, formula preservation, receipts, cooldown, and newest-session-on-top ordering.');
