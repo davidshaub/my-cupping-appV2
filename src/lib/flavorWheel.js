@@ -73,21 +73,25 @@ export const wrapWheelText = (text, width, size, measure = (value, fontSize) => 
   return lines;
 };
 
-export const layoutFlavorWheel = (notes, { width = 560, language = 'en', measure } = {}) => {
+export const layoutFlavorWheel = (notes, { width = 560, language = 'en', measure, categoriesOnly = false } = {}) => {
   const profile = buildFlavorProfile(notes);
+  const entries = categoriesOnly
+    ? profile.groups.map(group => ({ ...group, key: group.category, name: group.category }))
+    : profile.descriptors;
+  const labelName = entry => categoriesOnly ? translateCategory(language, entry.category) : translateTag(language, entry.name);
   const compact = width < 430;
   const measureLabel = measure ?? ((value, size) => value.length * size * 0.65);
-  const longestWord = Math.max(1, ...profile.descriptors.flatMap(entry => translateTag(language, entry.name).split(/\s+/).map(word => measureLabel(word, 1))));
+  const longestWord = Math.max(1, ...entries.flatMap(entry => labelName(entry).split(/\s+/).map(word => measureLabel(word, 1))));
   const fontSize = compact ? Math.min(11, (width / 2 - 71) / longestWord) : 14;
   const radius = compact ? Math.min(72, Math.max(40, width / 2 - longestWord * fontSize - 31)) : 108;
   const centerX = width / 2;
   const labelX = centerX + radius + 23;
   const labelWidth = width - labelX - 5;
-  const labels = profile.descriptors.map((entry) => {
+  const labels = entries.map((entry) => {
     const angle = (entry.start + entry.end) / 2;
     const side = Math.cos(angle) >= 0 ? 1 : -1;
-    const lines = wrapWheelText(translateTag(language, entry.name), labelWidth, fontSize, measureLabel, false);
-    return { ...entry, angle, side, lines, height: lines.length * (fontSize + 2) + 15, desiredY: Math.sin(angle) * (radius + 18) };
+    const lines = wrapWheelText(labelName(entry), labelWidth, fontSize, measureLabel, false);
+    return { ...entry, angle, side, lines, height: lines.length * (fontSize + 2) + (categoriesOnly ? 0 : 15), desiredY: Math.sin(angle) * (radius + 18) };
   });
   const sides = [-1, 1].map((side) => labels.filter((label) => label.side === side).sort((a, b) => a.desiredY - b.desiredY));
   const height = Math.max(radius * 2 + 65, ...sides.map((side) => side.reduce((sum, label) => sum + label.height + 10, 20)));
