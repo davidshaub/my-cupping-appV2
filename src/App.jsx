@@ -108,6 +108,40 @@ const App = () => {
   const [lexiconMode, setLexiconMode] = useState('osito');
   const [activeSampleIndex, setActiveSampleIndex] = useState(0);
   const [samples, setSamples] = useState([]);
+  const samplesUndoStack = useRef([]);
+  const samplesUndoPrevious = useRef(samples);
+  const samplesUndoSkipNext = useRef(false);
+  const samplesUndoLastPushAt = useRef(0);
+  const [canUndoSamples, setCanUndoSamples] = useState(false);
+  useEffect(() => {
+    if (samplesUndoSkipNext.current) {
+      samplesUndoSkipNext.current = false;
+      samplesUndoPrevious.current = samples;
+      return;
+    }
+    const now = Date.now();
+    if (now - samplesUndoLastPushAt.current > 1500) {
+      samplesUndoStack.current = [...samplesUndoStack.current, samplesUndoPrevious.current].slice(-20);
+      samplesUndoLastPushAt.current = now;
+      setCanUndoSamples(true);
+    }
+    samplesUndoPrevious.current = samples;
+  }, [samples]);
+  const resetSamplesUndo = () => {
+    samplesUndoStack.current = [];
+    samplesUndoLastPushAt.current = Date.now();
+    setCanUndoSamples(false);
+  };
+  const undoSamplesChange = () => {
+    const stack = samplesUndoStack.current;
+    if (!stack.length) return;
+    const previous = stack[stack.length - 1];
+    samplesUndoStack.current = stack.slice(0, -1);
+    samplesUndoSkipNext.current = true;
+    samplesUndoLastPushAt.current = Date.now();
+    setSamples(previous);
+    setCanUndoSamples(samplesUndoStack.current.length > 0);
+  };
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [history, setHistory] = useState([]);
   const lastPersistedDraft = useRef(null);
@@ -367,6 +401,7 @@ const App = () => {
     const sessionSamples = Array.isArray(session.samples) ? session.samples : [];
     const loadedStartTime = session.startTime || new Date().toLocaleString();
     lastPersistedDraft.current = draftFingerprint(session.id ?? null, session.name || '', loadedStartTime, normalizeLexiconMode(session.lexiconMode), sessionSamples);
+    resetSamplesUndo();
     setSamples(sessionSamples);
     setNumSamples(sessionSamples.length || 1);
     setActiveSampleIndex(0);
@@ -396,6 +431,7 @@ const App = () => {
     const startedAt = new Date().toLocaleString();
     const nextSamples = initializeSamples(normalizeSampleCount(numSamples));
     setSessionStartTime(startedAt);
+    resetSamplesUndo();
     setSamples(nextSamples);
     setActiveSampleIndex(0);
     createAutosavedSession(nextSamples, startedAt);
@@ -1027,13 +1063,10 @@ const App = () => {
       selectMetadataTableCell(nextRow, nextCol, { extend, selectText });
     };
 
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+      if (!canUndoSamples) return;
       e.preventDefault();
-      setMetadataTableSelection({
-        anchor: { row: 0, col: 0 },
-        focus: { row: Math.max(samples.length - 1, 0), col: METADATA_TABLE_COLUMNS.length - 1 }
-      });
-      focusMetadataTableCell(row, col);
+      undoSamplesChange();
       return;
     }
 
@@ -1731,6 +1764,16 @@ const App = () => {
               >
                 {t(metadataTableMode ? 'standardView' : 'tableView')}
               </button>
+              {metadataTableMode && canUndoSamples && (
+                <button
+                  type="button"
+                  onClick={undoSamplesChange}
+                  className="eink-toggle eink-toggle-compact"
+                  title={t('undoTableChange')}
+                >
+                  <Icon name="rotate-ccw" size={16} /> {t('undoTableChange')}
+                </button>
+              )}
               <button
                 onClick={resetToHome}
                 type="button"
@@ -1842,12 +1885,10 @@ const App = () => {
                           />
                         </td>
                         <td {...getTableCellProps(idx, 2)}>
-                          <input
-                            {...getTableInputProps(idx, 2)}
+                          <SearchableSelect
                             value={s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : ''}
-                            onChange={(e) => updateMetadata(idx, 'processing', e.target.value)}
-                            onBlur={(e) => {
-                              const normalized = normalizeProcessingInput(e.target.value, s.processingOther);
+                            onChange={(value) => {
+                              const normalized = normalizeProcessingInput(value, s.processingOther);
                               setSamples((prev) =>
                                 prev.map((item, sIdx) =>
                                   sIdx === idx
@@ -1860,9 +1901,10 @@ const App = () => {
                                 )
                               );
                             }}
-                            placeholder={t('processingPlaceholder')}
-                            list="processing-options"
-                            aria-label={`${t('processing')} ${idx + 1}`}
+                            options={[t('washed'), t('natural'), t('honey'), t('other')]}
+                            label={`${t('processing')} ${idx + 1}`}
+                            noMatches={t('noMatchingOptions')}
+                            inputProps={{ ...getTableInputProps(idx, 2), placeholder: t('processingPlaceholder') }}
                           />
                         </td>
                         <td {...getTableCellProps(idx, 3)}>
@@ -1918,12 +1960,6 @@ const App = () => {
                   })}
                 </tbody>
               </table>
-              <datalist id="processing-options">
-                <option value={t('washed')} />
-                <option value={t('natural')} />
-                <option value={t('honey')} />
-                <option value={t('other')} />
-              </datalist>
             </div>
           ) : (
             samples.map((s, idx) => (
