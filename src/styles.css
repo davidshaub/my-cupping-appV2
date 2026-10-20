@@ -1,12 +1,12 @@
 @import 'tailwindcss';
 
 :root {
-  --os-bg: #ffffff;
-  --os-bg-soft: #f5f5f5;
-  --os-surface: #ffffff;
-  --os-line: #d4d4d4;
-  --os-ink: #000000;
-  --os-muted: #555555;
+  --os-bg: #fffefa;
+  --os-bg-soft: #f1f2ed;
+  --os-surface: #fffefa;
+  --os-line: #dedfd5;
+  --os-ink: #252b23;
+  --os-muted: #656c60;
   --os-accent: #c78547;
   --os-accent-dark: #9d6331;
   --os-accent-soft: #f4e2cf;
@@ -859,9 +859,9 @@ h3 {
 }
 
 .btn-stone-dark {
-  background: #000000 !important;
+  background: var(--os-ink) !important;
   color: #ffffff !important;
-  border: 1px solid #000000 !important;
+  border: 1px solid var(--os-ink) !important;
   border-radius: 0.75rem;
   transition: all 0.2s;
   box-shadow: 0 10px 24px rgba(31, 43, 35, 0.28);
@@ -952,9 +952,16 @@ h3 {
 .print-logo {
   display: none;
 }
+/* Keep application surfaces on the shared palette; report paper stays white. */
+@media screen {
+  .bg-white:not(.report-surface):not(.report-surface *):not(.coffee-report-modal *) {
+    background-color: var(--os-surface);
+  }
+}
+
 /* Osito-inspired palette remap over Tailwind utility classes used in this app */
 .bg-stone-50 {
-  background-color: #fafafa !important;
+  background-color: var(--os-bg-soft) !important;
 }
 
 .bg-stone-100 {
@@ -962,7 +969,7 @@ h3 {
 }
 
 .bg-stone-200 {
-  background-color: #e5e5e5 !important;
+  background-color: var(--os-line) !important;
 }
 
 .bg-stone-800,
@@ -977,7 +984,7 @@ h3 {
 .text-stone-800,
 .text-stone-700,
 .text-stone-600 {
-  color: #222222 !important;
+  color: var(--os-ink) !important;
 }
 
 .text-stone-500,
