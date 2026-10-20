@@ -75,13 +75,20 @@ export default function useGoogleSheets(history, onCodes) {
       setOnline(navigator.onLine);
       if (navigator.onLine) { retryAt.current = 0; flush(); }
     };
-    const visible = () => { if (document.visibilityState === 'visible') flush(); };
+    const visible = () => {
+      if (document.visibilityState === 'visible') flush();
+      // Closing the tab/app or switching away can cut off the usual 2s-after-typing delay.
+      // Try to get pending edits out the door the moment the page starts going away.
+      else flush();
+    };
     window.addEventListener('online', changeOnline); window.addEventListener('offline', changeOnline);
     document.addEventListener('visibilitychange', visible);
+    window.addEventListener('pagehide', flush);
     return () => {
       mounted.current = false; clearTimeout(timer.current); controller.current?.abort();
       window.removeEventListener('online', changeOnline); window.removeEventListener('offline', changeOnline);
       document.removeEventListener('visibilitychange', visible);
+      window.removeEventListener('pagehide', flush);
     };
   }, []);
 
