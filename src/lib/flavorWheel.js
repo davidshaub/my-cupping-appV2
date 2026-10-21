@@ -111,27 +111,12 @@ export const layoutFlavorWheel = (notes, { width = 560, language = 'en', measure
       label.connectorY = label.y + fontSize * 0.6;
     });
   }
+  // Category names always sit in the legend beneath the wheel, never inside a wedge — a name
+  // that happens to fit one coffee's wedge won't fit the next one's, so every wheel stays consistent.
   const groups = profile.groups.map((group, index) => {
-    const angle = (group.start + group.end) / 2;
-    const labelRadius = radius * 0.48;
     const name = translateCategory(language, group.category);
-    const size = compact ? 10 : 12;
-    const x = labelRadius * Math.cos(angle), y = labelRadius * Math.sin(angle);
-    const textWidth = (measure ?? ((value, fontSize) => value.length * fontSize * 0.65))(name, size) + 8;
-    // Test the complete label rectangle against the annular sector, not just its arc width.
-    let fits = true;
-    for (let dx = -textWidth / 2; dx <= textWidth / 2; dx += textWidth / 8) {
-      for (const dy of [-size * 0.7, size * 0.7]) {
-        const r = Math.hypot(x + dx, y + dy);
-        let a = Math.atan2(y + dy, x + dx);
-        while (a < group.start) a += Math.PI * 2;
-        if (r < radius * 0.3 || r > radius * 0.65 || a > group.end) fits = false;
-      }
-    }
-    return { ...group, index, name, lines: [name], external: !fits, fontSize: size, x: centerX + x, y: centerY + y };
+    return { ...group, index, name, lines: [name], external: true };
   });
-  // Switch the entire category layer to a legend when any label would be cramped.
-  const useCategoryKey = groups.some(group => group.external);
-  groups.forEach(group => { group.external = useCategoryKey; });
+  const useCategoryKey = groups.length > 0;
   return { ...profile, groups, labels, useCategoryKey, width, height, centerX, centerY, radius, fontSize };
 };

@@ -122,10 +122,6 @@ const drawWheel = (pdf, sample, language) => {
   const drawRing = (entry, inner, outer, color) => pdf.polygon(ringPoints(cx, cy, inner, outer, entry.start, entry.end), { fill: color, stroke: WHITE, lineWidth: 0.8 });
   wheel.groups.forEach((group) => drawRing(group, r * 0.27, r * 0.68, wheelColor(group.category)));
   wheel.descriptors.forEach((entry, i) => drawRing(entry, r * 0.68, r, wheelColor(entry.category, true, i)));
-  wheel.groups.filter(group => !group.external).forEach((group) => {
-    const angle = (group.start + group.end) / 2;
-    group.lines.forEach((line, i) => pdf.text(line, cx + Math.cos(angle) * r * 0.48, cy + Math.sin(angle) * r * 0.48 + (i - (group.lines.length - 1) / 2) * 9 + 3, { size: 9, font: 'serifBold', color: WHITE, align: 'center' }));
-  });
   const continuation = [];
   if (dense) {
     wheel.descriptors.forEach((entry, i) => {
