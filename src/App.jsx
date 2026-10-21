@@ -509,9 +509,10 @@ const App = () => {
     setIsExportingPdfs(true);
     try {
       const { buildCombinedReportPdf } = await import('./lib/pdfReport');
-      const bytes = await buildCombinedReportPdf(samples, { sessionStartTime: reportDateWithCode(sessionStartTime, activeSavedSession), language, logoSrc: HandsLogo });
+      const name = reportPdfFilename(samples, activeSessionName);
+      const bytes = await buildCombinedReportPdf(samples, { sessionStartTime: reportDateWithCode(sessionStartTime, activeSavedSession), language, logoSrc: HandsLogo, title: name.replace(/\.pdf$/, '') });
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
-      setPreparedPdf({ url, name: reportPdfFilename(samples, activeSessionName) });
+      setPreparedPdf({ url, name });
     } catch (error) {
       console.error(error);
       window.alert(t('pdfExportError'));
@@ -527,7 +528,7 @@ const App = () => {
     try {
       const { buildCombinedReportPdf } = await import('./lib/pdfReport');
       const bytes = await buildCombinedReportPdf([sample], {
-        sessionStartTime: reportDateWithCode(session.startTime || session.date || '', session), language, logoSrc: HandsLogo
+        sessionStartTime: reportDateWithCode(session.startTime || session.date || '', session), language, logoSrc: HandsLogo, title: name.replace(/\.pdf$/, '')
       });
       if (request !== historyPdfRequest.current) return;
       const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));

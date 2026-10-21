@@ -21,7 +21,8 @@ export const collaborationReportSamples = (coffees, panel) => coffees.map(item =
 });
 export async function buildCollaborationPdf({ title, coffees, panel=false }) {
   if (!coffees.length) throw new Error('Add at least one coffee before exporting.');
-  return buildCombinedReportPdf(collaborationReportSamples(coffees, panel), { sessionStartTime: title || (panel ? 'Osito Panel Report' : 'Shared Cupping Report'), language: 'en', logoSrc: HandsLogo });
+  const name = title || (panel ? 'Osito Panel Report' : 'Shared Cupping Report');
+  return buildCombinedReportPdf(collaborationReportSamples(coffees, panel), { sessionStartTime: name, language: 'en', logoSrc: HandsLogo, title: name });
 }
 export async function buildCollaborationPdfSet(options) {
   if (!options.coffees.length) throw new Error('Add at least one coffee before exporting.');

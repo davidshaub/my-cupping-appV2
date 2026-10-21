@@ -1401,6 +1401,7 @@ const loadVectorAssets = (logoSrc) => {
 
 const createVectorSampleReportPdf = async (sample, index, options, assets) => {
   const document = await PDFDocument.create();
+  if (options.title) document.setTitle(options.title);
   document.registerFontkit(fontkit);
   const fonts = {};
   for (const [name, bytes] of Object.entries(assets.fontBytes)) {
@@ -1624,9 +1625,10 @@ export const buildVectorReportPdfSet = async (samples, {
   const usedNames = new Map();
   const files = [];
   for (let index = 0; index < samples.length; index += 1) {
+    const name = uniquePdfFilename(samples[index], index, usedNames);
     files.push({
-      name: uniquePdfFilename(samples[index], index, usedNames),
-      data: await createVectorSampleReportPdf(samples[index], index, { sessionStartTime, language }, assets)
+      name,
+      data: await createVectorSampleReportPdf(samples[index], index, { sessionStartTime, language, title: name.replace(/\.pdf$/, '') }, assets)
     });
   }
   return {
@@ -1655,6 +1657,7 @@ export const buildCombinedReportPdf = async (samples, options = {}) => {
   // Paint into one document: fonts and logo embed once for the entire report.
   const assets = await loadVectorAssets(options.logoSrc || null);
   const document = await PDFDocument.create();
+  if (options.title) document.setTitle(options.title);
   document.registerFontkit(fontkit);
   const fonts = Object.fromEntries(await Promise.all(Object.entries(assets.fontBytes).filter(([name]) => ['regular','bold','black','serifBold'].includes(name)).map(async ([name, bytes]) => [name, await document.embedFont(bytes, { subset: true })])));
   const images = {};
