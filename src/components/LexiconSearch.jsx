@@ -168,7 +168,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
             {isFocused && (isBrowsing || searchTerm.trim().length > 0) && (
               <div id={panelId} className="lexicon-suggestion-panel absolute z-50 left-0 right-0 top-full mt-2 bg-white border-2 border-stone-200 rounded-lg shadow-2xl overflow-hidden max-h-60 overflow-y-auto p-1">
                 {isBrowsing && <div className="lexicon-category-header">
-                  {selectedCategory ? <button ref={backRef} type="button" onClick={() => { setSelectedCategory(null); setHighlightIndex(0); browseRef.current?.focus(); }} aria-label={t('backToCategories')} title={t('backToCategories')}><Icon name="chevron-left" size={18} />{t('categories')}</button> : <span>{t('categories')}</span>}
+                  {selectedCategory ? <button ref={backRef} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setSelectedCategory(null); setHighlightIndex(0); browseRef.current?.focus(); }} aria-label={t('backToCategories')} title={t('backToCategories')}><Icon name="chevron-left" size={18} />{t('categories')}</button> : <span>{t('categories')}</span>}
                   {selectedCategory && <span>{translateCategory(language, selectedCategory)}</span>}
                 </div>}
                 {isBrowsing && !selectedCategory ? (
