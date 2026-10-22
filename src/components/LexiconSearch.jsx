@@ -161,6 +161,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
               )}
               <button ref={browseRef} type="button" className="lexicon-browse-toggle" aria-label={t(isBrowsing ? 'closeCategories' : 'browseCategories')} title={t(isBrowsing ? 'closeCategories' : 'browseCategories')}
                 aria-expanded={isFocused && isBrowsing} aria-controls={panelId}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => { setIsBrowsing(!isBrowsing); setSelectedCategory(null); setIsFocused(!isBrowsing); }}>
                 <Icon name={isBrowsing ? 'x' : 'plus'} size={18} />
               </button>
@@ -174,7 +175,7 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                 {isBrowsing && !selectedCategory ? (
                   <div className="flex flex-wrap gap-2 p-3">
                     {categories.map((cat) => (
-                      <button key={cat} type="button" onClick={() => { setSelectedCategory(cat); }} className="px-3 py-2 rounded-lg bg-stone-100 text-stone-700 text-xs font-bold">
+                      <button key={cat} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setSelectedCategory(cat); }} className="px-3 py-2 rounded-lg bg-stone-100 text-stone-700 text-xs font-bold">
                         {translateCategory(language, cat)}
                       </button>
                     ))}
