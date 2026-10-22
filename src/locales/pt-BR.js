@@ -66,7 +66,7 @@ export const UI_PT = {
   savedSessions: 'Sessões Salvas', searchSavedSessions: 'Buscar sessões, IDs ou nomes de lotes...',
   clearSearch: 'Limpar busca', samples: 'Amostras', noSessions: 'Nenhuma sessão salva neste dispositivo.',
   noMatchingSessions: 'Nenhuma sessão salva corresponde à busca.', lotInformation: 'Informações dos Lotes',
-  standardView: 'Visualização Padrão', tableView: 'Editar em Tabela', undoTableChange: 'Desfazer', sortAscending: 'Ordenar crescente',
+  standardView: 'Visualização Padrão', tableView: 'Editar em Tabela', undoTableChange: 'Desfazer', fillHandle: 'Arraste para preencher uma sequência', sortAscending: 'Ordenar crescente',
   sortDescending: 'Ordenar decrescente', reorder: 'Reordenar', reorderLot: 'Arraste para reordenar o lote',
   noMatchingOptions: 'Nenhuma opção correspondente', country: 'País', sampleType: 'Tipo de Amostra', roastId: 'ID de Torra', ositoId: 'ID Osito', lotName: 'Nome do Lote', processing: 'Processamento', waterActivity: 'Atividade de Água',
   moisture: 'Umidade', processingDetails: 'Detalhes do Processamento', lotData: 'Dados do Lote',

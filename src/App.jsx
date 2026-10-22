@@ -74,6 +74,36 @@ const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivi
 const draftFingerprint = (id, name, startTime, lexiconMode, samples) => sessionFingerprint({ syncId: id, name, startTime, lexiconMode, samples });
 const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
 
+// Columns that support click-and-drag fill. Osito ID uses the "<number>.<2-digit contract year>"
+// convention, so the year suffix is matched exactly and never incremented; Roast ID just increments
+// whatever trailing run of digits it finds (works for plain numbers or things like "R-004").
+const FILL_SEQUENCE_FIELDS = new Set(['ositoId', 'roastId']);
+const parseFillToken = (value, field) => {
+  const raw = String(value ?? '').trim();
+  if (field === 'ositoId') {
+    const match = /^(\d+)(\.\d{2})$/.exec(raw);
+    if (!match) return null;
+    return { prefix: '', pad: match[1].length, number: parseInt(match[1], 10), suffix: match[2] };
+  }
+  const match = /^(.*?)(\d+)$/.exec(raw);
+  if (!match) return null;
+  return { prefix: match[1], pad: match[2].length, number: parseInt(match[2], 10), suffix: '' };
+};
+const formatFillToken = (token, number) => `${token.prefix}${String(Math.max(0, number)).padStart(token.pad, '0')}${token.suffix}`;
+// Always a constant step (never a "fancy" pattern). One seed cell repeats; two or more establish the
+// step, as long as they share the same prefix/suffix and a single, consistent difference between them.
+const buildFillSequence = (seedValues, field, count) => {
+  const fallback = () => Array.from({ length: count }, () => seedValues.at(-1) ?? '');
+  const tokens = seedValues.map((value) => parseFillToken(value, field));
+  if (tokens.length < 2 || tokens.some((token) => !token)) return fallback();
+  const [first, ...rest] = tokens;
+  if (rest.some((token) => token.prefix !== first.prefix || token.suffix !== first.suffix)) return fallback();
+  const step = tokens[1].number - tokens[0].number;
+  for (let i = 2; i < tokens.length; i += 1) if (tokens[i].number - tokens[i - 1].number !== step) return fallback();
+  const last = tokens.at(-1);
+  return Array.from({ length: count }, (_, i) => formatFillToken(last, last.number + step * (i + 1)));
+};
+
 const parseClipboardRows = (text) => {
   const normalized = String(text ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n$/, '');
   if (!normalized) return [];
@@ -142,6 +172,11 @@ const App = () => {
     setSamples(previous);
     setCanUndoSamples(samplesUndoStack.current.length > 0);
   };
+  // Table view: a cell is either merely selected (arrow keys/click just move the selection) or
+  // actively being edited (double-click, Enter, F2, or typing a character). Only one cell edits at a time.
+  const [editingCell, setEditingCell] = useState(null);
+  const fillDragRef = useRef(null);
+  const [fillPreviewRow, setFillPreviewRow] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [history, setHistory] = useState([]);
   const lastPersistedDraft = useRef(null);
@@ -218,6 +253,23 @@ const App = () => {
   useEffect(() => {
     const stopTableSelection = () => {
       metadataTableSelectingRef.current = false;
+      const drag = fillDragRef.current;
+      fillDragRef.current = null;
+      setFillPreviewRow(null);
+      if (!drag || drag.endRow <= drag.seedEndRow) return;
+      const { col, seedStartRow, seedEndRow, endRow } = drag;
+      const field = METADATA_TABLE_COLUMNS[col];
+      setSamples((prev) => {
+        const seedValues = prev.slice(seedStartRow, seedEndRow + 1).map((item) => item[field] || '');
+        const count = endRow - seedEndRow;
+        const filled = buildFillSequence(seedValues, field, count);
+        return prev.map((item, idx) => {
+          const offset = idx - (seedEndRow + 1);
+          if (offset < 0 || offset >= count) return item;
+          return applyMetadataTableValueToSample(item, field, filled[offset]);
+        });
+      });
+      setMetadataTableSelection({ anchor: { row: seedStartRow, col }, focus: { row: endRow, col } });
     };
 
     window.addEventListener('pointerup', stopTableSelection);
@@ -402,6 +454,7 @@ const App = () => {
     const loadedStartTime = session.startTime || new Date().toLocaleString();
     lastPersistedDraft.current = draftFingerprint(session.id ?? null, session.name || '', loadedStartTime, normalizeLexiconMode(session.lexiconMode), sessionSamples);
     resetSamplesUndo();
+    setEditingCell(null);
     setSamples(sessionSamples);
     setNumSamples(sessionSamples.length || 1);
     setActiveSampleIndex(0);
@@ -432,6 +485,7 @@ const App = () => {
     const nextSamples = initializeSamples(normalizeSampleCount(numSamples));
     setSessionStartTime(startedAt);
     resetSamplesUndo();
+    setEditingCell(null);
     setSamples(nextSamples);
     setActiveSampleIndex(0);
     createAutosavedSession(nextSamples, startedAt);
@@ -669,6 +723,28 @@ const App = () => {
       focus: nextCell
     }));
     if (focus) focusMetadataTableCell(nextCell.row, nextCell.col, { selectText });
+  };
+
+  const isEditingCell = (row, col) => editingCell?.row === row && editingCell?.col === col;
+
+  // Single place every live keystroke in the table goes through, whether typed normally or seeded
+  // by beginEditingCell below, so both paths stay identical (e.g. processing's name normalization).
+  const handleTableFieldChange = (idx, field, value) => {
+    if (field === 'processing') {
+      setSamples((prev) => prev.map((item, i) => {
+        if (i !== idx) return item;
+        const normalized = normalizeProcessingInput(value, item.processingOther);
+        return { ...item, processing: normalized.processing, processingOther: normalized.processingOther };
+      }));
+    } else {
+      updateMetadata(idx, field, value);
+    }
+  };
+
+  const beginEditingCell = (row, col, { seedValue } = {}) => {
+    if (seedValue !== undefined) handleTableFieldChange(row, METADATA_TABLE_COLUMNS[col], seedValue);
+    setEditingCell({ row, col });
+    focusMetadataTableCell(row, col, { selectText: true });
   };
 
   const applyMetadataTableValueToSample = (sample, field, value) => {
@@ -1058,15 +1134,20 @@ const App = () => {
     return true;
   };
 
+  // A cell only edits when you double-click, press Enter/F2, or start typing on it — plain
+  // click/arrow navigation just selects, like a real spreadsheet. See isEditingCell/beginEditingCell.
   const handleMetadataTableKeyDown = (row, col, e) => {
-    const moveTo = (nextRow, nextCol, { extend = e.shiftKey, selectText = false } = {}) => {
+    const editing = isEditingCell(row, col);
+    const moveTo = (nextRow, nextCol, { extend = e.shiftKey } = {}) => {
       e.preventDefault();
-      selectMetadataTableCell(nextRow, nextCol, { extend, selectText });
+      setEditingCell(null);
+      selectMetadataTableCell(nextRow, nextCol, { extend });
     };
 
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
       if (!canUndoSamples) return;
       e.preventDefault();
+      setEditingCell(null);
       undoSamplesChange();
       return;
     }
@@ -1081,55 +1162,82 @@ const App = () => {
         nextCol = 0;
         nextRow += 1;
       }
-      moveTo(nextRow, nextCol, { extend: false, selectText: true });
+      moveTo(nextRow, nextCol, { extend: false });
       return;
     }
 
     if (e.key === 'Enter') {
-      moveTo(row + (e.shiftKey ? -1 : 1), col, { extend: false, selectText: true });
+      e.preventDefault();
+      if (editing) { setEditingCell(null); selectMetadataTableCell(row + (e.shiftKey ? -1 : 1), col, { extend: false }); }
+      else beginEditingCell(row, col);
+      return;
+    }
+
+    if (e.key === 'F2') {
+      if (!editing) { e.preventDefault(); beginEditingCell(row, col); }
       return;
     }
 
     if (e.key === 'Escape') {
-      moveTo(row, col, { extend: false });
+      e.preventDefault();
+      if (editing) setEditingCell(null);
+      focusMetadataTableCell(row, col);
       return;
     }
 
-    if ((e.key === 'Backspace' || e.key === 'Delete') && getMetadataTableSelectionRange()) {
-      const range = getMetadataTableSelectionRange();
-      if (range.endRow > range.startRow || range.endCol > range.startCol) {
-        e.preventDefault();
-        clearMetadataTableRange(range);
-        return;
-      }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      const range = getMetadataTableSelectionRange() || { startRow: row, endRow: row, startCol: col, endCol: col };
+      const singleCell = range.startRow === range.endRow && range.startCol === range.endCol;
+      if (editing && singleCell) return; // let native text deletion happen inside the field
+      e.preventDefault();
+      setEditingCell(null);
+      clearMetadataTableRange(range);
+      return;
     }
 
-    if (e.key === 'ArrowUp') {
-      moveTo(row - 1, col);
-    } else if (e.key === 'ArrowDown') {
-      moveTo(row + 1, col);
-    } else if (e.key === 'ArrowLeft' && shouldMoveHorizontally(e)) {
-      moveTo(row, col - 1);
-    } else if (e.key === 'ArrowRight' && shouldMoveHorizontally(e)) {
-      moveTo(row, col + 1);
-    } else if (e.key === 'Home' && (e.metaKey || e.ctrlKey)) {
-      moveTo(0, 0);
-    } else if (e.key === 'End' && (e.metaKey || e.ctrlKey)) {
-      moveTo(samples.length - 1, METADATA_TABLE_COLUMNS.length - 1);
-    } else if (e.key === 'Home') {
-      moveTo(row, 0);
-    } else if (e.key === 'End') {
-      moveTo(row, METADATA_TABLE_COLUMNS.length - 1);
+    if (!editing) {
+      if (e.key === 'ArrowUp') { moveTo(row - 1, col); return; }
+      if (e.key === 'ArrowDown') { moveTo(row + 1, col); return; }
+      if (e.key === 'ArrowLeft') { moveTo(row, col - 1); return; }
+      if (e.key === 'ArrowRight') { moveTo(row, col + 1); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Home') { moveTo(0, 0); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'End') { moveTo(samples.length - 1, METADATA_TABLE_COLUMNS.length - 1); return; }
+      if (e.key === 'Home') { moveTo(row, 0); return; }
+      if (e.key === 'End') { moveTo(row, METADATA_TABLE_COLUMNS.length - 1); return; }
+      // Typing over a selected (not-yet-editing) cell replaces its content and starts editing,
+      // same as any spreadsheet — only reserved/modified keys are excluded.
+      if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        beginEditingCell(row, col, { seedValue: e.key });
+      }
+      return;
     }
+
+    // Editing: left/right move the text cursor until it hits the edge of the field (see
+    // shouldMoveHorizontally), then move cells. Up/down have no meaning in a single-line field,
+    // so they always commit the edit and move row, matching spreadsheet convention.
+    if (e.key === 'ArrowUp') { moveTo(row - 1, col); return; }
+    if (e.key === 'ArrowDown') { moveTo(row + 1, col); return; }
+    if (e.key === 'ArrowLeft' && shouldMoveHorizontally(e)) { moveTo(row, col - 1); return; }
+    if (e.key === 'ArrowRight' && shouldMoveHorizontally(e)) { moveTo(row, col + 1); return; }
   };
 
   const handleMetadataTablePointerDown = (row, col, e) => {
     if (e.button !== 0) return;
     metadataTableSelectingRef.current = true;
+    if (!isEditingCell(row, col)) setEditingCell(null);
     selectMetadataTableCell(row, col, { extend: e.shiftKey, focus: false });
   };
 
   const handleMetadataTablePointerEnter = (row, col) => {
+    if (fillDragRef.current) {
+      const drag = fillDragRef.current;
+      if (drag.col === col && row >= drag.seedEndRow && row !== drag.endRow) {
+        fillDragRef.current = { ...drag, endRow: row };
+        setFillPreviewRow(row);
+      }
+      return;
+    }
     if (!metadataTableSelectingRef.current) return;
     selectMetadataTableCell(row, col, { extend: true, focus: false });
   };
@@ -1723,11 +1831,15 @@ const App = () => {
       processingOther: '230px',
       country: '160px', sampleType: '160px', roastId: '160px'
     };
-    const getTableCellClass = (row, col, extra = '') =>
-      `metadata-grid-cell ${isMetadataTableCellSelected(row, col) ? 'is-selected' : ''} ${
+    const selectionRange = getMetadataTableSelectionRange();
+    const getTableCellClass = (row, col, extra = '') => {
+      const drag = fillDragRef.current;
+      const isFillPreview = drag && drag.col === col && row > drag.seedEndRow && row <= (fillPreviewRow ?? drag.endRow);
+      return `metadata-grid-cell ${isMetadataTableCellSelected(row, col) ? 'is-selected' : ''} ${
         isMetadataTableCellActive(row, col) ? 'is-active' : ''
-      } ${extra}`;
-    const getTableInputProps = (row, col) => ({
+      } ${isFillPreview ? 'is-fill-preview' : ''} ${extra}`;
+    };
+    const getTableCommonProps = (row, col) => ({
       'data-metadata-cell': `${row}-${col}`,
       'data-table-row': row,
       'data-table-col': col,
@@ -1737,9 +1849,9 @@ const App = () => {
       onKeyDown: (e) => handleMetadataTableKeyDown(row, col, e),
       onPaste: (e) => handleTablePaste(row, col, tableColumns, e),
       onCopy: handleMetadataTableCopy,
-      onCut: handleMetadataTableCut,
-      className: 'metadata-grid-input'
+      onCut: handleMetadataTableCut
     });
+    const getTableInputProps = (row, col) => ({ ...getTableCommonProps(row, col), className: 'metadata-grid-input' });
     const getTableCellProps = (row, col, extra = '') => ({
       className: getTableCellClass(row, col, extra),
       onPointerDown: (e) => handleMetadataTablePointerDown(row, col, e),
@@ -1748,6 +1860,40 @@ const App = () => {
     });
     const getSortButtonClass = (column, direction) =>
       `metadata-sort-button ${metadataTableSort?.field === column && metadataTableSort?.direction === direction ? 'is-active' : ''}`;
+    // Click-and-drag fill: only on Osito ID / Roast ID, only from the bottom of a single-column
+    // selection, and only while not already dragging (so the handle doesn't jump mid-drag).
+    const showFillHandle = (row, col) =>
+      !fillDragRef.current &&
+      FILL_SEQUENCE_FIELDS.has(METADATA_TABLE_COLUMNS[col]) &&
+      selectionRange && selectionRange.startCol === col && selectionRange.endCol === col && selectionRange.endRow === row;
+    const renderFillHandle = (row, col) => {
+      if (!showFillHandle(row, col)) return null;
+      return (
+        <div
+          className="metadata-fill-handle"
+          title={t('fillHandle')}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            fillDragRef.current = { col, seedStartRow: selectionRange.startRow, seedEndRow: selectionRange.endRow, endRow: selectionRange.endRow };
+            setFillPreviewRow(selectionRange.endRow);
+          }}
+        />
+      );
+    };
+    const renderStaticCell = (row, col, field, { placeholder = '' } = {}) => {
+      const display = getMetadataTableDisplayValue(samples[row], field);
+      return (
+        <div
+          {...getTableCommonProps(row, col)}
+          tabIndex={-1}
+          className="metadata-grid-display"
+          onDoubleClick={() => beginEditingCell(row, col)}
+        >
+          {display || <span className="metadata-grid-placeholder">{placeholder}</span>}
+        </div>
+      );
+    };
 
     return (
       <div className="min-h-screen bg-stone-100 p-4 md:p-12">
@@ -1866,96 +2012,104 @@ const App = () => {
                         </td>
                         <th scope="row" className="metadata-row-number text-center">{idx + 1}</th>
                         <td {...getTableCellProps(idx, 0, 'lot-id-cell')}>
-                          <input
-                            {...getTableInputProps(idx, 0)}
-                            value={s.ositoId || ''}
-                            onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
-                            onBlur={lotLookup.commit}
-                            placeholder="OS-ID..."
-                            aria-label={`${t('ositoId')} ${idx + 1}`}
-                          />
+                          {isEditingCell(idx, 0) ? (
+                            <input
+                              {...getTableInputProps(idx, 0)}
+                              value={s.ositoId || ''}
+                              onChange={(e) => handleTableFieldChange(idx, 'ositoId', e.target.value)}
+                              onBlur={lotLookup.commit}
+                              placeholder="OS-ID..."
+                              aria-label={`${t('ositoId')} ${idx + 1}`}
+                            />
+                          ) : renderStaticCell(idx, 0, 'ositoId', { placeholder: 'OS-ID...' })}
                           <LotLookupStatus sample={s} lookup={lotLookup} language={language} compact />
+                          {renderFillHandle(idx, 0)}
                         </td>
                         <td {...getTableCellProps(idx, 1)}>
-                          <input
-                            {...getTableInputProps(idx, 1)}
-                            value={s.lotName || ''}
-                            onChange={(e) => updateMetadata(idx, 'lotName', e.target.value)}
-                            placeholder={`${t('lotName')}...`}
-                            aria-label={`${t('lotName')} ${idx + 1}`}
-                          />
+                          {isEditingCell(idx, 1) ? (
+                            <input
+                              {...getTableInputProps(idx, 1)}
+                              value={s.lotName || ''}
+                              onChange={(e) => handleTableFieldChange(idx, 'lotName', e.target.value)}
+                              placeholder={`${t('lotName')}...`}
+                              aria-label={`${t('lotName')} ${idx + 1}`}
+                            />
+                          ) : renderStaticCell(idx, 1, 'lotName', { placeholder: `${t('lotName')}...` })}
                         </td>
                         <td {...getTableCellProps(idx, 2)}>
-                          <SearchableSelect
-                            value={s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : ''}
-                            onChange={(value) => {
-                              const normalized = normalizeProcessingInput(value, s.processingOther);
-                              setSamples((prev) =>
-                                prev.map((item, sIdx) =>
-                                  sIdx === idx
-                                    ? {
-                                        ...item,
-                                        processing: normalized.processing,
-                                        processingOther: normalized.processingOther
-                                      }
-                                    : item
-                                )
-                              );
-                            }}
-                            options={[t('washed'), t('natural'), t('honey'), t('other')]}
-                            label={`${t('processing')} ${idx + 1}`}
-                            noMatches={t('noMatchingOptions')}
-                            inputProps={{ ...getTableInputProps(idx, 2), placeholder: t('processingPlaceholder') }}
-                          />
+                          {isEditingCell(idx, 2) ? (
+                            <SearchableSelect
+                              value={s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : ''}
+                              onChange={(value) => handleTableFieldChange(idx, 'processing', value)}
+                              options={[t('washed'), t('natural'), t('honey'), t('other')]}
+                              label={`${t('processing')} ${idx + 1}`}
+                              noMatches={t('noMatchingOptions')}
+                              inputProps={{ ...getTableInputProps(idx, 2), placeholder: t('processingPlaceholder') }}
+                            />
+                          ) : renderStaticCell(idx, 2, 'processing', { placeholder: t('processingPlaceholder') })}
                         </td>
                         <td {...getTableCellProps(idx, 3)}>
-                          <input
-                            {...getTableInputProps(idx, 3)}
-                            value={s.waterActivity || ''}
-                            onChange={(e) => updateMetadata(idx, 'waterActivity', e.target.value)}
-                            onBlur={(e) => updateMetadata(idx, 'waterActivity', formatWaterActivity(e.target.value))}
-                            placeholder="0.00"
-                            inputMode="decimal"
-                            type="text"
-                            className="metadata-grid-input tabular-nums"
-                            aria-label={`${t('waterActivity')} ${idx + 1}`}
-                          />
+                          {isEditingCell(idx, 3) ? (
+                            <input
+                              {...getTableInputProps(idx, 3)}
+                              value={s.waterActivity || ''}
+                              onChange={(e) => handleTableFieldChange(idx, 'waterActivity', e.target.value)}
+                              onBlur={(e) => handleTableFieldChange(idx, 'waterActivity', formatWaterActivity(e.target.value))}
+                              placeholder="0.00"
+                              inputMode="decimal"
+                              type="text"
+                              className="metadata-grid-input tabular-nums"
+                              aria-label={`${t('waterActivity')} ${idx + 1}`}
+                            />
+                          ) : renderStaticCell(idx, 3, 'waterActivity', { placeholder: '0.00' })}
                         </td>
                         <td {...getTableCellProps(idx, 4, 'metadata-grid-cell-with-affix')}>
-                          <input
-                            {...getTableInputProps(idx, 4)}
-                            value={s.moisture || ''}
-                            onChange={(e) => updateMetadata(idx, 'moisture', e.target.value)}
-                            onBlur={(e) => updateMetadata(idx, 'moisture', formatMoisture(e.target.value))}
-                            placeholder="0.0"
-                            inputMode="decimal"
-                            type="text"
-                            className="metadata-grid-input tabular-nums"
-                            aria-label={`${t('moisture')} ${idx + 1}`}
-                          />
+                          {isEditingCell(idx, 4) ? (
+                            <input
+                              {...getTableInputProps(idx, 4)}
+                              value={s.moisture || ''}
+                              onChange={(e) => handleTableFieldChange(idx, 'moisture', e.target.value)}
+                              onBlur={(e) => handleTableFieldChange(idx, 'moisture', formatMoisture(e.target.value))}
+                              placeholder="0.0"
+                              inputMode="decimal"
+                              type="text"
+                              className="metadata-grid-input tabular-nums"
+                              aria-label={`${t('moisture')} ${idx + 1}`}
+                            />
+                          ) : renderStaticCell(idx, 4, 'moisture', { placeholder: '0.0' })}
                           <span className="metadata-grid-affix">%</span>
                         </td>
                         <td {...getTableCellProps(idx, 5)}>
-                          <input
-                            {...getTableInputProps(idx, 5)}
-                            value={s.processingOther || ''}
-                            onChange={(e) => updateMetadata(idx, 'processingOther', e.target.value)}
-                            placeholder={s.processing === 'Other' ? t('processingDetailsPlaceholder') : '-'}
-                            aria-label={`${t('processingDetails')} ${idx + 1}`}
-                          />
+                          {isEditingCell(idx, 5) ? (
+                            <input
+                              {...getTableInputProps(idx, 5)}
+                              value={s.processingOther || ''}
+                              onChange={(e) => handleTableFieldChange(idx, 'processingOther', e.target.value)}
+                              placeholder={s.processing === 'Other' ? t('processingDetailsPlaceholder') : '-'}
+                              aria-label={`${t('processingDetails')} ${idx + 1}`}
+                            />
+                          ) : renderStaticCell(idx, 5, 'processingOther', { placeholder: s.processing === 'Other' ? t('processingDetailsPlaceholder') : '-' })}
                         </td>
-                        {['country', 'sampleType', 'roastId'].map((field, offset) => (
-                          <td key={field} {...getTableCellProps(idx, 6 + offset)}>
-                            {field === 'roastId' ? <input {...getTableInputProps(idx, 6 + offset)}
-                              value={s[field] || ''} onChange={(e) => updateMetadata(idx, field, e.target.value)}
-                              placeholder={`${t(field)}...`} aria-label={`${t(field)} ${idx + 1}`} /> :
-                              <SearchableSelect value={s[field]} onChange={(value) => updateMetadata(idx, field, value)}
-                                options={field === 'country' ? COUNTRY_OPTIONS : SAMPLE_TYPE_OPTIONS}
-                                label={`${t(field)} ${idx + 1}`} noMatches={t('noMatchingOptions')}
-                                inputProps={{ ...getTableInputProps(idx, 6 + offset), placeholder: `${t(field)}...` }} />}
-
-                          </td>
-                        ))}
+                        {['country', 'sampleType', 'roastId'].map((field, offset) => {
+                          const col = 6 + offset;
+                          return (
+                            <td key={field} {...getTableCellProps(idx, col)}>
+                              {isEditingCell(idx, col) ? (
+                                field === 'roastId' ? (
+                                  <input {...getTableInputProps(idx, col)}
+                                    value={s[field] || ''} onChange={(e) => handleTableFieldChange(idx, field, e.target.value)}
+                                    placeholder={`${t(field)}...`} aria-label={`${t(field)} ${idx + 1}`} />
+                                ) : (
+                                  <SearchableSelect value={s[field]} onChange={(value) => handleTableFieldChange(idx, field, value)}
+                                    options={field === 'country' ? COUNTRY_OPTIONS : SAMPLE_TYPE_OPTIONS}
+                                    label={`${t(field)} ${idx + 1}`} noMatches={t('noMatchingOptions')}
+                                    inputProps={{ ...getTableInputProps(idx, col), placeholder: `${t(field)}...` }} />
+                                )
+                              ) : renderStaticCell(idx, col, field, { placeholder: `${t(field)}...` })}
+                              {field === 'roastId' && renderFillHandle(idx, col)}
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })}
