@@ -16,6 +16,8 @@ export const UI_PT = {
     googleOfflinePreparing: 'Abra o aplicativo publicado online uma vez para preparar o uso sem conexão.',
     storageFull: 'O armazenamento do dispositivo está cheio — alterações recentes podem não ter sido salvas. Libere espaço ou exporte um backup.',
     closeAlert: 'Dispensar',
+    archivedSessionHint: 'Detalhes completos salvos on-line — serão baixados ao abrir.',
+    archivedSessionOffline: 'Os detalhes completos desta sessão estão on-line e não puderam ser baixados. Conecte-se à internet e tente novamente.',
     googleConnect: "Conectar Google Sheets",
     googleDisconnect: "Desconectar",
     googleSyncNow: "Sincronizar / Recuperar Sessões",

@@ -21,7 +21,7 @@ export default function useGoogleSheets(history, onCodes) {
   }
   latest.current = history;
   const saveAcknowledged = () => localStorage.setItem(ACK_KEY, JSON.stringify(acknowledged.current));
-  const dirty = () => latest.current.filter(entry => !paused.current.has('*') && !paused.current.has(entry.syncId) && !blocked.current.has(entry.syncId) && entry.samples.length && sessionSyncState(entry, acknowledged.current[entry.syncId]) === 'dirty');
+  const dirty = () => latest.current.filter(entry => !entry.trimmed && !paused.current.has('*') && !paused.current.has(entry.syncId) && !blocked.current.has(entry.syncId) && entry.samples.length && sessionSyncState(entry, acknowledged.current[entry.syncId]) === 'dirty');
 
   const flush = async () => {
     if (busy.current || !SYNC_API_URL || !navigator.onLine || !mounted.current) return;
@@ -121,9 +121,9 @@ export default function useGoogleSheets(history, onCodes) {
     }
   };
   const warnings = { ...conflicts };
-  for (const entry of history) if (entry.sessionCode && sessionSyncState(entry, acknowledged.current[entry.syncId]) === 'unknown') warnings[entry.syncId] = 'sharedBaselineMissing';
+  for (const entry of history) if (!entry.trimmed && entry.sessionCode && sessionSyncState(entry, acknowledged.current[entry.syncId]) === 'unknown') warnings[entry.syncId] = 'sharedBaselineMissing';
   return { conflicts: warnings, acceptRemote, checkRemote, release: id => paused.current.delete(id), holdRecall: () => {
     if (busy.current) throw new Error('updateBusy');
     paused.current.add('*');
-  } };
+  }, isSynced: session => sessionSyncState(session, acknowledged.current[session.syncId]) === 'current' };
 }

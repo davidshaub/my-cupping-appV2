@@ -221,6 +221,7 @@ const App = () => {
     name: csvFilename(activeSessionName)
   });
   const [historyPreview, setHistoryPreview] = useState(null);
+  const [rehydratingId, setRehydratingId] = useState(null);
   const historyPdfRequest = useRef(0);
   const closePreparedPdf = () => {
     historyPdfRequest.current += 1;
@@ -390,6 +391,82 @@ const App = () => {
     saveHistoryStorage(updated);
     return updated;
   }));
+
+  // A trimmed entry keeps only what Saved Sessions search/display needs (name/date/code/count plus each
+  // sample's ositoId+lotName+syncId); scores/notes/tags are dropped. Reopening it fetches the full data
+  // back from the sheet via its session code — the same recall path as the manual code-entry flow.
+  const trimSessionEntry = (entry) => ({
+    ...entry,
+    trimmed: true,
+    samples: entry.samples.map(sample => ({ syncId: sample.syncId, ositoId: sample.ositoId, lotName: sample.lotName }))
+  });
+
+  // Trimming only kicks in once local storage is actually getting tight, not on a fixed age — most
+  // devices will never hit this. When it does, the oldest already-synced sessions (beyond the most
+  // recent TRIM_KEEP_RECENT) get trimmed first, stopping as soon as usage is back under the target.
+  const TRIM_KEEP_RECENT = 10;
+  const TRIM_TRIGGER_BYTES = 4 * 1024 * 1024;
+  const TRIM_TARGET_BYTES = 3 * 1024 * 1024;
+  const runStorageTrim = (currentHistory) => {
+    const startSize = JSON.stringify(currentHistory).length;
+    if (startSize < TRIM_TRIGGER_BYTES) return currentHistory;
+
+    const candidates = currentHistory
+      .map((entry, idx) => ({ entry, idx }))
+      .slice(TRIM_KEEP_RECENT)
+      .filter(({ entry }) => !entry.trimmed && entry.id !== activeSavedSessionId && sharedSync.isSynced(entry))
+      .reverse();
+    if (!candidates.length) return currentHistory;
+
+    const next = [...currentHistory];
+    let size = startSize;
+    for (const { entry, idx } of candidates) {
+      if (size < TRIM_TARGET_BYTES) break;
+      const trimmedEntry = trimSessionEntry(entry);
+      size -= JSON.stringify(entry).length - JSON.stringify(trimmedEntry).length;
+      next[idx] = trimmedEntry;
+    }
+    return next;
+  };
+
+  const trimCheckTimer = useRef(null);
+  useEffect(() => {
+    clearTimeout(trimCheckTimer.current);
+    trimCheckTimer.current = setTimeout(() => {
+      setHistory(current => {
+        const next = runStorageTrim(current);
+        if (next === current) return current;
+        saveHistoryStorage(next);
+        return next;
+      });
+    }, 3000);
+    return () => clearTimeout(trimCheckTimer.current);
+  }, [history]);
+
+  // Reopening a trimmed entry (click in Saved Sessions, or Share cupping) needs its full data back first.
+  const rehydrateSession = async (entry) => {
+    if (!entry.trimmed) return entry;
+    if (!entry.sessionCode) throw new Error('sharedUnavailable');
+    const result = await readScriptResponse({ action: 'recall', code: entry.sessionCode });
+    if (result.protocol !== 2) throw new Error('sharedUpgrade');
+    const remote = validateRecalledSession(result.session, entry.sessionCode);
+    const hydrated = { ...entry, ...remote, id: entry.id, trimmed: false };
+    persistHistory(history.map(item => (item.id === entry.id ? hydrated : item)));
+    sharedSync.acceptRemote(hydrated);
+    return hydrated;
+  };
+
+  const withRehydrated = async (item, onReady) => {
+    if (rehydratingId) return;
+    if (item.trimmed) setRehydratingId(item.id);
+    try {
+      onReady(await rehydrateSession(item));
+    } catch {
+      window.dispatchEvent(new CustomEvent('osito-toast', { detail: { kind: 'warning', key: 'archivedSessionOffline', autoDismiss: false } }));
+    } finally {
+      setRehydratingId(null);
+    }
+  };
 
   const createAutosavedSession = (sourceSamples, startTime) => {
     const autosaveName = startTime || new Date().toLocaleString();
@@ -1808,21 +1885,25 @@ const App = () => {
             {filteredHistory.length > 0 ? (
               filteredHistory.map((item) => {
                 const coffeeMatches = getSessionCoffeeMatches(item, historySearchTerm);
+                const isRehydrating = rehydratingId === item.id;
                 return (
                   <div
                     key={item.id}
-                    onClick={() => loadSession(item)}
-                    className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow relative group"
+                    onClick={() => withRehydrated(item, loadSession)}
+                    className={`bg-white p-6 rounded-3xl border border-stone-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow relative group ${isRehydrating ? 'opacity-60 pointer-events-none' : ''}`}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-[10px] font-black text-stone-300 uppercase tracking-widest">{item.date}</span>
+                      <span className="flex items-center gap-1 text-[10px] font-black text-stone-300 uppercase tracking-widest">
+                        {item.date}
+                        {item.trimmed && <span title={t('archivedSessionHint')}><Icon name="download" size={11} className="text-stone-300" /></span>}
+                      </span>
                       <button onClick={(e) => deleteSession(item.id, e)} className="history-delete-button p-2 transition-colors">
                         <Icon name="trash" size={14} />
                       </button>
                     </div>
                     <h3 className="text-lg font-black text-stone-900 leading-tight pr-4">{item.name}</h3>
                     <p className="session-code">{t('sessionCode')}: {item.sessionCode || t('codePending')}</p>
-                    <button type="button" className="history-share-action" onClick={event => { event.stopPropagation(); setCollaboration({ initialView: 'create', session: item }); }}>Share cupping<Icon name="chevron-right" size={14} /></button>
+                    <button type="button" className="history-share-action" onClick={event => { event.stopPropagation(); withRehydrated(item, hydrated => setCollaboration({ initialView: 'create', session: hydrated })); }}>Share cupping<Icon name="chevron-right" size={14} /></button>
                     <p className="text-xs font-bold text-stone-400 uppercase mt-2">{item.count} {t('samples')}</p>
                     {coffeeMatches.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
@@ -1830,7 +1911,7 @@ const App = () => {
                           <button
                             type="button"
                             key={`${item.id}-${idx}`}
-                            onClick={event => { event.stopPropagation(); setHistoryPreview({ session: item, sample, index: idx }); }}
+                            onClick={event => { event.stopPropagation(); withRehydrated(item, hydrated => setHistoryPreview({ session: hydrated, sample: hydrated.samples[idx] ?? sample, index: idx })); }}
                             title={t('viewReport')}
                             aria-label={`${t('viewReport')}: ${sample.ositoId || sample.lotName || `${t('coffee')} ${idx + 1}`}`}
                             className="history-coffee-token inline-flex items-center rounded-full bg-stone-100 border border-stone-200 px-3 py-1 text-[10px] font-black text-stone-600 uppercase tracking-wider"
