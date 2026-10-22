@@ -91,12 +91,17 @@ const parseFillToken = (value, field) => {
   return { prefix: match[1], pad: match[2].length, number: parseInt(match[2], 10), suffix: '' };
 };
 const formatFillToken = (token, number) => `${token.prefix}${String(Math.max(0, number)).padStart(token.pad, '0')}${token.suffix}`;
-// Always a constant step (never a "fancy" pattern). One seed cell repeats; two or more establish the
-// step, as long as they share the same prefix/suffix and a single, consistent difference between them.
+// Always a constant step (never a "fancy" pattern). A single seed cell always assumes +1 — adjacent
+// coffees never share an Osito ID or Roast ID in practice. Two or more seed cells establish their own
+// step instead, as long as they share the same prefix/suffix and a single, consistent difference.
 const buildFillSequence = (seedValues, field, count) => {
   const fallback = () => Array.from({ length: count }, () => seedValues.at(-1) ?? '');
   const tokens = seedValues.map((value) => parseFillToken(value, field));
-  if (tokens.length < 2 || tokens.some((token) => !token)) return fallback();
+  if (tokens.some((token) => !token)) return fallback();
+  if (tokens.length === 1) {
+    const only = tokens[0];
+    return Array.from({ length: count }, (_, i) => formatFillToken(only, only.number + i + 1));
+  }
   const [first, ...rest] = tokens;
   if (rest.some((token) => token.prefix !== first.prefix || token.suffix !== first.suffix)) return fallback();
   const step = tokens[1].number - tokens[0].number;
@@ -1785,7 +1790,7 @@ const App = () => {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-[10px] font-black text-stone-300 uppercase tracking-widest">{item.date}</span>
-                      <button onClick={(e) => deleteSession(item.id, e)} className="history-delete-button p-2 text-stone-200 hover:text-red-500 transition-colors">
+                      <button onClick={(e) => deleteSession(item.id, e)} className="history-delete-button p-2 text-stone-400 hover:text-red-500 transition-colors">
                         <Icon name="trash" size={14} />
                       </button>
                     </div>
