@@ -1,11 +1,18 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-export default function SearchableSelect({ value, options, onChange, label, inputProps = {}, className = '', noMatches }) {
+export default function SearchableSelect({ value, options, onChange, label, inputProps = {}, className = '', noMatches, initialQuery }) {
   const id = useId(), input = useRef(null), menu = useRef(null);
-  const [open, setOpen] = useState(false), [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false), [query, setQuery] = useState(initialQuery ?? '');
+  // A field that starts editing already holding a just-typed character (see beginEditingCell in
+  // App.jsx) needs the dropdown filtered to that character on its first focus, not cleared — every
+  // other focus (re-opening an existing value to browse all options) keeps clearing as before.
+  const preserveFirstFocus = useRef(initialQuery !== undefined);
   const [active, setActive] = useState(0), [position, setPosition] = useState(null);
-  const filtered = options.filter(option => option.toLowerCase().includes(query.trim().toLowerCase()));
+  // Match from the start of the option or the start of any of its words (so "rica" still finds
+  // "Costa Rica"), not anywhere in the middle — "n" should find "Natural", not also "Honey".
+  const normalizedQuery = query.trim().toLowerCase();
+  const filtered = options.filter(option => !normalizedQuery || option.toLowerCase().split(/\s+/).some(word => word.startsWith(normalizedQuery)));
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
@@ -29,7 +36,11 @@ export default function SearchableSelect({ value, options, onChange, label, inpu
       aria-label={inputProps['aria-label'] || label} aria-expanded={open} aria-autocomplete="list"
       aria-controls={open ? id : undefined} aria-activedescendant={open && filtered[active] ? `${id}-${active}` : undefined}
       value={value || ''} className={`${inputProps.className || className} pr-9`}
-      onFocus={event => { inputProps.onFocus?.(event); setQuery(''); setActive(0); setOpen(true); }}
+      onFocus={event => {
+        inputProps.onFocus?.(event);
+        if (preserveFirstFocus.current) preserveFirstFocus.current = false; else setQuery('');
+        setActive(0); setOpen(true);
+      }}
       onChange={event => { onChange(event.target.value); setQuery(event.target.value); setActive(0); setOpen(true); }}
       onBlur={event => { inputProps.onBlur?.(event); setOpen(false); }}
       onKeyDown={event => {

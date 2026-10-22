@@ -262,6 +262,13 @@ h3 {
   line-height: 1.2;
 }
 
+/* SearchableSelect appends pr-9 to reserve room for its dropdown arrow button; without the extra
+   specificity here, the padding above (same specificity, later in the cascade) wins and the arrow
+   ends up with no clearance from the typed text. */
+.metadata-grid-input.pr-9 {
+  padding-right: 2.25rem;
+}
+
 .metadata-grid-input::placeholder {
   color: #a8a29e;
   font-weight: 700;
@@ -274,6 +281,21 @@ h3 {
 
 .metadata-grid-cell-with-affix .metadata-grid-input {
   padding-right: 28px;
+}
+
+/* The .text-stone-* utilities above are forced !important app-wide, which silently defeats a plain
+   hover:text-red-500 Tailwind utility — it can never out-rank an !important rule, so this button's
+   color has to be set and overridden here instead. */
+.history-delete-button {
+  color: var(--os-muted) !important;
+}
+
+.history-delete-button:hover {
+  color: #ef4444 !important;
+}
+
+.history-delete-button:hover svg {
+  stroke-width: 2.5;
 }
 
 .metadata-grid-affix {

@@ -72,6 +72,7 @@ const LanguageToggle = ({ language, onToggle, t, compact = false, className = ''
 );
 
 const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther', 'country', 'sampleType', 'roastId'];
+const PROCESSING_CANONICAL = { washed: 'Washed', natural: 'Natural', honey: 'Honey', other: 'Other' };
 const draftFingerprint = (id, name, startTime, lexiconMode, samples) => sessionFingerprint({ syncId: id, name, startTime, lexiconMode, samples });
 const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
 
@@ -732,15 +733,25 @@ const App = () => {
   };
 
   const isEditingCell = (row, col) => editingCell?.row === row && editingCell?.col === col;
+  // A dropdown field that just started editing from a typed character needs its own search text
+  // seeded with what was typed, so the list narrows immediately instead of showing everything.
+  const seededQueryFor = (row, col, displayValue) => (isEditingCell(row, col) && editingCell.seeded ? displayValue : undefined);
 
   // Single place every live keystroke in the table goes through, whether typed normally or seeded
-  // by beginEditingCell below, so both paths stay identical (e.g. processing's name normalization).
+  // by beginEditingCell below, so both paths stay identical.
   const handleTableFieldChange = (idx, field, value) => {
     if (field === 'processing') {
+      // Only commit to a canonical value when the typed/seeded text exactly matches one of the
+      // dropdown's own labels (i.e. an actual selection) — otherwise this is still a
+      // partial search in progress, so just mirror it and let SearchableSelect's own filtering
+      // narrow the list. Normalizing every keystroke here previously turned "N" into "Other"
+      // before "Natural" could ever be typed. Free text still gets normalized on blur.
+      const pickedKey = Object.keys(PROCESSING_CANONICAL).find((key) => t(key) === value);
       setSamples((prev) => prev.map((item, i) => {
         if (i !== idx) return item;
-        const normalized = normalizeProcessingInput(value, item.processingOther);
-        return { ...item, processing: normalized.processing, processingOther: normalized.processingOther };
+        if (!pickedKey) return { ...item, processing: value };
+        const canonical = PROCESSING_CANONICAL[pickedKey];
+        return { ...item, processing: canonical, processingOther: canonical === 'Other' ? item.processingOther : '' };
       }));
     } else {
       updateMetadata(idx, field, value);
@@ -755,7 +766,7 @@ const App = () => {
     // correctly positioned before this function returns, so no keystroke can race it.
     flushSync(() => {
       if (seedValue !== undefined) handleTableFieldChange(row, METADATA_TABLE_COLUMNS[col], seedValue);
-      setEditingCell({ row, col });
+      setEditingCell({ row, col, seeded: seedValue !== undefined });
     });
     const cell = metadataTableBodyRef.current?.querySelector(`[data-metadata-cell="${row}-${col}"]`);
     if (!cell) return;
@@ -1790,7 +1801,7 @@ const App = () => {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-[10px] font-black text-stone-300 uppercase tracking-widest">{item.date}</span>
-                      <button onClick={(e) => deleteSession(item.id, e)} className="history-delete-button p-2 text-stone-400 hover:text-red-500 transition-colors">
+                      <button onClick={(e) => deleteSession(item.id, e)} className="history-delete-button p-2 transition-colors">
                         <Icon name="trash" size={14} />
                       </button>
                     </div>
@@ -2066,6 +2077,7 @@ const App = () => {
                               options={[t('washed'), t('natural'), t('honey'), t('other')]}
                               label={`${t('processing')} ${idx + 1}`}
                               noMatches={t('noMatchingOptions')}
+                              initialQuery={seededQueryFor(idx, 2, s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : '')}
                               inputProps={{ ...getTableInputProps(idx, 2), placeholder: t('processingPlaceholder') }}
                             />
                           ) : renderStaticCell(idx, 2, 'processing', { placeholder: t('processingPlaceholder') })}
@@ -2125,6 +2137,7 @@ const App = () => {
                                   <SearchableSelect value={s[field]} onChange={(value) => handleTableFieldChange(idx, field, value)}
                                     options={field === 'country' ? COUNTRY_OPTIONS : SAMPLE_TYPE_OPTIONS}
                                     label={`${t(field)} ${idx + 1}`} noMatches={t('noMatchingOptions')}
+                                    initialQuery={seededQueryFor(idx, col, s[field] || '')}
                                     inputProps={{ ...getTableInputProps(idx, col), placeholder: `${t(field)}...` }} />
                                 )
                               ) : renderStaticCell(idx, col, field, { placeholder: `${t(field)}...` })}
