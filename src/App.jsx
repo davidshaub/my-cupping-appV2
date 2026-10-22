@@ -2,6 +2,7 @@ import useSharedOutboxSync from './hooks/useSharedOutboxSync';
 import { sharedCodeFromUrl, withoutSharedLink } from './lib/sharedLink';
 import SessionEvaluation from './components/SessionEvaluation';
 import React, { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import Collaboration from './components/Collaboration';
 import { getCupper } from './lib/collaboration';
 import {
@@ -742,9 +743,25 @@ const App = () => {
   };
 
   const beginEditingCell = (row, col, { seedValue } = {}) => {
-    if (seedValue !== undefined) handleTableFieldChange(row, METADATA_TABLE_COLUMNS[col], seedValue);
-    setEditingCell({ row, col });
-    focusMetadataTableCell(row, col, { selectText: true });
+    // Synchronous, not the usual rAF-deferred focus: if a keystroke seeded this edit, the next
+    // keystroke can arrive within a frame, and a deferred focus means it lands before the field is
+    // even focused — or after, right as select-all highlights the seed character, so it overwrites
+    // it instead of continuing after it. Flushing now means the field is already focused and
+    // correctly positioned before this function returns, so no keystroke can race it.
+    flushSync(() => {
+      if (seedValue !== undefined) handleTableFieldChange(row, METADATA_TABLE_COLUMNS[col], seedValue);
+      setEditingCell({ row, col });
+    });
+    const cell = metadataTableBodyRef.current?.querySelector(`[data-metadata-cell="${row}-${col}"]`);
+    if (!cell) return;
+    cell.focus({ preventScroll: true });
+    cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (seedValue !== undefined) {
+      const end = cell.value?.length ?? 0;
+      cell.setSelectionRange?.(end, end);
+    } else {
+      cell.select?.();
+    }
   };
 
   const applyMetadataTableValueToSample = (sample, field, value) => {
