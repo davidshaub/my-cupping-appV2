@@ -187,6 +187,18 @@ const App = () => {
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [history, setHistory] = useState([]);
   const lastPersistedDraft = useRef(null);
+  // Saves can fail if the device is out of storage (realistic after a long heavy-use trip offline).
+  // Every write to cupping_history goes through this so a full device surfaces a warning instead of
+  // silently losing an edit — the in-memory state and the Google Sheet sync are unaffected either way.
+  const saveHistoryStorage = (value) => {
+    try {
+      localStorage.setItem('cupping_history', JSON.stringify(value));
+      return true;
+    } catch {
+      window.dispatchEvent(new CustomEvent('osito-toast', { detail: { kind: 'warning', key: 'storageFull', autoDismiss: false } }));
+      return false;
+    }
+  };
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [sessionName, setSessionName] = useState('');
   const [activeSessionName, setActiveSessionName] = useState('');
@@ -243,8 +255,11 @@ const App = () => {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) {
         const migrated = parsed.map(normalizeSessionIdentity);
-        localStorage.setItem('cupping_history', JSON.stringify(migrated));
+        // Load what's already on disk first, then best-effort rewrite it in the migrated shape —
+        // a storage-full device must never lose sessions that were already there just because this
+        // routine rewrite couldn't be saved back.
         setHistory(migrated);
+        saveHistoryStorage(migrated);
       }
     } catch {
       localStorage.removeItem('cupping_history');
@@ -366,13 +381,13 @@ const App = () => {
   });
 
   const persistHistory = (updatedHistory) => {
-    localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+    saveHistoryStorage(updatedHistory);
     setHistory(updatedHistory);
   };
 
   const sharedSync = useGoogleSheets(history, (codes, versions) => setHistory(current => {
     const updated = current.map(entry => codes[entry.syncId] ? { ...entry, sessionCode: codes[entry.syncId], ...versions?.[entry.syncId] } : entry);
-    localStorage.setItem('cupping_history', JSON.stringify(updated));
+    saveHistoryStorage(updated);
     return updated;
   }));
 
@@ -405,7 +420,7 @@ const App = () => {
         sessionStartTime
       );
       const updatedHistory = currentHistory.map((item, idx) => (idx === existingIndex ? updatedEntry : item));
-      localStorage.setItem('cupping_history', JSON.stringify(updatedHistory));
+      saveHistoryStorage(updatedHistory);
       lastPersistedDraft.current = draft;
       return updatedHistory;
     });

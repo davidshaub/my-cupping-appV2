@@ -14,6 +14,8 @@ export const UI_PT = {
     googleSheets: "Google Sheets",
     googleOfflineReady: 'Uso sem conexão pronto neste dispositivo.',
     googleOfflinePreparing: 'Abra o aplicativo publicado online uma vez para preparar o uso sem conexão.',
+    storageFull: 'O armazenamento do dispositivo está cheio — alterações recentes podem não ter sido salvas. Libere espaço ou exporte um backup.',
+    closeAlert: 'Dispensar',
     googleConnect: "Conectar Google Sheets",
     googleDisconnect: "Desconectar",
     googleSyncNow: "Sincronizar / Recuperar Sessões",
