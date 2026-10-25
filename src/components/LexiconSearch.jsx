@@ -219,8 +219,17 @@ const LexiconSearch = ({ label, tags, options, onToggle, onCycle, language, t })
                     <Icon name="sparkles" size={16} className="text-amber-400 shrink-0 ml-4" />
                   </button>
                 ) : (
-                  <div className="p-3 space-y-2">
-                    <p className="text-[9px] font-black text-stone-300 uppercase px-2 mb-2 tracking-tighter">{t('noMatches')}</p>
+                  <div className="p-3 space-y-3">
+                    <p className="text-[9px] font-black text-stone-300 uppercase px-2 tracking-tighter">{isLoading ? t('mapping') : t('noMatches')}</p>
+                    {!isLoading && (
+                      <div className="flex flex-wrap gap-2 px-2">
+                        {categories.map((cat) => (
+                          <button key={cat} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setSelectedCategory(cat); setIsBrowsing(true); }} className="px-3 py-2 rounded-lg bg-stone-100 text-stone-700 text-xs font-bold">
+                            {translateCategory(language, cat)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

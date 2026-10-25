@@ -10,11 +10,14 @@ const text = {
     replace: 'Load Updated Session', warning: 'This replaces the session on this device, including any unsynced changes. Save a separate copy or export CSV first if you need to keep them.',
     replaceInfo: 'Load the latest saved names, scores, and notes onto this device?',
     updated: 'Last synced', unknown: 'Previous sync time unavailable', legacy: 'Check the saved version before continuing',
-    sharedConflict: 'Another device updated this session. Check for updates before continuing.',
+    sharedConflict: "The saved copy doesn't match what this device expects. Check for updates, or push this device's version if you're sure it's correct.",
     sharedBaselineMissing: 'Check Update Session before syncing. This device cannot verify its last synced copy.',
     sharedUpgrade: 'The Google Apps Script needs its new version deployed before session updates can be used.',
     updateOffline: 'You are offline. Your local session is unchanged.', updateBusy: 'An upload is finishing. Please try again in a moment.',
     failed: 'Could not check for updates. Your local session is unchanged.',
+    push: 'Push This Version', pushConfirmTitle: 'Push this version?',
+    pushWarning: "This overwrites the saved copy with exactly what's on this device, including every score and note here. Anything saved elsewhere for this session that isn't on this device will be lost.",
+    pushing: 'Pushing this version...', pushed: 'This device is now the saved version.', pushConfirm: 'Push This Version',
   },
   es: {
     button: 'Actualizar sesión', checking: 'Buscando actualizaciones...', close: 'Cerrar', cancel: 'Conservar esta versión',
@@ -23,11 +26,14 @@ const text = {
     replace: 'Cargar sesión actualizada', warning: 'Se reemplazará la sesión de este dispositivo, incluidos los cambios sin sincronizar. Guarda una copia independiente o exporta un CSV primero si quieres conservarlos.',
     replaceInfo: '¿Cargar los últimos nombres, puntuaciones y notas guardados en este dispositivo?',
     updated: 'Última sincronización', unknown: 'Hora de sincronización anterior no disponible', legacy: 'Revisa la versión guardada antes de continuar',
-    sharedConflict: 'Otro dispositivo actualizó esta sesión. Busca actualizaciones antes de continuar.',
+    sharedConflict: 'La copia guardada no coincide con lo que espera este dispositivo. Busca actualizaciones, o envía la versión de este dispositivo si estás seguro de que es correcta.',
     sharedBaselineMissing: 'Consulta Actualizar sesión antes de sincronizar. Este dispositivo no puede verificar su última copia sincronizada.',
     sharedUpgrade: 'Debes implementar la nueva versión de Google Apps Script para actualizar sesiones.',
     updateOffline: 'Sin conexión. La sesión local no cambió.', updateBusy: 'Se está completando una subida. Inténtalo de nuevo en un momento.',
     failed: 'No se pudieron buscar actualizaciones. La sesión local no cambió.',
+    push: 'Enviar esta versión', pushConfirmTitle: '¿Enviar esta versión?',
+    pushWarning: 'Esto reemplaza la copia guardada exactamente por lo que hay en este dispositivo, incluidas todas las puntuaciones y notas. Se perderá cualquier dato guardado en otro lugar para esta sesión que no esté en este dispositivo.',
+    pushing: 'Enviando esta versión...', pushed: 'Este dispositivo ahora es la versión guardada.', pushConfirm: 'Enviar esta versión',
   },
   'pt-BR': {
     button: 'Atualizar sessão', checking: 'Buscando atualizações...', close: 'Fechar', cancel: 'Manter esta versão',
@@ -36,11 +42,14 @@ const text = {
     replace: 'Carregar sessão atualizada', warning: 'Isso substitui a sessão neste dispositivo, incluindo alterações não sincronizadas. Salve uma cópia separada ou exporte um CSV primeiro se precisar mantê-las.',
     replaceInfo: 'Carregar os últimos nomes, notas e observações salvos neste dispositivo?',
     updated: 'Última sincronização', unknown: 'Horário da sincronização anterior indisponível', legacy: 'Confira a versão salva antes de continuar',
-    sharedConflict: 'Outro dispositivo atualizou esta sessão. Verifique as atualizações antes de continuar.',
+    sharedConflict: 'A cópia salva não corresponde ao que este dispositivo espera. Verifique as atualizações, ou envie a versão deste dispositivo se tiver certeza de que está correta.',
     sharedBaselineMissing: 'Confira Atualizar sessão antes de sincronizar. Este dispositivo não pode verificar sua última cópia sincronizada.',
     sharedUpgrade: 'É necessário implantar a nova versão do Google Apps Script para atualizar sessões.',
     updateOffline: 'Você está offline. A sessão local não foi alterada.', updateBusy: 'Um envio está sendo concluído. Tente novamente em instantes.',
     failed: 'Não foi possível verificar as atualizações. A sessão local não foi alterada.',
+    push: 'Enviar esta versão', pushConfirmTitle: 'Enviar esta versão?',
+    pushWarning: 'Isso substitui a cópia salva exatamente pelo que está neste dispositivo, incluindo todas as pontuações e notas. Qualquer dado salvo em outro lugar para esta sessão que não esteja neste dispositivo será perdido.',
+    pushing: 'Enviando esta versão...', pushed: 'Este dispositivo agora é a versão salva.', pushConfirm: 'Enviar esta versão',
   },
 };
 
@@ -79,28 +88,43 @@ export default function SessionUpdate({ session, sync, onReplace, language }) {
       if (token === request.current) setState({ kind: 'error', message: t(error.message) || t('failed') });
     }
   };
+  const push = async () => {
+    const token = ++request.current;
+    setState({ kind: 'pushing' });
+    try {
+      await sync.forcePush(session);
+      if (token === request.current) setState({ kind: 'pushed' });
+    } catch (error) {
+      if (token === request.current) setState({ kind: 'error', message: t(error.message) || t('failed') });
+    }
+  };
   const conflict = sync.conflicts[session.syncId];
   const legacy = !Number.isSafeInteger(session.sharedRevision);
+  const inDialog = ['pushConfirm', 'pushing', 'pushed'].includes(state?.kind);
   return <div className="session-update print-hidden">
     <button type="button" onClick={check} disabled={!!state} className="session-update-button" title={t('button')}>
       <Icon name="refresh-cw" size={16} />{t('button')}
     </button>
+    <button type="button" onClick={() => setState({ kind: 'pushConfirm' })} disabled={!!state} className="session-update-button" title={t('push')}>
+      <Icon name="upload" size={16} />{t('push')}
+    </button>
     <span role="status">{conflict ? t(conflict) : legacy ? t('legacy') : session.sharedUpdatedAt ? `${t('updated')}: ${new Date(session.sharedUpdatedAt).toLocaleString(language)}` : ''}</span>
     <dialog ref={dialog} className="session-update-dialog" aria-labelledby="session-update-title" onCancel={event => { event.preventDefault(); close(); }}>
-      <header><h2 id="session-update-title">{t('button')}</h2><button type="button" onClick={close} aria-label={t('close')}><Icon name="x" size={20} /></button></header>
+      <header><h2 id="session-update-title">{inDialog ? t('pushConfirmTitle') : t('button')}</h2><button type="button" onClick={close} aria-label={t('close')}><Icon name="x" size={20} /></button></header>
       <div aria-live="polite">
-        <p>{state?.kind === 'error' ? state.message : t(state?.kind)}</p>
+        <p>{state?.kind === 'error' ? state.message : state?.kind === 'pushConfirm' ? t('pushWarning') : t(state?.kind)}</p>
         {state?.kind === 'newer' && <>
           <p className="session-update-time">{state.remote.sharedUpdatedAt ? new Date(state.remote.sharedUpdatedAt).toLocaleString(language) : t('unknown')}</p>
           <p>{t(state.dirty ? 'warning' : 'replaceInfo')}</p>
         </>}
       </div>
       <footer>
-        <button type="button" onClick={close}>{t(state?.kind === 'newer' ? 'cancel' : 'close')}</button>
+        <button type="button" onClick={close}>{t(state?.kind === 'newer' ? 'cancel' : state?.kind === 'pushConfirm' ? 'cancel' : 'close')}</button>
         {state?.kind === 'newer' && <button type="button" className="btn-stone-dark" onClick={() => {
           try { onReplace(state.remote); close(); }
           catch { setState({ kind: 'error', message: t('failed') }); }
         }}>{t('replace')}</button>}
+        {state?.kind === 'pushConfirm' && <button type="button" className="btn-stone-dark" onClick={push}>{t('pushConfirm')}</button>}
       </footer>
     </dialog>
   </div>;

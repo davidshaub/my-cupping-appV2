@@ -44,10 +44,12 @@ export default function SearchableSelect({ value, options, onChange, label, inpu
       onChange={event => { onChange(event.target.value); setQuery(event.target.value); setActive(0); setOpen(true); }}
       onBlur={event => { inputProps.onBlur?.(event); setOpen(false); }}
       onKeyDown={event => {
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        // Arrow keys only drive the open dropdown's own highlight. Once a value has been picked
+        // (dropdown closed), they're no longer ours to claim — e.g. a table cell needs them free
+        // to move between rows right after Enter commits a selection.
+        if (open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
           event.preventDefault(); event.stopPropagation();
-          if (!open) { setQuery(''); setOpen(true); setActive(0); }
-          else setActive(index => Math.max(0, Math.min(filtered.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1))));
+          setActive(index => Math.max(0, Math.min(filtered.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1))));
           return;
         }
         if (open && event.key === 'Enter' && filtered[active]) { event.preventDefault(); event.stopPropagation(); select(filtered[active]); return; }

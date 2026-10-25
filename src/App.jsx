@@ -206,6 +206,8 @@ const App = () => {
   const [historySearch, setHistorySearch] = useState('');
   const [metadataTableMode, setMetadataTableMode] = useState(false);
   const [metadataTableSelection, setMetadataTableSelection] = useState({ anchor: null, focus: null });
+  const metadataTableSelectionRef = useRef(metadataTableSelection);
+  metadataTableSelectionRef.current = metadataTableSelection;
   const [metadataTableSort, setMetadataTableSort] = useState(null);
   const [importError, setImportError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -275,24 +277,33 @@ const App = () => {
 
   useEffect(() => {
     const stopTableSelection = () => {
+      const wasSelecting = metadataTableSelectingRef.current;
       metadataTableSelectingRef.current = false;
       const drag = fillDragRef.current;
       fillDragRef.current = null;
       setFillPreviewRow(null);
-      if (!drag || drag.endRow <= drag.seedEndRow) return;
-      const { col, seedStartRow, seedEndRow, endRow } = drag;
-      const field = METADATA_TABLE_COLUMNS[col];
-      setSamples((prev) => {
-        const seedValues = prev.slice(seedStartRow, seedEndRow + 1).map((item) => item[field] || '');
-        const count = endRow - seedEndRow;
-        const filled = buildFillSequence(seedValues, field, count);
-        return prev.map((item, idx) => {
-          const offset = idx - (seedEndRow + 1);
-          if (offset < 0 || offset >= count) return item;
-          return applyMetadataTableValueToSample(item, field, filled[offset]);
+      if (drag && drag.endRow > drag.seedEndRow) {
+        const { col, seedStartRow, seedEndRow, endRow } = drag;
+        const field = METADATA_TABLE_COLUMNS[col];
+        setSamples((prev) => {
+          const seedValues = prev.slice(seedStartRow, seedEndRow + 1).map((item) => item[field] || '');
+          const count = endRow - seedEndRow;
+          const filled = buildFillSequence(seedValues, field, count);
+          return prev.map((item, idx) => {
+            const offset = idx - (seedEndRow + 1);
+            if (offset < 0 || offset >= count) return item;
+            return applyMetadataTableValueToSample(item, field, filled[offset]);
+          });
         });
-      });
-      setMetadataTableSelection({ anchor: { row: seedStartRow, col }, focus: { row: endRow, col } });
+        setMetadataTableSelection({ anchor: { row: seedStartRow, col }, focus: { row: endRow, col } });
+        focusMetadataTableCell(endRow, col, { immediate: true });
+        return;
+      }
+      // A plain drag-select moves the active cell on every pointerEnter without focusing it (to avoid
+      // scroll/focus thrashing mid-drag — see handleMetadataTablePointerEnter). Once the drag ends,
+      // the final cell needs real DOM focus so keyboard nav and copy/paste work on it afterward.
+      const active = metadataTableSelectionRef.current.focus;
+      if (wasSelecting && active) focusMetadataTableCell(active.row, active.col, { immediate: true });
     };
 
     window.addEventListener('pointerup', stopTableSelection);
@@ -802,17 +813,23 @@ const App = () => {
 
   const isMetadataTableCellActive = (row, col) => metadataTableSelection.focus?.row === row && metadataTableSelection.focus?.col === col;
 
-  const focusMetadataTableCell = (row, col, { selectText = false } = {}) => {
-    window.requestAnimationFrame(() => {
+  // Deferred by default via requestAnimationFrame so a cell added in this same render (not yet in the
+  // DOM) can still be found once React commits. Callers that know the target cell is already rendered
+  // (e.g. clicking/tapping an existing cell) should pass immediate:true — otherwise a fast follow-up
+  // keystroke can land before the deferred focus() runs and get lost or go to the wrong element.
+  const focusMetadataTableCell = (row, col, { selectText = false, immediate = false } = {}) => {
+    const run = () => {
       const cell = metadataTableBodyRef.current?.querySelector(`[data-metadata-cell="${row}-${col}"]`);
       if (!cell) return;
       cell.focus({ preventScroll: true });
       cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       if (selectText) cell.select?.();
-    });
+    };
+    if (immediate) run();
+    else window.requestAnimationFrame(run);
   };
 
-  const selectMetadataTableCell = (row, col, { extend = false, focus = true, selectText = false } = {}) => {
+  const selectMetadataTableCell = (row, col, { extend = false, focus = true, selectText = false, immediate = false } = {}) => {
     const nextCell = {
       row: Math.min(Math.max(row, 0), Math.max(samples.length - 1, 0)),
       col: Math.min(Math.max(col, 0), METADATA_TABLE_COLUMNS.length - 1)
@@ -821,7 +838,7 @@ const App = () => {
       anchor: extend && current.anchor ? current.anchor : nextCell,
       focus: nextCell
     }));
-    if (focus) focusMetadataTableCell(nextCell.row, nextCell.col, { selectText });
+    if (focus) focusMetadataTableCell(nextCell.row, nextCell.col, { selectText, immediate });
   };
 
   const isEditingCell = (row, col) => editingCell?.row === row && editingCell?.col === col;
@@ -1259,20 +1276,30 @@ const App = () => {
     return true;
   };
 
+  // Leaving an edited Osito ID cell needs to trigger the lot lookup the same way blurring a plain
+  // input would. Pressing Enter/Tab/Escape/arrows exits edit mode by unmounting the <input> via
+  // setEditingCell(null) rather than a real DOM blur, and React doesn't reliably deliver a synthetic
+  // blur for an element removed this way — so lotLookup.commit() never ran. Routing every programmatic
+  // exit through here instead of setEditingCell(null) directly keeps that commit call in sync.
+  const stopEditingCell = () => {
+    lotLookup.commit();
+    setEditingCell(null);
+  };
+
   // A cell only edits when you double-click, press Enter/F2, or start typing on it — plain
   // click/arrow navigation just selects, like a real spreadsheet. See isEditingCell/beginEditingCell.
   const handleMetadataTableKeyDown = (row, col, e) => {
     const editing = isEditingCell(row, col);
     const moveTo = (nextRow, nextCol, { extend = e.shiftKey } = {}) => {
       e.preventDefault();
-      setEditingCell(null);
+      stopEditingCell();
       selectMetadataTableCell(nextRow, nextCol, { extend });
     };
 
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
       if (!canUndoSamples) return;
       e.preventDefault();
-      setEditingCell(null);
+      stopEditingCell();
       undoSamplesChange();
       return;
     }
@@ -1293,7 +1320,7 @@ const App = () => {
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (editing) { setEditingCell(null); selectMetadataTableCell(row + (e.shiftKey ? -1 : 1), col, { extend: false }); }
+      if (editing) { stopEditingCell(); selectMetadataTableCell(row + (e.shiftKey ? -1 : 1), col, { extend: false }); }
       else beginEditingCell(row, col);
       return;
     }
@@ -1305,7 +1332,7 @@ const App = () => {
 
     if (e.key === 'Escape') {
       e.preventDefault();
-      if (editing) setEditingCell(null);
+      if (editing) stopEditingCell();
       focusMetadataTableCell(row, col);
       return;
     }
@@ -1315,7 +1342,7 @@ const App = () => {
       const singleCell = range.startRow === range.endRow && range.startCol === range.endCol;
       if (editing && singleCell) return; // let native text deletion happen inside the field
       e.preventDefault();
-      setEditingCell(null);
+      stopEditingCell();
       clearMetadataTableRange(range);
       return;
     }
@@ -1350,8 +1377,26 @@ const App = () => {
   const handleMetadataTablePointerDown = (row, col, e) => {
     if (e.button !== 0) return;
     metadataTableSelectingRef.current = true;
-    if (!isEditingCell(row, col)) setEditingCell(null);
-    selectMetadataTableCell(row, col, { extend: e.shiftKey, focus: false });
+    if (isEditingCell(row, col)) {
+      selectMetadataTableCell(row, col, { extend: e.shiftKey, focus: false });
+      return;
+    }
+    // iOS Safari doesn't reliably show the on-screen keyboard for a focus() call made from a
+    // dblclick handler (double-tap), so touch gets its own gesture: tapping a cell that's already
+    // the sole selection edits it, same as F2/Enter would. Mouse keeps double-click/Enter/F2 only.
+    const isSoleSelectedCell = metadataTableSelection.anchor?.row === row && metadataTableSelection.anchor?.col === col &&
+      metadataTableSelection.focus?.row === row && metadataTableSelection.focus?.col === col;
+    if (e.pointerType === 'touch' && !e.shiftKey && isSoleSelectedCell) {
+      beginEditingCell(row, col);
+      return;
+    }
+    stopEditingCell();
+    // Safari (desktop and iPad) doesn't focus a plain div on click/tap the way Chrome/Firefox do, so
+    // without an explicit focus call here the "selected" cell is never actually document.activeElement
+    // there — breaking keyboard nav and, critically, copy/paste (which targets whatever has focus).
+    // immediate:true because the cell is already rendered — a deferred focus here can lose a fast
+    // follow-up keystroke (e.g. typing right after the click) to the race it'd otherwise create.
+    selectMetadataTableCell(row, col, { extend: e.shiftKey, immediate: true });
   };
 
   const handleMetadataTablePointerEnter = (row, col) => {
@@ -2034,7 +2079,7 @@ const App = () => {
               <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact />
               <button
                 type="button"
-                onClick={() => setMetadataTableMode(current => !current)}
+                onClick={() => { stopEditingCell(); setMetadataTableMode(current => !current); }}
                 className="eink-toggle eink-toggle-compact"
                 title={t(metadataTableMode ? 'standardView' : 'tableView')}
               >
@@ -2534,7 +2579,10 @@ const App = () => {
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 pb-24 md:pb-40">
       {renderSaveSessionModal()}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
+      {/* The installed app's status bar is translucent (index.html) and overlays the page, so this
+          bar needs to reserve that space itself via padding — otherwise scrolled content shows
+          through behind the status bar instead of this bar's own opaque background. */}
+      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <header className="cupping-toolbar max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <button
             onClick={resetToHome}
