@@ -34,6 +34,7 @@ import CoffeeReportModal from './components/CoffeeReportModal';
 import SessionUpdate from './components/SessionUpdate';
 import LotLookupStatus from './components/LotLookupStatus';
 import LotCacheControl from './components/LotCacheControl';
+import CuppingTimer from './components/CuppingTimer';
 import useLotLookup from './hooks/useLotLookup';
 import HandsLogo from '../assets/hands.png';
 import {
@@ -186,6 +187,11 @@ const App = () => {
   const fillDragRef = useRef(null);
   const [fillPreviewRow, setFillPreviewRow] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  // Deliberately not persisted and not attached to the session: it survives navigating between
+  // screens mid-cupping (lives here, above the per-screen conditionals) but always starts fresh
+  // whenever a session starts or loads — see resetCuppingTimer, called from both.
+  const [cuppingTimer, setCuppingTimer] = useState({ status: 'idle', startedAt: null, accumulatedMs: 0, chimedCrust: false, chimedReady: false });
+  const resetCuppingTimer = () => setCuppingTimer({ status: 'idle', startedAt: null, accumulatedMs: 0, chimedCrust: false, chimedReady: false });
   const [history, setHistory] = useState([]);
   const lastPersistedDraft = useRef(null);
   // Saves can fail if the device is out of storage (realistic after a long heavy-use trip offline).
@@ -560,6 +566,7 @@ const App = () => {
 
   const loadSession = (session) => {
     setBlindSession(false);
+    resetCuppingTimer();
     setLexiconMode(normalizeLexiconMode(session.lexiconMode));
     const sessionSamples = Array.isArray(session.samples) ? session.samples : [];
     const loadedStartTime = session.startTime || new Date().toLocaleString();
@@ -592,6 +599,7 @@ const App = () => {
 
   const startSession = () => {
     setBlindSession(false);
+    resetCuppingTimer();
     const startedAt = new Date().toLocaleString();
     const nextSamples = initializeSamples(normalizeSampleCount(numSamples));
     setSessionStartTime(startedAt);
@@ -2646,9 +2654,12 @@ const App = () => {
               {blindSession?`${t('coffee')} ${activeSampleIndex+1}`:(currentSample.lotName || `${t('coffee')} ${activeSampleIndex + 1}`)}
             </h2>
           </div>
-          <div className="text-right leading-none shrink-0 pl-4 pr-2">
-            <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t(currentSample.noScore ? 'noScore' : 'liveScore')}</span>
-            <span className="text-3xl md:text-4xl font-black tabular-nums">{calculateTotal(currentSample)}</span>
+          <div className="flex items-end gap-5 md:gap-6 shrink-0">
+            <CuppingTimer state={cuppingTimer} onChange={setCuppingTimer} t={t} />
+            <div className="text-right leading-none pl-4 pr-2">
+              <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t(currentSample.noScore ? 'noScore' : 'liveScore')}</span>
+              <span className="text-3xl md:text-4xl font-black tabular-nums">{calculateTotal(currentSample)}</span>
+            </div>
           </div>
         </div>
       </div>

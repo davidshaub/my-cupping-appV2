@@ -6,6 +6,16 @@ import { readScriptResponse, SYNC_API_URL } from './sharedSync.js';
 export const CUPPER_KEY = 'osito_cupper';
 export const getCupper = () => localStorage.getItem(CUPPER_KEY) || '';
 export const setCupper = name => localStorage.setItem(CUPPER_KEY, name.trim().slice(0, 80));
+export const CHIMES_ENABLED_KEY = 'osito_chimes_enabled';
+export const getChimesEnabled = () => localStorage.getItem(CHIMES_ENABLED_KEY) !== 'off';
+export const setChimesEnabled = enabled => localStorage.setItem(CHIMES_ENABLED_KEY, enabled ? 'on' : 'off');
+export const DEFAULT_READY_MINUTES = 18;
+export const READY_MINUTES_KEY = 'osito_ready_minutes';
+export const getReadyMinutes = () => {
+  const stored = Number.parseInt(localStorage.getItem(READY_MINUTES_KEY), 10);
+  return Number.isInteger(stored) && stored >= 1 && stored <= 99 ? stored : DEFAULT_READY_MINUTES;
+};
+export const setReadyMinutes = minutes => localStorage.setItem(READY_MINUTES_KEY, String(Math.min(99, Math.max(1, Math.round(minutes)))));
 export const normalizeInviteCode = value => String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 export const tokenFor = (kind, code) => {
   const key = `osito_${kind}_${normalizeInviteCode(code)}`;

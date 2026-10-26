@@ -16,7 +16,7 @@ import { LEXICON_OPTIONS } from '../lib/lexicon';
 import { nextTagModifier } from '../lib/tagModifiers';
 import { translate } from '../i18n';
 import { parseCoffeeComparisons, planCoffeeComparisons, suggestSessionComparisons } from '../lib/panelComparisons';
-import { aggregateEvaluations, asPanelEvaluation, collaborationRequest, emptyContribution, evaluationScore, getCupper, hostTokenFor, invitationUrl, normalizeInviteCode, notesFields, readSharedReport, setCupper, tokenFor } from '../lib/collaboration';
+import { aggregateEvaluations, asPanelEvaluation, collaborationRequest, emptyContribution, evaluationScore, getChimesEnabled, getCupper, getReadyMinutes, hostTokenFor, invitationUrl, normalizeInviteCode, notesFields, readSharedReport, setChimesEnabled, setCupper, setReadyMinutes, tokenFor } from '../lib/collaboration';
 import './collaboration.css';
 import { displaySessionName } from '../lib/sessionDisplay';
 
@@ -42,6 +42,7 @@ export default function Collaboration({ initialView='settings', session, initial
   const [sessionCodesInput,setSessionCodesInput]=useState('');
   const [pdfOptions,setPdfOptions]=useState(null);
   const [showRecallPanel,setShowRecallPanel]=useState(false);
+  const [chimesEnabled,setChimesOn]=useState(getChimesEnabled),[readyMinutesInput,setReadyMinutesInput]=useState(()=>String(getReadyMinutes()));
   const actionOrigin=useRef(null),feedbackRef=useRef(null);
   const [feedback,setFeedback]=useState(null);
   const autosave=useSharedAutosave(data?.invitation.code||'',data,(entries,savedCode)=>setData(previous=>normalizeInviteCode(previous?.invitation.code)===normalizeInviteCode(savedCode)?{...previous,entries:[...previous.entries.filter(e=>!entries.some(saved=>saved.id===e.id)),...entries.map(e=>({...e,own:true}))]}:previous));
@@ -72,6 +73,13 @@ export default function Collaboration({ initialView='settings', session, initial
   const saveText=autosave?.storageError?autosave.storageError:!navigator.onLine?'Offline · saved on this device':autosave?.status==='blocked'?autosave.error:autosave?.status==='retry'?'Saved on this device · retrying upload…':autosave?.status==='name'?'Enter your name to sync your observations':null;
   const SaveStatus=()=>saveText?<div className="collab-save-status" role={autosave?.storageError||autosave?.status==='blocked'?'alert':'status'}>{saveText}{autosave?.status==='blocked'&&<button onClick={()=>{autosave.status='pending';autosave.flush();}}>Retry upload</button>}</div>:null;
   const changeName=value=>{setName(value);setCupper(value);};
+  const changeChimesEnabled=value=>{setChimesOn(value);setChimesEnabled(value);};
+  const commitReadyMinutes=value=>{
+    const parsed=Number.parseInt(value,10);
+    const clamped=Number.isFinite(parsed)?Math.min(99,Math.max(1,parsed)):getReadyMinutes();
+    setReadyMinutesInput(String(clamped));
+    setReadyMinutes(clamped);
+  };
   const createInvitation=()=>run(async()=>{
     if(!selected.size)throw new Error('Select at least one coffee.');
     const signature=JSON.stringify([session.syncId,[...selected].sort(),mode,blind]);
@@ -124,7 +132,7 @@ export default function Collaboration({ initialView='settings', session, initial
   return <div className="collab-shell" onClickCapture={event=>{actionOrigin.current=event.target.closest('button, input, select');}}><div className="collab-window"><header className="collab-header"><div><span className="collab-brand">Osito Cupping Lab</span></div><button onClick={onClose}>Back to app</button></header>
     {feedback?.isConnected&&!(view==='panel'&&!panelUnlocked)?createPortal(<>{busy&&<span role="status">Working…</span>}{!busy&&error&&<span role="alert">{error}</span>}{!busy&&message&&<span role="status">{message}</span>}</>,feedback):<>{error&&!(view==='panel'&&!panelUnlocked)&&<p className="collab-error" role="alert">{error}</p>}{message&&<p className="collab-notice" role="status">{message}</p>}{busy&&<p role="status">Loading cupping…</p>}</>}
 
-    {(view==='settings'||(view==='panel'&&!panelUnlocked))&&<><h1>Your cupping preferences</h1><label>Your name<input value={name} maxLength={80} onChange={e=>changeName(e.target.value)} placeholder="Cupper name"/></label><p className="collab-muted">Remembered on this device. Included with future evaluations; historical names stay unchanged.</p><section className="collab-section"><h2>Osito Panel Report</h2><p>Construct an official report using Sample IDs or complete session codes.</p><button onClick={()=>{setPassword('');setPanelUnlocked(false);setView('panel');}}>Open Panel Report</button></section><section className="collab-section"><h2>Your shared cuppings</h2><SharedCuppingList onOpen={entry=>run(async()=>{await load(entry.code);setView('host');})}/></section></>}
+    {(view==='settings'||(view==='panel'&&!panelUnlocked))&&<><h1>Your cupping preferences</h1><label>Your name<input value={name} maxLength={80} onChange={e=>changeName(e.target.value)} placeholder="Cupper name"/></label><p className="collab-muted">Remembered on this device. Included with future evaluations; historical names stay unchanged.</p><section className="collab-section"><h2>Cupping Timer</h2><label className="collab-blind-option"><input type="checkbox" checked={chimesEnabled} onChange={e=>changeChimesEnabled(e.target.checked)}/><span>Timer chimes<small>A quiet tone at 4:00 for crust break, and again once cups reach tasting temperature.</small></span></label><label>Minutes until ready to taste<input type="number" inputMode="numeric" min="1" max="99" step="1" value={readyMinutesInput} onChange={e=>setReadyMinutesInput(e.target.value)} onBlur={e=>commitReadyMinutes(e.target.value)}/></label></section><section className="collab-section"><h2>Osito Panel Report</h2><p>Construct an official report using Sample IDs or complete session codes.</p><button onClick={()=>{setPassword('');setPanelUnlocked(false);setView('panel');}}>Open Panel Report</button></section><section className="collab-section"><h2>Your shared cuppings</h2><SharedCuppingList onOpen={entry=>run(async()=>{await load(entry.code);setView('host');})}/></section></>}
     {view==='create'&&session&&<><h1>Share cupping</h1><p>{session.name}</p><p>Select the entire session or specific coffees. Everyone receives the same link and code.</p><div className="collab-row"><button onClick={()=>setSelected(new Set(session.samples.map(s=>s.syncId)))}>Select all</button><button onClick={()=>setSelected(new Set())}>Clear selection</button></div><div className="collab-selection">{session.samples.map((s,i)=><label key={s.syncId}><input type="checkbox" checked={selected.has(s.syncId)} onChange={()=>setSelected(previous=>{const next=new Set(previous);next.has(s.syncId)?next.delete(s.syncId):next.add(s.syncId);return next;})}/><span>{i+1}. {s.lotName||'Coffee'} {s.ositoId&&`· ${s.ositoId}`}</span></label>)}</div><label className="collab-blind-option"><input type="checkbox" checked={blind} onChange={e=>setBlind(e.target.checked)}/><span>Blind cupping<small>Guests see only coffee numbers until you share results.</small></span></label><ModePicker value={mode} onChange={setMode} legend="Starting form for guests"/><p className="collab-muted">Guests can choose either form and switch at any time without losing their scores, tags, or notes. Results stay hidden until you reveal them.</p><button className="collab-primary" disabled={busy||!selected.size} onClick={createInvitation}>Create invitation</button></>}
     {view==='join'&&<><h1>Join a cupping</h1><label>Invitation code<input value={code} onChange={e=>setCode(e.target.value)} placeholder="ABCD-EFGH" autoCapitalize="characters"/></label><button className="collab-primary" disabled={busy||!code.trim()} onClick={()=>run(async()=>{await load();setView('guest');})}>Open cupping</button></>}
     {data&&['host','guest','report'].includes(view)&&<>

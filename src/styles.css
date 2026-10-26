@@ -1130,6 +1130,27 @@ h3 {
   gap: 0;
 }
 
+/* Fills left-to-right over the same duration as the hold-to-clear threshold, so clearing the
+   cupping timer always gives a visible "this is about to happen" cue before it actually does. */
+.cupping-timer-hold-bar {
+  display: block;
+  width: 28px;
+  height: 2px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+  /* Keep the transition on the base rule so toggling .is-charging only ever changes the target
+     value, not the transition itself — safer than animating a transition change in the same step. */
+  transition: opacity 0.1s, transform 650ms linear;
+}
+.cupping-timer-hold-bar.is-charging {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
 .eink-toggle-state {
   padding: 0.22rem 0.38rem;
   border-radius: 999px;

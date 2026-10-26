@@ -86,6 +86,7 @@ export const UI_PT = {
   inCup: 'Na Xícara', negative: 'Negativo', otherObservations: 'Outras Observações', acidity: 'Acidez', sweetness: 'Doçura',
   noneRecorded: 'Nenhum registro', noneRecordedPeriod: 'Nenhum registro.', authorizedAnalysis: 'Análise Autorizada',
   protocol: 'Protocolo do Laboratório Osito', analyzingLot: 'Analisando Lote', coffee: 'Café', liveScore: 'Nota Atual',
+  timer: 'Cronômetro', timerHoldToClear: 'Segure para limpar',
   report: 'Relatório', attributeGrading: 'Avaliação de Atributos', defects: 'Defeitos', cupCorrection: 'Correção da Xícara',
   sensoryMapping: 'Mapeamento Sensorial', negativeFactors: 'Fatores Negativos', technicalJournal: 'Notas Técnicas',
   detailedFeedback: 'Observações detalhadas...', sweetnessLevel: 'Nível de doçura', acidityLevel: 'Nível de acidez',
