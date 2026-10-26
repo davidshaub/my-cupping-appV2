@@ -206,7 +206,11 @@
   transform: rotate(90deg);
 }
 
-@media screen and (max-width: 700px) {
+/* A portrait iPad is well past 700px wide, but it's still "mobile portrait" for this header's purposes
+   - a narrow column with no room for a wide single row. Kept separate from the 700px block below (which
+   also reflows unrelated report-page layout that isn't part of this) so only the toolbar gets the wider
+   trigger, covering every iPad's portrait width up to the 12.9" Pro (1024px) without affecting landscape. */
+@media screen and (max-width: 1024px) {
   .cupping-toolbar { display: grid; grid-template-columns: 36px 36px 36px minmax(0, 1fr) auto; gap: 4px; padding: 12px 8px; }
   .cupping-toolbar > button { min-width: 0; min-height: 40px; padding-left: 8px; padding-right: 8px; }
   .cupping-toolbar > button > span { display: none; }
@@ -214,6 +218,9 @@
   .cupping-toolbar .eink-toggle { min-height: 40px; padding-left: 8px; padding-right: 8px; font-size: 9px; }
   .cupping-toolbar .cupping-coffee-tabs { grid-row: 2; grid-column: 1 / -1; min-width: 0; width: 100%; padding: 6px 2px; scrollbar-width: thin; }
   .cupping-coffee-tabs > button { flex: 0 0 auto; min-width: 44px; min-height: 40px; }
+}
+
+@media screen and (max-width: 700px) {
   .report-screen .visual-row,
   .report-screen .data-column {
     grid-template-columns: minmax(0, 1fr);

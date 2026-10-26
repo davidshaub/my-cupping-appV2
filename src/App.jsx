@@ -2633,8 +2633,8 @@ const App = () => {
             {t('report')}
           </button>
           <div className="flex items-center gap-2 shrink-0">
-            <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact iconOnly={viewportWidth < 700} />
-            <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact iconOnly={viewportWidth < 700} />
+            <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact iconOnly={viewportWidth <= 1024} />
+            <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact iconOnly={viewportWidth <= 1024} />
           </div>
         </header>
         <div className="max-w-6xl mx-auto px-4 md:px-12 pb-4 flex justify-between items-end text-stone-900 gap-3">
