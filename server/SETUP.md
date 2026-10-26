@@ -88,6 +88,19 @@ metadata, frozen coffee/host snapshots, separate guest evaluations, and fixed Pa
 editions. Guest contributions never overwrite primary sample rows. A selected-coffee
 invitation exposes only that selection and has its own code, distinct from recall codes.
 
+Each of the four tabs has readable summary columns alongside **ID** and the hidden
+**Data** column (the full JSON snapshot; nothing is read back from the summary columns,
+so they're safe to resize or reorder). **Shared Invitations** shows Session Name,
+Cupping Date, Mode, Blind?, Status, Results Shared?, and Created. **Shared Coffees**
+shows Invitation Code, Lot Name, Osito ID, Country, Host Cupper, and Position. **Shared
+Contributions** shows Invitation Code, Coffee, Osito ID, Mode, Revision, and Updated
+(Coffee and its Osito ID are looked up from Shared Coffees by invitation code + sample
+ID); its **Cupper** column holds the guest's name as before. **Osito Panel Reports**
+keeps its existing Cuppers/Date of Report/Report Title/Lots-Coffees/Osito IDs/Coffee
+Count columns. New rows populate these directly; existing rows are backfilled the next
+time their tab is read or written, or immediately via **organizePanelReports** in the
+Apps Script function dropdown (despite the name, it now organizes all four tabs).
+
 Invitees may switch between Quick and Full forms. The quick final score and full
 attribute scores are retained independently; the active form determines the submitted
 score. Drafts are saved on the guest's device. A confirmed server receipt is required

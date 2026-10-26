@@ -4,7 +4,7 @@ function collabSheet_(kind) {
   const book = SpreadsheetApp.openById(CUPPING_SPREADSHEET), name = COLLAB_TABS[kind];
   let sheet = book.getSheetByName(name);
   if (!sheet) { sheet = book.insertSheet(name); sheet.appendRow(['ID', 'Data', 'Cupper']); }
-  if (kind === 'panels') panelSheetLayout_(sheet);
+  collabSheetLayout_(kind, sheet);
   return sheet;
 }
 function collabRows_(kind) {
@@ -17,15 +17,16 @@ function collabPut_(kind, id, data) {
   const index = rows.findIndex((row, i) => i > 0 && row[0] === id);
   const values = [id, text, literal_(data.cupper || '')];
   if (index < 0) sheet.appendRow(values); else sheet.getRange(index + 1, 1, 1, 3).setValues([values]);
-  if (kind === 'panels') {
+  if (collabSummaryHeaders_(kind).length) {
     const rowNumber = index < 0 ? rows.length + 1 : index + 1;
-    panelWriteSummaries_(sheet, rows[0], [{ rowNumber, data }]);
-    sheet.getRange(rowNumber, rows[0].indexOf('Date of Report') + 1, 1, 1).setNumberFormat('mmm d, yyyy h:mm AM/PM');
-    sheet.getRange(rowNumber, 1, 1, rows[0].length).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
-    sheet.setRowHeightsForced(rowNumber, 1, 32);
+    const lookup = kind === 'entries' ? collabCoffeeLookup_() : null;
+    collabWriteSummaries_(sheet, rows[0], kind, [{ rowNumber, data }], lookup);
+    collabFormatSummaryRow_(sheet, rows[0], kind, rowNumber);
   }
 }
 
+// Every "Shared ___" tab, and the Panel tab, store the full record as JSON in the hidden Data
+// column; these summary headers/derivers are what turn that into readable columns alongside it.
 const PANEL_SUMMARY_HEADERS = ['Date of Report', 'Report Title', 'Lots / Coffees', 'Osito IDs', 'Coffee Count'];
 function panelSummary_(panel) {
   const coffees = Array.isArray(panel.coffees) ? panel.coffees : [];
@@ -40,10 +41,79 @@ function panelSummary_(panel) {
     'Coffee Count': coffees.length
   };
 }
-function panelWriteSummaries_(sheet, headers, entries) {
+
+const INVITES_SUMMARY_HEADERS = ['Session Name', 'Cupping Date', 'Mode', 'Blind?', 'Status', 'Results Shared?', 'Created'];
+function invitesSummary_(invite) {
+  const created = invite.createdAt ? new Date(invite.createdAt) : null;
+  return {
+    'Session Name': typeof invite.name === 'string' ? invite.name : '',
+    'Cupping Date': typeof invite.date === 'string' ? invite.date : '',
+    Mode: invite.defaultMode === 'quick' ? 'Quick' : invite.defaultMode === 'full' ? 'Full' : '',
+    'Blind?': invite.blind ? 'Yes' : 'No',
+    Status: invite.closed ? 'Closed' : 'Open',
+    'Results Shared?': invite.revealed ? 'Yes' : 'No',
+    Created: created && Number.isFinite(created.getTime()) ? created : ''
+  };
+}
+
+const COFFEES_SUMMARY_HEADERS = ['Invitation Code', 'Lot Name', 'Osito ID', 'Country', 'Host Cupper', 'Position'];
+function coffeesSummary_(coffee) {
+  const sample = coffee.sample || {}, host = coffee.hostEvaluation || {};
+  return {
+    'Invitation Code': typeof coffee.code === 'string' ? coffee.code : '',
+    'Lot Name': typeof sample.lotName === 'string' ? sample.lotName : '',
+    'Osito ID': typeof sample.ositoId === 'string' ? sample.ositoId : '',
+    Country: typeof sample.country === 'string' ? sample.country : '',
+    'Host Cupper': typeof host.cupper === 'string' ? host.cupper : '',
+    Position: Number.isInteger(coffee.position) ? coffee.position + 1 : ''
+  };
+}
+
+// Entries only know the coffee's syncId; resolving it to a lot name/Osito ID needs the Coffees
+// tab's own rows, built once per batch rather than re-reading the sheet per entry.
+function collabCoffeeLookup_() {
+  const lookup = {};
+  collabRows_('coffees').forEach(({ data }) => { lookup[data.code + ':' + data.sample?.syncId] = data; });
+  return lookup;
+}
+const ENTRIES_SUMMARY_HEADERS = ['Invitation Code', 'Coffee', 'Osito ID', 'Mode', 'Revision', 'Updated'];
+function entriesSummary_(entry, coffeeLookup) {
+  const coffee = coffeeLookup?.[entry.code + ':' + entry.sampleId], sample = coffee?.sample || {};
+  const updated = entry.updatedAt ? new Date(entry.updatedAt) : null;
+  return {
+    'Invitation Code': typeof entry.code === 'string' ? entry.code : '',
+    Coffee: sample.lotName || sample.ositoId || '',
+    'Osito ID': typeof sample.ositoId === 'string' ? sample.ositoId : '',
+    Mode: entry.mode === 'quick' ? 'Quick' : entry.mode === 'full' ? 'Full' : '',
+    Revision: Number.isInteger(entry.revision) ? entry.revision : '',
+    Updated: updated && Number.isFinite(updated.getTime()) ? updated : ''
+  };
+}
+
+function collabSummaryHeaders_(kind) {
+  return { invites: INVITES_SUMMARY_HEADERS, coffees: COFFEES_SUMMARY_HEADERS, entries: ENTRIES_SUMMARY_HEADERS, panels: PANEL_SUMMARY_HEADERS }[kind] || [];
+}
+function collabSummary_(kind, data, coffeeLookup) {
+  if (kind === 'invites') return invitesSummary_(data);
+  if (kind === 'coffees') return coffeesSummary_(data);
+  if (kind === 'entries') return entriesSummary_(data, coffeeLookup);
+  if (kind === 'panels') return panelSummary_(data);
+  return null;
+}
+// The one column per kind worth a date/time display format, if any.
+const COLLAB_DATE_HEADER = { invites: 'Created', entries: 'Updated', panels: 'Date of Report' };
+const COLLAB_COLUMN_WIDTHS = {
+  invites: { ID: 120, 'Session Name': 220, 'Cupping Date': 130, Mode: 80, 'Blind?': 70, Status: 80, 'Results Shared?': 120, Created: 150 },
+  coffees: { ID: 170, 'Invitation Code': 110, 'Lot Name': 220, 'Osito ID': 130, Country: 110, 'Host Cupper': 140, Position: 80 },
+  entries: { ID: 220, Cupper: 150, 'Invitation Code': 110, Coffee: 220, 'Osito ID': 130, Mode: 80, Revision: 70, Updated: 150 },
+  panels: { ID: 260, Cuppers: 220, 'Date of Report': 175, 'Report Title': 210, 'Lots / Coffees': 300, 'Osito IDs': 180, 'Coffee Count': 110 }
+};
+
+function collabWriteSummaries_(sheet, headers, kind, entries, coffeeLookup) {
   // Write only owned summary cells, preserving unrelated columns and formulas.
   entries.forEach(({ rowNumber, data }) => {
-    const summary = panelSummary_(data);
+    const summary = collabSummary_(kind, data, coffeeLookup);
+    if (!summary) return;
     let start = -1, values = [];
     const flush = () => { if (start >= 0) sheet.getRange(rowNumber, start + 1, 1, values.length).setValues([values]); start = -1; values = []; };
     headers.forEach((header, index) => {
@@ -54,12 +124,24 @@ function panelWriteSummaries_(sheet, headers, entries) {
     flush();
   });
 }
-function panelSheetLayout_(sheet) {
+function collabFormatSummaryRow_(sheet, headers, kind, rowNumber) {
+  const dateHeader = COLLAB_DATE_HEADER[kind];
+  if (dateHeader) {
+    const col = headers.indexOf(dateHeader) + 1;
+    if (col > 0) sheet.getRange(rowNumber, col, 1, 1).setNumberFormat('mmm d, yyyy h:mm AM/PM');
+  }
+  sheet.getRange(rowNumber, 1, 1, headers.length).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+  sheet.setRowHeightsForced(rowNumber, 1, 32);
+}
+function collabSheetLayout_(kind, sheet) {
+  const summaryHeaders = collabSummaryHeaders_(kind);
+  if (!summaryHeaders.length) return;
   const rows = sheet.getDataRange().getValues(), headers = rows[0].slice();
-  const needsMigration = headers[2] === 'Cupper' || PANEL_SUMMARY_HEADERS.some(name => !headers.includes(name));
+  const renameCupper = kind === 'panels' && headers[2] === 'Cupper';
+  const needsMigration = renameCupper || summaryHeaders.some(name => !headers.includes(name));
   if (!needsMigration) return;
-  if (headers[2] === 'Cupper') { headers[2] = 'Cuppers'; sheet.getRange(1, 3, 1, 1).setValues([['Cuppers']]); }
-  const missing = PANEL_SUMMARY_HEADERS.filter(name => !headers.includes(name));
+  if (renameCupper) { headers[2] = 'Cuppers'; sheet.getRange(1, 3, 1, 1).setValues([['Cuppers']]); }
+  const missing = summaryHeaders.filter(name => !headers.includes(name));
   if (missing.length) {
     const needed = headers.length + missing.length - sheet.getMaxColumns();
     if (needed > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), needed);
@@ -70,24 +152,30 @@ function panelSheetLayout_(sheet) {
   rows.slice(1).forEach((row, index) => {
     if (!row[0] || !row[1]) return;
     try { entries.push({ rowNumber: index + 2, data: JSON.parse(row[1]) }); }
-    catch (_) { /* Preserve an unreadable source row; other saved reports still migrate. */ }
+    catch (_) { /* Preserve an unreadable source row; other saved records still migrate. */ }
   });
-  panelWriteSummaries_(sheet, headers, entries);
+  const coffeeLookup = kind === 'entries' ? collabCoffeeLookup_() : null;
+  collabWriteSummaries_(sheet, headers, kind, entries, coffeeLookup);
   sheet.hideColumns(2);
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   sheet.getDataRange().setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
   if (rows.length > 1) sheet.setRowHeightsForced(2, rows.length - 1, 32);
-  const widths = { ID: 260, Cuppers: 220, 'Date of Report': 175, 'Report Title': 210, 'Lots / Coffees': 300, 'Osito IDs': 180, 'Coffee Count': 110 };
+  const widths = COLLAB_COLUMN_WIDTHS[kind] || {};
   headers.forEach((header, index) => { if (widths[header]) sheet.setColumnWidth(index + 1, widths[header]); });
-  sheet.getRange(2, headers.indexOf('Date of Report') + 1, Math.max(1, rows.length - 1), 1).setNumberFormat('mmm d, yyyy h:mm AM/PM');
+  const dateHeader = COLLAB_DATE_HEADER[kind];
+  if (dateHeader && headers.includes(dateHeader)) {
+    sheet.getRange(2, headers.indexOf(dateHeader) + 1, Math.max(1, rows.length - 1), 1).setNumberFormat('mmm d, yyyy h:mm AM/PM');
+  }
 }
-// Optional one-time Run action in Apps Script to tidy existing reports immediately.
+// Optional one-time Run action in Apps Script to tidy existing rows in all four tabs immediately.
 function organizePanelReports() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) throw new Error('Service busy. Please retry.');
-  try { collabSheet_('panels'); SpreadsheetApp.flush(); }
-  finally { lock.releaseLock(); }
+  try {
+    ['invites', 'coffees', 'entries', 'panels'].forEach(kind => collabSheet_(kind));
+    SpreadsheetApp.flush();
+  } finally { lock.releaseLock(); }
 }
 function collabHash_(value) {
   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(value)).map(b => ('0' + ((b + 256) % 256).toString(16)).slice(-2)).join('');
@@ -204,6 +292,13 @@ function collaborationPost_(body) {
         let end=i+1;while(end<updates.length&&updates[end].index===updates[end-1].index+1)end++;
         sheet.getRange(updates[i].index+1,1,end-i,3).setValues(updates.slice(i,end).map(write=>write.values));i=end;
       }
+      // This batch path writes rows directly (for the contiguous-range efficiency above) rather than
+      // through collabPut_, so the readable summary columns are filled in separately here.
+      const coffeeLookup={};coffees.forEach(({data})=>{coffeeLookup[data.code+':'+data.sample?.syncId]=data;});
+      let appendCursor=raw.length+1;
+      const rowNumbers=writes.map(write=>write.index<0?appendCursor++:write.index+1);
+      collabWriteSummaries_(sheet,raw[0],'entries',entries.map((data,i)=>({rowNumber:rowNumbers[i],data})),coffeeLookup);
+      rowNumbers.forEach(rowNumber=>collabFormatSummaryRow_(sheet,raw[0],'entries',rowNumber));
       result=body.action==='saveContributions'?{saved:true,entries:entries.map(entry=>({id:entry.id,code:entry.code,sampleId:entry.sampleId,revision:entry.revision,updatedAt:entry.updatedAt}))}:{saved:true,entry:collabPublicEntry_(entries[0])};
     } else if(body.action==='updateInvitation') {
       const invite=collabInvite_(body.code);collabHost_(invite,body.hostToken);
