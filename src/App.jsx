@@ -192,6 +192,10 @@ const App = () => {
   // whenever a session starts or loads — see resetCuppingTimer, called from both.
   const [cuppingTimer, setCuppingTimer] = useState({ status: 'idle', startedAt: null, accumulatedMs: 0, chimedCrust: false, chimedReady: false });
   const resetCuppingTimer = () => setCuppingTimer({ status: 'idle', startedAt: null, accumulatedMs: 0, chimedCrust: false, chimedReady: false });
+  // Lives here (not inside CuppingTimer) so it survives that component unmounting when the cupping
+  // screen isn't the active one — otherwise a chime due while viewing Lot Info/Report silently had
+  // nothing to play through once the timer remounted with a fresh, unarmed AudioContext.
+  const cuppingAudioRef = useRef(null);
   const [history, setHistory] = useState([]);
   const lastPersistedDraft = useRef(null);
   // Saves can fail if the device is out of storage (realistic after a long heavy-use trip offline).
@@ -2655,7 +2659,7 @@ const App = () => {
             </h2>
           </div>
           <div className="flex items-start gap-5 md:gap-6 shrink-0">
-            <CuppingTimer state={cuppingTimer} onChange={setCuppingTimer} t={t} />
+            <CuppingTimer state={cuppingTimer} onChange={setCuppingTimer} audioRef={cuppingAudioRef} t={t} />
             <div className="text-right leading-none pl-4 pr-2">
               <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t(currentSample.noScore ? 'noScore' : 'liveScore')}</span>
               <span className="text-3xl md:text-4xl font-black tabular-nums">{calculateTotal(currentSample)}</span>

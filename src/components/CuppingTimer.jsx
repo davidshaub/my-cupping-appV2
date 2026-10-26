@@ -36,8 +36,7 @@ const playChime = (audioContext) => {
 //          chimedCrust: boolean, chimedReady: boolean } — lifted to App so it survives navigating
 // between screens mid-session, but deliberately never persisted or attached to the saved session:
 // App resets it whenever a session starts or loads, so a reopened session always shows it fresh.
-export default function CuppingTimer({ state, onChange, t }) {
-  const audioRef = useRef(null);
+export default function CuppingTimer({ state, onChange, audioRef, t }) {
   const holdTimerRef = useRef(null);
   const heldRef = useRef(false);
   const [isHolding, setIsHolding] = useState(false);
