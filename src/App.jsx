@@ -1564,7 +1564,7 @@ const App = () => {
 
   if (appState === 'setup') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
+      <div className="min-h-screen flex items-center justify-center px-4 pb-4 md:px-6 md:pb-6 bg-stone-100 pt-[max(1rem,env(safe-area-inset-top))] md:pt-[max(1.5rem,env(safe-area-inset-top))]">
         <div className="home-card max-w-md w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 text-center border border-stone-200">
           <div className="inline-flex p-4 rounded-3xl bg-stone-900 text-white mb-6 md:mb-8 shadow-xl">
             <Icon name="coffee" size={28} />
@@ -1663,7 +1663,7 @@ const App = () => {
 
   if (appState === 'import') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-stone-100">
+      <div className="min-h-screen flex items-center justify-center px-4 pb-4 md:px-6 md:pb-6 bg-stone-100 pt-[max(1rem,env(safe-area-inset-top))] md:pt-[max(1.5rem,env(safe-area-inset-top))]">
         <div className="max-w-xl w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 border border-stone-200">
           <div className="flex items-start justify-between gap-4 mb-6">
             <div className="flex items-start gap-3">
@@ -1900,7 +1900,7 @@ const App = () => {
 
   if (appState === 'history') {
     return (
-      <div className="min-h-screen bg-stone-100 p-6 md:p-12">
+      <div className="min-h-screen bg-stone-100 px-6 pb-6 md:px-12 md:pb-12 pt-[max(1.5rem,env(safe-area-inset-top))] md:pt-[max(3rem,env(safe-area-inset-top))]">
         {historyPreview && <CoffeeReportModal
           title={[historyPreview.sample.ositoId, historyPreview.sample.lotName || `${t('coffee')} ${historyPreview.index + 1}`].filter(Boolean).join(' · ')}
           onClose={() => { closePreparedPdf(); setHistoryPreview(null); }}
@@ -2085,7 +2085,7 @@ const App = () => {
     };
 
     return (
-      <div className="min-h-screen bg-stone-100 p-4 md:p-12">
+      <div className="min-h-screen bg-stone-100 px-4 pb-4 md:px-12 md:pb-12 pt-[max(1rem,env(safe-area-inset-top))] md:pt-[max(3rem,env(safe-area-inset-top))]">
         <div className="max-w-4xl mx-auto space-y-6 metadata-editor-content">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-2xl font-black text-stone-900 tracking-tight">{t('lotInformation')}</h1>
@@ -2435,7 +2435,7 @@ const App = () => {
 
   if (appState === 'report') {
     return (
-      <div className="report-screen min-h-screen bg-stone-100 p-4 md:p-8 relative">
+      <div className="report-screen min-h-screen bg-stone-100 px-4 pb-4 md:px-8 md:pb-8 relative pt-[max(1rem,env(safe-area-inset-top))] md:pt-[max(2rem,env(safe-area-inset-top))]">
         {preparedCsv && <CsvExportDialog data={preparedCsv} onClose={() => setPreparedCsv(null)} t={t} />}
         {renderSaveSessionModal()}
         {renderPdfReadyDialog()}
@@ -2651,9 +2651,9 @@ const App = () => {
             <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact iconOnly={viewportWidth <= 1024} />
           </div>
         </header>
-        <div className="max-w-6xl mx-auto px-4 md:px-12 pb-4 flex justify-between items-end text-stone-900 gap-3">
-          <div className="min-w-0 pl-2">
-            <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] leading-none block mb-1">{blindSession?'Blind cupping':t('analyzingLot')}</span>
+        <div className="max-w-6xl mx-auto px-4 md:px-12 pb-4 flex justify-between items-start text-stone-900 gap-3">
+          <div className="min-w-0 pl-2 leading-none">
+            <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{blindSession?'Blind cupping':t('analyzingLot')}</span>
             <h2 className="cupping-coffee-title text-base md:text-xl font-black tracking-tight">
               {blindSession?`${t('coffee')} ${activeSampleIndex+1}`:(currentSample.lotName || `${t('coffee')} ${activeSampleIndex + 1}`)}
             </h2>
