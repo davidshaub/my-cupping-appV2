@@ -45,29 +45,30 @@ import {
   normalizeLanguage
 } from './i18n';
 
-const EInkToggle = ({ isActive, onToggle, t, compact = false, className = '' }) => (
+const EInkToggle = ({ isActive, onToggle, t, compact = false, iconOnly = false, className = '' }) => (
   <button
     type="button"
     onClick={onToggle}
     aria-pressed={isActive}
-    className={`eink-toggle ${isActive ? 'is-active' : ''} ${compact ? 'eink-toggle-compact' : ''} ${className}`}
+    aria-label={t('bwMode')}
+    className={`eink-toggle ${isActive ? 'is-active' : ''} ${compact ? 'eink-toggle-compact' : ''} ${iconOnly ? 'eink-toggle-icon-only' : ''} ${className}`}
     title={isActive ? t('switchStandard') : t('switchBw')}
   >
-    <span>{t('bwMode')}</span>
-    {!compact && <span className="eink-toggle-state">{isActive ? t('on') : t('off')}</span>}
+    {iconOnly ? <Icon name="contrast" size={16} /> : <span>{t('bwMode')}</span>}
+    {!compact && !iconOnly && <span className="eink-toggle-state">{isActive ? t('on') : t('off')}</span>}
   </button>
 );
 
-const LanguageToggle = ({ language, onToggle, t, compact = false, className = '' }) => (
+const LanguageToggle = ({ language, onToggle, t, compact = false, iconOnly = false, className = '' }) => (
   <button
     type="button"
     onClick={onToggle}
-    className={`eink-toggle ${compact ? 'eink-toggle-compact' : ''} ${className}`}
+    className={`eink-toggle ${compact ? 'eink-toggle-compact' : ''} ${iconOnly ? 'eink-toggle-icon-only' : ''} ${className}`}
     title={t(LANGUAGE_OPTIONS[nextLanguage(language)].switchKey)}
     aria-label={t(LANGUAGE_OPTIONS[nextLanguage(language)].switchKey)}
   >
-    <span>{LANGUAGE_OPTIONS[nextLanguage(language)].code}</span>
-    {!compact && <span className="eink-toggle-state">{LANGUAGE_OPTIONS[nextLanguage(language)].name}</span>}
+    {iconOnly ? <Icon name="globe" size={16} /> : <span>{LANGUAGE_OPTIONS[nextLanguage(language)].code}</span>}
+    {!compact && !iconOnly && <span className="eink-toggle-state">{LANGUAGE_OPTIONS[nextLanguage(language)].name}</span>}
   </button>
 );
 
@@ -2632,8 +2633,8 @@ const App = () => {
             {t('report')}
           </button>
           <div className="flex items-center gap-2 shrink-0">
-            <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact />
-            <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact />
+            <LanguageToggle language={language} onToggle={toggleLanguage} t={t} compact iconOnly={viewportWidth < 700} />
+            <EInkToggle isActive={isEinkMode} onToggle={toggleDisplayMode} t={t} compact iconOnly={viewportWidth < 700} />
           </div>
         </header>
         <div className="max-w-6xl mx-auto px-4 md:px-12 pb-4 flex justify-between items-end text-stone-900 gap-3">
