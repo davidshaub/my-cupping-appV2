@@ -1152,6 +1152,16 @@ h3 {
   transform: scaleX(1);
 }
 
+/* Backup visual cue for a chime - pulses briefly so it still registers on a glance even if the
+   sound is missed or delayed (e.g. caught up right as the screen unlocks). */
+@keyframes cupping-timer-chime-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.cupping-timer-chimed {
+  animation: cupping-timer-chime-pulse 0.6s ease-in-out 2;
+}
+
 .eink-toggle-state {
   padding: 0.22rem 0.38rem;
   border-radius: 999px;

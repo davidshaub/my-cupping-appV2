@@ -91,12 +91,30 @@ export default function CuppingTimer({ state, onChange, audioRef, t }) {
   const heldRef = useRef(false);
   const [isHolding, setIsHolding] = useState(false);
   const [, forceTick] = useState(0);
+  const [justChimed, setJustChimed] = useState(false);
 
   useEffect(() => {
     if (state.status !== 'running') return undefined;
     const interval = setInterval(() => forceTick((n) => n + 1), 250);
     return () => clearInterval(interval);
   }, [state.status]);
+
+  // A locked screen or a backgrounded tab suspends the interval above - on a long wait (ready-to-
+  // taste is typically ~18min, vs. ~4min to crust break) that's common enough that the chime can be
+  // badly delayed, or missed if nothing ever re-renders to notice it's due. Forcing a recheck the
+  // instant the page is foregrounded again catches it up immediately instead of waiting on whatever
+  // cadence the browser resumes the interval at.
+  useEffect(() => {
+    const recheck = () => { if (document.visibilityState === 'visible') forceTick((n) => n + 1); };
+    document.addEventListener('visibilitychange', recheck);
+    window.addEventListener('focus', recheck);
+    window.addEventListener('pageshow', recheck);
+    return () => {
+      document.removeEventListener('visibilitychange', recheck);
+      window.removeEventListener('focus', recheck);
+      window.removeEventListener('pageshow', recheck);
+    };
+  }, []);
 
   const elapsedMs = state.accumulatedMs + (state.status === 'running' && state.startedAt ? Date.now() - state.startedAt : 0);
 
@@ -106,9 +124,18 @@ export default function CuppingTimer({ state, onChange, audioRef, t }) {
     const readyDue = elapsedMs >= getReadyMinutes() * 60 * 1000 && !state.chimedReady;
     if (!crustDue && !readyDue) return;
     if (getChimesEnabled()) playChime(audioRef.current);
+    setJustChimed(true);
     onChange((current) => ({ ...current, chimedCrust: current.chimedCrust || crustDue, chimedReady: current.chimedReady || readyDue }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elapsedMs, state.status, state.chimedCrust, state.chimedReady]);
+
+  // Backup visual cue in case the chime is missed or delayed (e.g. a catch-up firing right as the
+  // screen unlocks, before audio focus has settled) - a brief pulse on the elapsed time itself.
+  useEffect(() => {
+    if (!justChimed) return undefined;
+    const timeout = setTimeout(() => setJustChimed(false), 2600);
+    return () => clearTimeout(timeout);
+  }, [justChimed]);
 
   // iOS only requires the very first play() on a given <audio> element to originate from a real
   // tap; once that's happened, later unprompted play() calls (when a chime is actually due, minutes
@@ -191,7 +218,7 @@ export default function CuppingTimer({ state, onChange, audioRef, t }) {
       title={t('timerHoldToClear')}
     >
       <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t('timer')}</span>
-      <span className={`text-xl md:text-2xl font-black tabular-nums transition-opacity ${state.status === 'paused' ? 'opacity-40' : ''}`}>
+      <span className={`text-xl md:text-2xl font-black tabular-nums transition-opacity ${state.status === 'paused' ? 'opacity-40' : ''} ${justChimed ? 'cupping-timer-chimed' : ''}`}>
         {display}
       </span>
       <span className={`cupping-timer-hold-bar ${isHolding ? 'is-charging' : ''}`} aria-hidden="true" />
