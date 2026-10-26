@@ -2654,7 +2654,7 @@ const App = () => {
               {blindSession?`${t('coffee')} ${activeSampleIndex+1}`:(currentSample.lotName || `${t('coffee')} ${activeSampleIndex + 1}`)}
             </h2>
           </div>
-          <div className="flex items-end gap-5 md:gap-6 shrink-0">
+          <div className="flex items-start gap-5 md:gap-6 shrink-0">
             <CuppingTimer state={cuppingTimer} onChange={setCuppingTimer} t={t} />
             <div className="text-right leading-none pl-4 pr-2">
               <span className="text-stone-300 text-[9px] font-black uppercase tracking-[0.2em] block mb-1">{t(currentSample.noScore ? 'noScore' : 'liveScore')}</span>

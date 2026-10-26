@@ -111,16 +111,25 @@ export default function CuppingTimer({ state, onChange, t }) {
   const display = formatElapsed(elapsedMs);
   const label = elapsedMs === 0 && state.status === 'idle' ? t('timer') : `${t('timer')} ${display}`;
 
+  // Structurally identical to the Live Score block right next to it (plain div, text-right,
+  // leading-none, block-level children) rather than a flex column — two different CSS formatting
+  // contexts producing the same visual "right-aligned stack" are exactly the kind of thing browsers
+  // compute vertical metrics for slightly differently. Making the markup match removes that variable
+  // instead of chasing it with another alignment tweak.
   return (
-    <button
-      type="button"
-      className="flex flex-col items-end select-none bg-transparent border-0 p-0"
+    <div
+      role="button"
+      tabIndex={0}
+      className="text-right leading-none select-none cursor-pointer"
       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerCancel}
       onPointerCancel={handlePointerCancel}
       onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      }}
       aria-label={label}
       title={t('timerHoldToClear')}
     >
@@ -129,6 +138,6 @@ export default function CuppingTimer({ state, onChange, t }) {
         {display}
       </span>
       <span className={`cupping-timer-hold-bar ${isHolding ? 'is-charging' : ''}`} aria-hidden="true" />
-    </button>
+    </div>
   );
 }
