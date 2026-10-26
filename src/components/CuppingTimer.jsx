@@ -13,23 +13,73 @@ const formatElapsed = (ms) => {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 };
 
-// Two soft sine tones (a falling third), quick fade in and an exponential fade out — deliberately
-// quiet (peak gain ~0.12) so it reads as a gentle cue, not an alert, during a quiet cupping room.
-const playChime = (audioContext) => {
-  if (!audioContext) return;
-  const now = audioContext.currentTime;
-  [{ freq: 880, start: 0, duration: 0.5 }, { freq: 659.25, start: 0.22, duration: 0.6 }].forEach(({ freq, start, duration }) => {
-    const osc = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, now + start);
-    gain.gain.linearRampToValueAtTime(0.12, now + start + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
-    osc.connect(gain).connect(audioContext.destination);
-    osc.start(now + start);
-    osc.stop(now + start + duration + 0.05);
+// iOS tags raw Web Audio API output (oscillators etc.) as the "ambient" sound category, which is
+// silenced by the physical ring/silent switch regardless of volume - that's why an earlier version
+// of this chime could show iOS's "now playing audio" glyph with no audible sound. A real <audio>
+// element gets the "playback" category instead, which ignores that switch - so the chime is
+// rendered to an actual short WAV clip and played through one, rather than scheduled live.
+const CHIME_SAMPLE_RATE = 22050;
+const CHIME_NOTES = [{ freq: 880, start: 0, duration: 0.5 }, { freq: 659.25, start: 0.22, duration: 0.6 }];
+
+const chimeEnvelope = (t, duration) => {
+  const attack = 0.04, peak = 0.12, floor = 0.0001;
+  if (t < 0 || t > duration) return 0;
+  if (t < attack) return (t / attack) * peak;
+  const progress = (t - attack) / (duration - attack);
+  return peak * (floor / peak) ** progress;
+};
+
+const encodeWavDataUrl = (samples, sampleRate) => {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeString = (offset, str) => { for (let i = 0; i < str.length; i += 1) view.setUint8(offset + i, str.charCodeAt(i)); };
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+  let offset = 44;
+  for (let i = 0; i < samples.length; i += 1, offset += 2) {
+    const clamped = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+  }
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  return `data:audio/wav;base64,${btoa(binary)}`;
+};
+
+let cachedChimeDataUrl = null;
+const getChimeDataUrl = () => {
+  if (cachedChimeDataUrl) return cachedChimeDataUrl;
+  const totalDuration = Math.max(...CHIME_NOTES.map((n) => n.start + n.duration)) + 0.05;
+  const length = Math.ceil(CHIME_SAMPLE_RATE * totalDuration);
+  const samples = new Float32Array(length);
+  CHIME_NOTES.forEach(({ freq, start, duration }) => {
+    const startSample = Math.floor(start * CHIME_SAMPLE_RATE);
+    for (let i = 0; startSample + i < length; i += 1) {
+      const t = i / CHIME_SAMPLE_RATE;
+      if (t > duration) break;
+      samples[startSample + i] += chimeEnvelope(t, duration) * Math.sin(2 * Math.PI * freq * t);
+    }
   });
+  cachedChimeDataUrl = encodeWavDataUrl(samples, CHIME_SAMPLE_RATE);
+  return cachedChimeDataUrl;
+};
+
+const playChime = (audio) => {
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
 };
 
 // state: { status: 'idle'|'running'|'paused', startedAt: number|null, accumulatedMs: number,
@@ -60,13 +110,21 @@ export default function CuppingTimer({ state, onChange, audioRef, t }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elapsedMs, state.status, state.chimedCrust, state.chimedReady]);
 
+  // iOS only requires the very first play() on a given <audio> element to originate from a real
+  // tap; once that's happened, later unprompted play() calls (when a chime is actually due, minutes
+  // later) are allowed. So every tap here "primes" the element with an immediate play+pause - audible
+  // for a few milliseconds at most, which in practice isn't perceptible, rather than ever playing the
+  // real chime on tap.
   const ensureAudio = () => {
     if (!audioRef.current) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (Ctx) audioRef.current = new Ctx();
+      const audio = new Audio(getChimeDataUrl());
+      audio.preload = 'auto';
+      audioRef.current = audio;
     }
-    if (audioRef.current?.state === 'suspended') audioRef.current.resume();
-    return audioRef.current;
+    const audio = audioRef.current;
+    const primed = audio.play();
+    if (primed?.then) primed.then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
+    return audio;
   };
 
   const toggle = () => {

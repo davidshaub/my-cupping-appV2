@@ -192,9 +192,10 @@ const App = () => {
   // whenever a session starts or loads — see resetCuppingTimer, called from both.
   const [cuppingTimer, setCuppingTimer] = useState({ status: 'idle', startedAt: null, accumulatedMs: 0, chimedCrust: false, chimedReady: false });
   const resetCuppingTimer = () => setCuppingTimer({ status: 'idle', startedAt: null, accumulatedMs: 0, chimedCrust: false, chimedReady: false });
-  // Lives here (not inside CuppingTimer) so it survives that component unmounting when the cupping
-  // screen isn't the active one — otherwise a chime due while viewing Lot Info/Report silently had
-  // nothing to play through once the timer remounted with a fresh, unarmed AudioContext.
+  // Holds the chime's <audio> element. Lives here (not inside CuppingTimer) so it survives that
+  // component unmounting when the cupping screen isn't the active one — otherwise a chime due while
+  // viewing Lot Info/Report had nothing to play through once the timer remounted with a fresh,
+  // unprimed element.
   const cuppingAudioRef = useRef(null);
   const [history, setHistory] = useState([]);
   const lastPersistedDraft = useRef(null);
