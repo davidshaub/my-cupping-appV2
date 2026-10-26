@@ -1226,20 +1226,22 @@ const App = () => {
       ? range.endCol
       : Math.min(columnOrder.length - 1, targetStartCol + Math.max(...rows.map((cells) => cells.length)) - 1);
 
-    setSamples((prev) =>
-      prev.map((item, rowIdx) => {
-        if (rowIdx < targetStartRow || rowIdx > pasteEndRow) return item;
-        let next = item;
-        for (let colIdx = targetStartCol; colIdx <= pasteEndCol; colIdx += 1) {
-          const value = fillsSelection ? rows[0][0] : rows[rowIdx - targetStartRow]?.[colIdx - targetStartCol];
-          if (value === undefined) continue;
-          const colKey = columnOrder[colIdx];
-          if (!colKey) continue;
-          next = applyMetadataTableValueToSample(next, colKey, value);
-        }
-        return next;
-      })
-    );
+    const nextSamples = samples.map((item, rowIdx) => {
+      if (rowIdx < targetStartRow || rowIdx > pasteEndRow) return item;
+      let next = item;
+      for (let colIdx = targetStartCol; colIdx <= pasteEndCol; colIdx += 1) {
+        const value = fillsSelection ? rows[0][0] : rows[rowIdx - targetStartRow]?.[colIdx - targetStartCol];
+        if (value === undefined) continue;
+        const colKey = columnOrder[colIdx];
+        if (!colKey) continue;
+        next = applyMetadataTableValueToSample(next, colKey, value);
+      }
+      return next;
+    });
+    setSamples(nextSamples);
+    // Paste writes samples directly, with no field-exit event for the usual lot-lookup trigger to
+    // catch — fire it explicitly whenever the Osito ID column was part of what was just pasted.
+    if (targetStartCol === 0) lotLookup.lookupPasted(nextSamples.slice(targetStartRow, pasteEndRow + 1));
 
     setMetadataTableSelection({
       anchor: { row: targetStartRow, col: targetStartCol },

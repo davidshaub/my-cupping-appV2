@@ -22,7 +22,7 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
   const lookup = (key, id, delay = 0, force = false) => {
     edited.current.delete(key);
     cancel(key);
-    const job = { controller: new AbortController() };
+    const job = { controller: new AbortController(), id };
     jobs.current.set(key, job);
     setStates(current => ({ ...current, [key]: { id, status: 'loading' } }));
     job.timer = setTimeout(async () => {
@@ -56,6 +56,11 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
     } else {
       for (const [key, id] of ids) {
         if (!previous.current.ids.has(key) || previous.current.ids.get(key) === id) continue;
+        // A lookup already in flight for this exact id (e.g. just triggered by a paste) isn't a stale
+        // job to cancel — it's the one that's supposed to be running. Only reset when there's either no
+        // job yet or the in-flight one is for a since-superseded id.
+        const activeJob = jobs.current.get(key);
+        if (activeJob && activeJob.id === id) continue;
         cancel(key);
         setStates(current => ({ ...current, [key]: null }));
         if (id && id.length <= 64) edited.current.add(key);
@@ -96,9 +101,18 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
     catalog,
     commit: () => {
       if (!active.current.enabled) return;
-      // Leaving an ID field also commits IDs pasted into a multi-row table selection.
       for (const sample of latest.current) {
         if (edited.current.has(sample.syncId)) lookup(sample.syncId, lotId(sample.ositoId));
+      }
+    },
+    // Pasting a column of IDs writes straight into samples without going through a field edit, so
+    // there's no later "leave the field" moment for commit() to catch it on — call this right after
+    // a paste that touched the Osito ID column, with the pasted rows' own (already-updated) samples.
+    lookupPasted: pastedSamples => {
+      if (!active.current.enabled) return;
+      for (const sample of pastedSamples) {
+        const id = lotId(sample.ositoId);
+        if (id && id.length <= 64) lookup(sample.syncId, id);
       }
     },
     refresh: () => refresh(true),
