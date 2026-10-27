@@ -122,10 +122,10 @@ the server's `OSITO_PANEL_PASSWORD` Script Property, also configure the matching
 `VITE_PANEL_PASSWORD_SHA256` build variable and rebuild the frontend. The password
 is held in component memory only, never in browser persistence or a GET URL.
 
-**Compare specific coffees** accepts one coffee comparison per line, with that coffee's
+**Group specific coffees** accepts one coffee group per line, with that coffee's
 Sample IDs separated by commas. Two cuppers tasting five coffees means five lines,
 each with the two evaluations for the same coffee. Input order sets report order;
-missing or repeated IDs must be corrected before comparisons are built. Existing
+missing or repeated IDs must be corrected before groups are built. Existing
 summaries are retained when the same evaluation group is rebuilt.
 Rebuilding with already-loaded Sample IDs uses the local evaluations. To retrieve
 updated source records, use **Advanced options → Refresh evaluations**. Those
@@ -134,7 +134,7 @@ the combined evaluation count appears beside each coffee heading. The menus are
 collapsed by default and read **Exclude this evaluation**, **Keep as a separate
 coffee**, or **Combine under [coffee name]**.
 
-**Compare complete sessions** accepts session/invitation codes, separated by commas
+**Group complete sessions** accepts session/invitation codes, separated by commas
 or new lines. Matching lot IDs are suggested as groups for review. Table positions
 and names alone never cause grouping; evaluations without a lot ID remain separate.
 The author must confirm roast/preparation suitability, inclusion, and grouping.

@@ -1,12 +1,12 @@
 // One row describes one output coffee; commas separate that coffee's source evaluations.
 export function parseCoffeeComparisons(text) {
   const lines = String(text).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  if (!lines.length) throw new Error('Enter one coffee comparison per line, with Sample IDs separated by commas.');
+  if (!lines.length) throw new Error('Enter one coffee group per line, with Sample IDs separated by commas.');
   const used = new Set();
   return lines.map((line, index) => {
     const ids = line.split(',').map(id => id.trim()).filter(Boolean);
     if (!ids.length || ids.some(id => /[\s;]/.test(id))) throw new Error(`Line ${index + 1}: separate Sample IDs with commas; start a new line for another coffee.`);
-    ids.forEach(id => { if (used.has(id)) throw new Error(`Sample ID ${id} appears more than once. Include each evaluation in only one comparison.`); used.add(id); });
+    ids.forEach(id => { if (used.has(id)) throw new Error(`Sample ID ${id} appears more than once. Include each evaluation in only one group.`); used.add(id); });
     return ids;
   });
 }
