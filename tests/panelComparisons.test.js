@@ -25,5 +25,39 @@ test('session suggestions match explicit lot IDs, never table position or name a
     {id:'D',sample:{lotName:'Same name'}},
     {id:'E',sample:{lotName:'Same name'}}
   ];
-  assert.deepEqual(suggestSessionComparisons(records).map(g=>g.ids),[['A','B'],['C'],['D'],['E']]);
+  const result=suggestSessionComparisons(records);
+  assert.deepEqual(result.groups.map(g=>g.ids),[['A','B'],['C'],['D'],['E']]);
+  assert.equal(result.warning,'');
+});
+test('without Osito IDs, coffees from two sessions pair by table position instead', () => {
+  const records=[
+    {id:'d1',sessionCode:'HBBS',position:1,sample:{lotName:'Coffee 1'}},
+    {id:'d2',sessionCode:'HBBS',position:2,sample:{lotName:'Coffee 2'}},
+    {id:'k1',sessionCode:'SLRT',position:1,sample:{lotName:'Coffee 1'}},
+    {id:'k2',sessionCode:'SLRT',position:2,sample:{lotName:'Coffee 2'}}
+  ];
+  const result=suggestSessionComparisons(records);
+  assert.deepEqual(result.groups.map(g=>g.ids),[['d1','k1'],['d2','k2']]);
+  assert.equal(result.warning,'');
+});
+test('uneven coffee counts between sessions still pair by position and warn instead of silently dropping extras', () => {
+  const records=[
+    {id:'d1',sessionCode:'HBBS',position:1,sample:{lotName:'Coffee 1'}},
+    {id:'d2',sessionCode:'HBBS',position:2,sample:{lotName:'Coffee 2'}},
+    {id:'d3',sessionCode:'HBBS',position:3,sample:{lotName:'Coffee 3'}},
+    {id:'k1',sessionCode:'SLRT',position:1,sample:{lotName:'Coffee 1'}},
+    {id:'k2',sessionCode:'SLRT',position:2,sample:{lotName:'Coffee 2'}}
+  ];
+  const result=suggestSessionComparisons(records);
+  assert.deepEqual(result.groups.map(g=>g.ids),[['d1','k1'],['d2','k2'],['d3']]);
+  assert.match(result.warning,/different coffee counts/);
+});
+test('a lone session without Osito IDs has nothing to pair against, so coffees stay separate', () => {
+  const records=[
+    {id:'d1',sessionCode:'HBBS',position:1,sample:{lotName:'Coffee 1'}},
+    {id:'d2',sessionCode:'HBBS',position:2,sample:{lotName:'Coffee 2'}}
+  ];
+  const result=suggestSessionComparisons(records);
+  assert.deepEqual(result.groups.map(g=>g.ids),[['d1'],['d2']]);
+  assert.equal(result.warning,'');
 });

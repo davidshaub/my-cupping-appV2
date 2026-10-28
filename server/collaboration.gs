@@ -223,7 +223,7 @@ function collabLookup_(body) {
     if (!ids.includes(String(row[col('Sample ID')])) && !codes.includes(collabCode_(row[col('Session Code')]))) return;
     const data = JSON.parse(row[col('App Data')]);
     const sample = data.sample;
-    evaluations.push({ id: sample.syncId, source: 'primary', sample, cupper: row[col('Cupper')] || sample.cupper || data.session.cupper || 'Unnamed cupper', sessionName: data.session.name || '', date: data.session.startTime || data.session.date || '', sessionCode: row[col('Session Code')] || '', sourceSessionId: data.session.syncId });
+    evaluations.push({ id: sample.syncId, source: 'primary', sample, cupper: row[col('Cupper')] || sample.cupper || data.session.cupper || 'Unnamed cupper', sessionName: data.session.name || '', date: data.session.startTime || data.session.date || '', sessionCode: row[col('Session Code')] || '', sourceSessionId: data.session.syncId, position: Number.isInteger(data.position) ? data.position : null });
   });
   const invitations = collabRows_('invites'), sharedCoffees = collabRows_('coffees');
   const selectedSessions = new Set(evaluations.map(e=>e.sourceSessionId));
@@ -231,7 +231,7 @@ function collabLookup_(body) {
     const invitation = invitations.find(row=>row.id===data.code)?.data;
     if (!ids.includes(id) && !codes.includes(collabCode_(data.code)) && !(codes.length && selectedSessions.has(invitation?.sourceSessionId))) return;
     const coffee = sharedCoffees.find(row=>row.data.code === data.code && row.data.sample.syncId === data.sampleId);
-    if (coffee) evaluations.push({ id, source: 'shared', sample: coffee.data.sample, ...collabPublicEntry_(data), sessionCode: data.code });
+    if (coffee) evaluations.push({ id, source: 'shared', sample: coffee.data.sample, ...collabPublicEntry_(data), sessionCode: data.code, position: Number.isInteger(coffee.data.position) ? coffee.data.position + 1 : null });
   });
   if (evaluations.length > 60 || JSON.stringify(evaluations).length > 85000) throw new Error('Too many evaluations. Look up fewer samples.');
   const foundIds = new Set(evaluations.map(e=>e.id));

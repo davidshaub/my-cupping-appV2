@@ -21,16 +21,43 @@ export function planCoffeeComparisons(lines, records) {
   });
 }
 
+// Returns { groups, warning }. Lot names and table positions are not reliable
+// identities across sessions, so evaluations with an Osito ID only ever match
+// other evaluations with the same Osito ID. Evaluations missing an Osito ID fall
+// back to table position, but only when every one of them has a known position
+// and they come from more than one session - otherwise they stay separate.
 export function suggestSessionComparisons(records) {
   const grouped = new Map();
+  const unresolved = [];
   records.forEach(record => {
-    // Lot names and table positions are not reliable identities across sessions.
-    // Evaluations without a lot ID remain separate for manual review.
     const lot = String(record.sample.ositoId || '').trim().toLowerCase();
-    const key = lot ? `lot:${lot}` : `evaluation:${record.id}`;
+    if (!lot) { unresolved.push(record); return; }
+    const key = `lot:${lot}`;
     const group = grouped.get(key);
     if (group) group.ids.push(record.id);
     else grouped.set(key, { id: crypto.randomUUID(), name: record.sample.lotName || record.sample.ositoId || 'Coffee', sample: record.sample, ids: [record.id], summary: '' });
   });
-  return [...grouped.values()];
+
+  const sessionKeyOf = record => record.sessionCode || record.sourceSessionId || 'unknown';
+  const sessionKeys = new Set(unresolved.map(sessionKeyOf));
+  const canPairByPosition = sessionKeys.size > 1 && unresolved.every(record => Number.isInteger(record.position));
+  let warning = '';
+  if (canPairByPosition) {
+    const counts = new Map();
+    unresolved.forEach(record => counts.set(sessionKeyOf(record), (counts.get(sessionKeyOf(record)) || 0) + 1));
+    if (new Set(counts.values()).size > 1) {
+      warning = `Sessions without Osito IDs have different coffee counts (${[...counts.values()].join(' vs ')}); positions were paired as far as possible - review each group below before saving.`;
+    }
+    unresolved.forEach(record => {
+      const key = `position:${record.position}`;
+      const group = grouped.get(key);
+      if (group) group.ids.push(record.id);
+      else grouped.set(key, { id: crypto.randomUUID(), name: record.sample.lotName || `Coffee ${record.position}`, sample: record.sample, ids: [record.id], summary: '' });
+    });
+  } else {
+    unresolved.forEach(record => {
+      grouped.set(`evaluation:${record.id}`, { id: crypto.randomUUID(), name: record.sample.lotName || record.sample.ositoId || 'Coffee', sample: record.sample, ids: [record.id], summary: '' });
+    });
+  }
+  return { groups: [...grouped.values()], warning };
 }

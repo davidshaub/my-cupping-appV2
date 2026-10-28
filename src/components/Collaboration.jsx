@@ -113,14 +113,16 @@ export default function Collaboration({ initialView='settings', session, initial
     const missing=[...result.missingSampleIds,...result.missingSessionCodes];
     if(missing.length)throw new Error('Not found: '+missing.join(', ')+'. Check these identifiers before building the groups.');
     if(!result.evaluations.length)throw new Error('No evaluations were found. Check the identifiers and try again.');
-    const nextGroups=comparisonMode==='coffees'?planCoffeeComparisons(lines,result.evaluations):suggestSessionComparisons(result.evaluations);
+    const sessionResult=comparisonMode==='sessions'?suggestSessionComparisons(result.evaluations):null;
+    const nextGroups=comparisonMode==='coffees'?planCoffeeComparisons(lines,result.evaluations):sessionResult.groups;
     setRecords(previous=>Array.from(new Map([...previous,...result.evaluations].map(r=>[r.id,r])).values()));
     setGroups(previous=>nextGroups.map(group=>{
       const existing=previous.find(old=>old.ids.length===group.ids.length&&old.ids.every(id=>group.ids.includes(id)));
       return existing?{...group,id:existing.id,name:existing.name,summary:existing.summary}:group;
     }));
     setSavedPanel(null);
-    setMessage(`Built ${nextGroups.length} coffee groups from ${result.evaluations.length} evaluations. ${comparisonMode==='sessions'?'Matching lot IDs are grouped for review; check roast and preparation before exporting.':'Each input line is now one coffee in the report. Review the groupings below.'}`);
+    const baseMessage=`Built ${nextGroups.length} coffee groups from ${result.evaluations.length} evaluations. ${comparisonMode==='sessions'?'Matching Osito IDs are grouped for review; coffees without an Osito ID are paired by table position across sessions instead. Check roast and preparation before exporting.':'Each input line is now one coffee in the report. Review the groupings below.'}`;
+    setMessage(sessionResult?.warning?`${baseMessage} ${sessionResult.warning}`:baseMessage);
   });
   const makePanel=()=>({title,coffees:groups.filter(g=>g.ids.length).map(g=>({name:g.name,summary:g.summary||'',sample:{...g.sample,lotName:g.name},evaluations:g.ids.map(id=>asPanelEvaluation(records.find(r=>r.id===id)))}))});
   const pdf=()=>{
