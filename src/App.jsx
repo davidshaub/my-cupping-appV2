@@ -1964,6 +1964,12 @@ const App = () => {
                     </div>
                     <h3 className="text-lg font-black text-stone-900 leading-tight pr-4">{item.name}</h3>
                     <p className="session-code">{t('sessionCode')}: {item.sessionCode || t('codePending')}</p>
+                    {!item.trimmed && item.sessionCode && (
+                      <p className={`session-sync-status${sharedSync.conflicts[item.syncId] ? ' session-sync-status-conflict' : sharedSync.isSynced(item) ? ' session-sync-status-synced' : ' session-sync-status-pending'}`}>
+                        <Icon name={sharedSync.conflicts[item.syncId] ? 'alert-triangle' : sharedSync.isSynced(item) ? 'check' : 'upload-cloud'} size={11} />
+                        {sharedSync.conflicts[item.syncId] ? t('syncConflict') : sharedSync.isSynced(item) ? t('syncedToDevices') : t('syncPending')}
+                      </p>
+                    )}
                     <button type="button" className="history-share-action" onClick={event => { event.stopPropagation(); withRehydrated(item, hydrated => setCollaboration({ initialView: 'create', session: hydrated })); }}>Share cupping<Icon name="chevron-right" size={14} /></button>
                     <p className="text-xs font-bold text-stone-400 uppercase mt-2">{item.count} {t('samples')}</p>
                     {coffeeMatches.length > 0 && (

@@ -64,6 +64,18 @@ const Icon = ({ name, size = 20, className = '' }) => {
         <circle cx="12" cy="12" r="10" />
         <path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor" stroke="none" />
       </>
+    ),
+    'alert-triangle': (
+      <>
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+        <path d="M12 9v4M12 17h.01" />
+      </>
+    ),
+    'upload-cloud': (
+      <>
+        <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+        <path d="M12 12v9m-4-4 4-4 4 4" />
+      </>
     )
   };
 

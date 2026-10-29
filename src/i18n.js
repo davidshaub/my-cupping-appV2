@@ -15,6 +15,7 @@ export const UI_TEXT = {
   'pt-BR': UI_PT,
   en: {
     recallSession: 'Recall Session', sessionCode: 'Session Code', codePending: 'Pending sync', openSessionCode: 'Open Session', recallingSession: 'Retrieving...', invalidSessionCode: 'Enter an eight-character session code.', recallFailed: 'Session could not be retrieved. Check the code, internet connection, and that the original device has synced.', replaceRecalledSession: 'This session already exists on this device. Replace its local version with the retrieved version? Local-only edits will be replaced.',
+    syncedToDevices: 'Synced to other devices', syncPending: 'Not yet synced to other devices', syncConflict: 'Sync needs attention — open the session',
     exportCsv: 'Export CSV', downloadCsv: 'Download CSV', shareCsv: 'Share CSV file', copyCsv: 'Copy CSV', viewCsv: 'View CSV', closeCsv: 'Close CSV export', csvCopied: 'CSV copied.', csvExportError: 'This browser could not complete the export. Try another export option.',
     createPdf: 'Create PDF', closeReport: 'Close report',
     sharedSavedLocal: "Saved on this device",
@@ -218,6 +219,7 @@ export const UI_TEXT = {
   },
   es: {
     recallSession: 'Recuperar sesión', sessionCode: 'Código de sesión', codePending: 'Pendiente de sincronización', openSessionCode: 'Abrir sesión', recallingSession: 'Recuperando...', invalidSessionCode: 'Introduce un código de ocho caracteres.', recallFailed: 'No se pudo recuperar la sesión. Comprueba el código, la conexión y la sincronización del dispositivo original.', replaceRecalledSession: 'Esta sesión ya existe aquí. ¿Reemplazar la versión local? Se perderán los cambios que solo están en este dispositivo.',
+    syncedToDevices: 'Sincronizada con otros dispositivos', syncPending: 'Aún no sincronizada con otros dispositivos', syncConflict: 'La sincronización necesita atención: abre la sesión',
     exportCsv: 'Exportar CSV', downloadCsv: 'Descargar CSV', shareCsv: 'Compartir archivo CSV', copyCsv: 'Copiar CSV', viewCsv: 'Ver CSV', closeCsv: 'Cerrar exportación CSV', csvCopied: 'CSV copiado.', csvExportError: 'El navegador no pudo completar la exportación. Prueba otra opción.',
     createPdf: 'Crear PDF', closeReport: 'Cerrar informe',
     sharedSavedLocal: "Guardado en este dispositivo",
