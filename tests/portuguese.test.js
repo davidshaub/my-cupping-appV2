@@ -34,7 +34,7 @@ test('Portuguese uses noun agreement, adverbs and the approved special cycles', 
   assert.equal(translateTag('pt-BR', 'Slight Floral'), 'Levemente Floral');
   assert.equal(translateTag('pt-BR', 'Intense Floral'), 'Intensamente Floral');
   assert.equal(translateTag('pt-BR', 'Intense Harsh Finish'), 'Finalização Muito Áspera');
-  assert.equal(translateTag('pt-BR', 'Intense Good Sweetness'), 'Boa Doçura');
+  assert.equal(translateTag('pt-BR', 'Intense Good Sweetness'), 'Excelente Doçura');
   assert.equal(translateTag('pt-BR', 'Intense Flat/Lacking'), 'Leve Falta de Vivacidade');
   assert.equal(translateTag('pt-BR', 'Quaker'), 'Quaker');
 });

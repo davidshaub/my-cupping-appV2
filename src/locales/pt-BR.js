@@ -170,7 +170,8 @@ const CUSTOM_PT = {
   'Dusty/Concrete': ['Leve Nota de Poeira/Concreto', 'Intensa Nota de Poeira/Concreto'],
   'Artificial/Process': ['Levemente Artificial/Marcado pelo Processo', 'Intensamente Artificial/Marcado pelo Processo'],
   Flat: ['Leve Falta de Vivacidade', 'Leve Falta de Vivacidade'],
-  Lacking: ['Leve Falta de Expressividade', 'Leve Falta de Expressividade']
+  Lacking: ['Leve Falta de Expressividade', 'Leve Falta de Expressividade'],
+  'Good Sweetness': ['Excelente Doçura', 'Excelente Doçura']
 };
 
 export const modifiedTagPT = (base, modifier) => {

@@ -42,18 +42,20 @@ export const TAG_MODIFIER_GRAMMAR = Object.freeze({
   'Hard Cups': 'locked',
   'Brown, Roast': 'locked',
   'Overall Sweet': 'locked',
-  'Good Sweetness': 'locked'
+  'Good Sweetness': 'custom'
 });
 
 export const modifierBase = tag => tag.replace(/^(Slight|Intense) /, '').replace(/^Flat\/Lacking$/, 'Flat');
 export const canModifyTag = tag => TAG_MODIFIER_GRAMMAR[modifierBase(tag)] !== 'locked';
-export const hasSlightOnly = tag => ['Flat', 'Lacking'].includes(modifierBase(tag));
+// Good Sweetness is a binary toggle (Good <-> Excellent), not a slight/intense scale.
+export const hasSlightOnly = tag => ['Flat', 'Lacking', 'Good Sweetness'].includes(modifierBase(tag));
 
 const CUSTOM_LABELS = {
   'Harsh Finish': ['Slightly Harsh Finish', 'Very Harsh Finish'],
   'Unclean Finish': ['Slightly Unclean Finish', 'Very Unclean Finish'],
   'Dusty/Concrete': ['Slightly Dusty/Concrete-like', 'Intensely Dusty/Concrete-like'],
-  'Artificial/Process': ['Slightly Artificial/Process-driven', 'Intensely Artificial/Process-driven']
+  'Artificial/Process': ['Slightly Artificial/Process-driven', 'Intensely Artificial/Process-driven'],
+  'Good Sweetness': ['Excellent Sweetness', 'Excellent Sweetness']
 };
 
 export const nextTagModifier = tag => {
@@ -68,7 +70,7 @@ export const englishTagLabel = tag => {
   if (!canModifyTag(tag)) return base;
   const modifier = tag.startsWith('Slight ') ? 'Slight' : tag.startsWith('Intense ') ? 'Intense' : '';
   if (!modifier) return base;
-  if (hasSlightOnly(tag)) return `Slightly ${base}`;
   if (CUSTOM_LABELS[base]) return CUSTOM_LABELS[base][modifier === 'Slight' ? 0 : 1];
+  if (hasSlightOnly(tag)) return `Slightly ${base}`;
   return `${TAG_MODIFIER_GRAMMAR[base] === 'adjective' ? modifier === 'Slight' ? 'Slightly' : 'Intensely' : modifier} ${base}`;
 };

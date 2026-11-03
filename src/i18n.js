@@ -646,10 +646,12 @@ const MODIFIER_FORMS_ES = {
 
 const MODIFIER_OVERRIDES_ES = {
   Slight: {
-    Thin: 'Apenas Ligero'
+    Thin: 'Apenas Ligero',
+    'Good Sweetness': 'Excelente Dulzor'
   },
   Intense: {
-    Thin: 'Muy Ligero'
+    Thin: 'Muy Ligero',
+    'Good Sweetness': 'Excelente Dulzor'
   }
 };
 

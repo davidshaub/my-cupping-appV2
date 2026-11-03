@@ -22,16 +22,21 @@ test('noun and adjective displays use the correct forms for both modifiers', () 
   }
 });
 
-test('cycling keeps legacy storage spelling, and Good Sweetness cannot cycle', () => {
+test('cycling keeps legacy storage spelling', () => {
   assert.equal(nextTagModifier('Floral'), 'Slight Floral');
   assert.equal(nextTagModifier('Slight Floral'), 'Intense Floral');
   assert.equal(nextTagModifier('Intense Floral'), 'Floral');
-  for (const tag of ['Good Sweetness', 'Slight Good Sweetness', 'Intense Good Sweetness']) {
-    assert.equal(canModifyTag(tag), false);
-    assert.equal(nextTagModifier(tag), tag);
-    assert.equal(translateTag('en', tag), 'Good Sweetness');
-    assert.equal(translateTag('es', tag), translateTag('es', 'Good Sweetness'));
-  }
+});
+
+test('Good Sweetness is a binary toggle: Good Sweetness <-> Excellent Sweetness', () => {
+  assert.equal(canModifyTag('Good Sweetness'), true);
+  assert.equal(nextTagModifier('Good Sweetness'), 'Slight Good Sweetness');
+  assert.equal(nextTagModifier('Slight Good Sweetness'), 'Good Sweetness');
+  assert.equal(nextTagModifier('Intense Good Sweetness'), 'Good Sweetness');
+  assert.equal(translateTag('en', 'Good Sweetness'), 'Good Sweetness');
+  assert.equal(translateTag('en', 'Slight Good Sweetness'), 'Excellent Sweetness');
+  assert.equal(translateTag('es', 'Slight Good Sweetness'), 'Excelente Dulzor');
+  assert.equal(translateTag('pt-BR', 'Slight Good Sweetness'), 'Excelente Doçura');
 });
 
 test('Spanish agreement is preserved', () => {
