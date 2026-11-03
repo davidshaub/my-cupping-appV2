@@ -61,9 +61,9 @@ server write; separate sessions have separate IDs.
 
 ## Verification
 
-Run `npm run build`, `node scripts/check-sheets-sync.mjs`, and
-`node scripts/check-shared-sync.mjs`.
-These verify offline caching, data mapping, idempotent uploads, receipts, upload-only behavior, and preservation of unrelated formulas. They simulate Google's
+Run `npm run build`, `node scripts/check-sheets-sync.mjs`,
+`node scripts/check-shared-sync.mjs`, and `node scripts/check-session-growth-sync.mjs`.
+These verify offline caching, data mapping, idempotent uploads, receipts, upload-only behavior, preservation of unrelated formulas, and that a coffee added to a session after its first sync lands next to that session's other rows rather than past some unrelated older session. They simulate Google's
 runtime; successful deployment and a real upload must also be verified after
 the owner supplies the deployed `/exec` URL.
 

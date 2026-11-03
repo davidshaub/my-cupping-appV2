@@ -23,6 +23,7 @@ Several `scripts/check-*.mjs` files are manual verification scripts (not part of
 ```bash
 node scripts/check-sheets-sync.mjs
 node scripts/check-shared-sync.mjs
+node scripts/check-session-growth-sync.mjs
 node scripts/check-sheet-repair.mjs
 node scripts/check-collaboration-ui.mjs   # needs Playwright/Chrome + local Vite server (not a package.json dependency — install separately: npx playwright install)
 node scripts/check-shared-offline-ui.mjs  # needs `npm run preview -- --host 127.0.0.1 --port 4173`

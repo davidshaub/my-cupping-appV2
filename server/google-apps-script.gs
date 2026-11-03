@@ -249,12 +249,30 @@ function doPost(event) {
       session.sharedUpdatedAt = new Date().toISOString();
     });
     // Brand-new sessions are inserted right after the header so the newest cupping is always on top.
-    // Returning sessions (already with rows somewhere in the sheet) keep updating their existing rows in place.
+    // Returning sessions (already with rows somewhere in the sheet) keep updating their existing rows in
+    // place. A returning session that gains a coffee it never synced before (added after the first sync)
+    // gets that new row inserted right after the session's own last existing row - not appended at the end
+    // of the whole sheet, which would land it next to some unrelated, older session instead of its own.
     const priorSyncIds = new Set(data.values.slice(1).map(row => row[sessionColumn]).filter(Boolean));
     const brandNewSessionIds = new Set(body.sessions.filter(session => !priorSyncIds.has(session.syncId)).map(session => session.syncId));
-    const shift = body.sessions.reduce((sum, session) => sum + (brandNewSessionIds.has(session.syncId) ? session.samples.length : 0), 0);
-    if (shift > 0) sheet.insertRowsAfter(1, shift);
-    let nextRow = Math.max(2, data.values.length + 1) + shift, topRow = 2;
+    const lastRowForSession = new Map();
+    data.values.slice(1).forEach((row, index) => {
+      if (!row[sessionColumn]) return;
+      const rowNumber = index + 2;
+      lastRowForSession.set(row[sessionColumn], Math.max(lastRowForSession.get(row[sessionColumn]) || 0, rowNumber));
+    });
+    const anchorFor = session => brandNewSessionIds.has(session.syncId) ? 1 : lastRowForSession.get(session.syncId);
+    // Map of original row number -> how many new rows to insert right after it (1 = right after the header).
+    const insertionCounts = new Map();
+    body.sessions.forEach(session => {
+      const newSampleCount = session.samples.filter(sample => !existing.has(JSON.stringify([session.syncId, sample.syncId]))).length;
+      if (newSampleCount) insertionCounts.set(anchorFor(session), (insertionCounts.get(anchorFor(session)) || 0) + newSampleCount);
+    });
+    // Insert bottom-to-top so each insertion still uses its original (pre-shift) row number.
+    const insertionPoints = [...insertionCounts.entries()].sort((a, b) => b[0] - a[0]);
+    insertionPoints.forEach(([anchor, count]) => sheet.insertRowsAfter(anchor, count));
+    const shiftFor = originalRow => insertionPoints.reduce((sum, [anchor, count]) => sum + (anchor < originalRow ? count : 0), 0);
+    const nextRowForAnchor = new Map(insertionPoints.map(([anchor]) => [anchor, anchor + shiftFor(anchor) + 1]));
     const codes = {}, owners = new Map(), codeColumn = columns.get('Session Code');
     data.values.slice(1).forEach(row => {
       if (row[codeColumn] && row[sessionColumn]) {
@@ -281,7 +299,9 @@ function doPost(event) {
       const values = valuesForSample_(session, sample, position - 1);
       const key = JSON.stringify([session.syncId, sample.syncId]);
       const oldRowNumber = existing.get(key);
-      const rowNumber = oldRowNumber != null ? oldRowNumber + shift : (brandNewSessionIds.has(session.syncId) ? topRow++ : nextRow++);
+      let rowNumber;
+      if (oldRowNumber != null) rowNumber = oldRowNumber + shiftFor(oldRowNumber);
+      else { const anchor = anchorFor(session); rowNumber = nextRowForAnchor.get(anchor); nextRowForAnchor.set(anchor, rowNumber + 1); }
       const original = (oldRowNumber != null ? data.values[oldRowNumber - 1] : null) || [];
       const row = headers.map((header, col) => {
         if (Object.prototype.hasOwnProperty.call(values, header)) return literal_(values[header]);
@@ -293,7 +313,7 @@ function doPost(event) {
     // A delta still advances the entire session's revision, including unchanged coffees.
     const changedRows = new Set(updates.map(update => update.rowNumber));
     body.sessions.forEach(session => data.values.slice(1).forEach((original, index) => {
-      const oldRowNumber = index + 2, rowNumber = oldRowNumber + shift;
+      const oldRowNumber = index + 2, rowNumber = oldRowNumber + shiftFor(oldRowNumber);
       if (original[sessionColumn] !== session.syncId || changedRows.has(rowNumber)) return;
       const entry = JSON.parse(original[dataColumn]);
       entry.sharedRevision = session.sharedRevision;
@@ -302,7 +322,6 @@ function doPost(event) {
       row[dataColumn] = JSON.stringify(entry);
       updates.push({ rowNumber, row });
     }));
-    if (nextRow - 1 > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), nextRow - 1 - sheet.getMaxRows());
     updates.sort((a, b) => a.rowNumber - b.rowNumber);
     // Write adjacent rows together instead of making requests for every cell.
     for (let i = 0; i < updates.length;) {
