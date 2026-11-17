@@ -251,12 +251,12 @@ const App = () => {
   const openAirtablePush = () => {
     if (!samples.some(canPushSample)) { setAirtablePush({ stage: 'result', results: [], none: true }); return; }
     const remembered = getOsitoSessionPassword();
-    if (remembered) { setAirtablePush({ stage: 'password', password: remembered, error: '', busy: true }); runAirtablePush(remembered); return; }
+    if (remembered) { setAirtablePush({ stage: 'pushing' }); runAirtablePush(remembered); return; }
     setAirtablePush({ stage: 'password', password: '', error: '', busy: false });
   };
   const submitAirtablePush = () => runAirtablePush(airtablePush.password);
   const runAirtablePush = password => {
-    setAirtablePush(current => ({ ...current, busy: true, error: '' }));
+    setAirtablePush(current => (current.stage === 'pushing' ? current : { ...current, busy: true, error: '' }));
     (async () => {
       try {
         if (!await acceptsPanelPassword(password)) throw new Error('Incorrect Panel Report password.');
@@ -277,10 +277,16 @@ const App = () => {
         if (!outcome) throw new Error('sharedUnavailable');
         setAirtablePush({ stage: 'result', results: outcome });
       } catch (error) {
+        const message = error.message || 'Push failed.';
         // A remembered password that's since gone stale (e.g. the server password changed) must
         // fall back to asking again, not just show an error with no way to retry.
-        if (error.message === 'Incorrect Panel Report password.') setOsitoSessionPassword(null);
-        setAirtablePush(current => ({ ...current, busy: false, error: error.message || 'Push failed.' }));
+        if (message === 'Incorrect Panel Report password.') setOsitoSessionPassword(null);
+        setAirtablePush(current => {
+          if (current.stage !== 'pushing') return { ...current, busy: false, error: message };
+          return message === 'Incorrect Panel Report password.'
+            ? { stage: 'password', password: '', error: message, busy: false }
+            : { stage: 'result', results: [], failure: message };
+        });
       }
     })();
   };
@@ -2549,11 +2555,21 @@ const App = () => {
             onClose={() => setAirtablePush(null)}
           />
         )}
+        {airtablePush?.stage === 'pushing' && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6">
+            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-4 shadow-2xl" role="status">
+              <h3 className="text-xl font-black text-stone-900">Push to AirTable</h3>
+              <p className="text-sm text-stone-600">Pushing…</p>
+            </div>
+          </div>
+        )}
         {airtablePush?.stage === 'result' && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6" onClick={() => setAirtablePush(null)}>
             <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-4 shadow-2xl animate-in fade-in zoom-in-95" onClick={event => event.stopPropagation()}>
               <h3 className="text-xl font-black text-stone-900">Push to AirTable</h3>
-              {airtablePush.none ? (
+              {airtablePush.failure ? (
+                <p className="text-sm text-red-700" role="alert">Push failed: {airtablePush.failure}</p>
+              ) : airtablePush.none ? (
                 <p className="text-sm text-stone-600">No samples have a Sample ID filled in — nothing to push.</p>
               ) : (
                 <ul className="text-sm text-stone-700 space-y-1">

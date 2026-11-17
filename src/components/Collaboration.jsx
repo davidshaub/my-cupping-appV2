@@ -16,7 +16,7 @@ import { LEXICON_OPTIONS } from '../lib/lexicon';
 import { nextTagModifier } from '../lib/tagModifiers';
 import { translate } from '../i18n';
 import { parseCoffeeComparisons, planCoffeeComparisons, suggestSessionComparisons } from '../lib/panelComparisons';
-import { aggregateEvaluations, asPanelEvaluation, collaborationRequest, emptyContribution, evaluationScore, getChimesEnabled, getCupper, getOsitoMode, getReadyMinutes, hostTokenFor, invitationUrl, normalizeInviteCode, notesFields, readSharedReport, setChimesEnabled, setCupper, setOsitoMode, setReadyMinutes, tokenFor } from '../lib/collaboration';
+import { aggregateEvaluations, asPanelEvaluation, collaborationRequest, emptyContribution, evaluationScore, getChimesEnabled, getCupper, getOsitoMode, getReadyMinutes, hostTokenFor, invitationUrl, normalizeInviteCode, notesFields, readSharedReport, setChimesEnabled, setCupper, setOsitoMode, setOsitoSessionPassword, setReadyMinutes, tokenFor } from '../lib/collaboration';
 import './collaboration.css';
 import { displaySessionName } from '../lib/sessionDisplay';
 
