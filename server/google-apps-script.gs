@@ -64,7 +64,10 @@ function airtableRequest_(method, url, token, payload) {
     // Logged (not returned to the client) so the actual AirTable error - wrong/expired token, bad
     // scope, a typecast rejection, etc. - is visible in Executions instead of a bare generic status.
     console.log('AirTable ' + method.toUpperCase() + ' ' + url + ' -> ' + response.getResponseCode() + ': ' + response.getContentText());
-    throw new Error('airtableUnavailable');
+    let reason = '';
+    try { const error = JSON.parse(response.getContentText()).error; reason = typeof error === 'string' ? error : [error.type, error.message].filter(Boolean).join(': '); } catch (parseError) { /* body wasn't JSON */ }
+    // Returned to the client too (never the token), so a failed push explains itself on screen.
+    throw new Error('AirTable ' + method.toUpperCase() + ' ' + response.getResponseCode() + (reason ? ' - ' + reason : ''));
   }
   return JSON.parse(response.getContentText());
 }
@@ -131,7 +134,7 @@ function pushCuppingPost_(body) {
   try {
     results = body.samples.map(sample => {
       try { return pushOneCupping_(sample, token); }
-      catch (error) { console.log('pushOneCupping_ failed for Sample ID ' + sample.labSampleId + ': ' + String(error)); return { labSampleId: String(sample.labSampleId), status: 'error' }; }
+      catch (error) { console.log('pushOneCupping_ failed for Sample ID ' + sample.labSampleId + ': ' + String(error)); return { labSampleId: String(sample.labSampleId), status: 'error', detail: String(error && error.message || error).slice(0, 200) }; }
     });
   } finally { lock.releaseLock(); }
   cache.put(receiptKey, JSON.stringify({ results }), 600);

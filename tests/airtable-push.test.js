@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeSamples } from '../src/lib/cupping.js';
-import { buildCuppingPushPayload, canPushSample, labSampleIdOf } from '../src/lib/airtablePush.js';
+import { buildCuppingPushPayload, canPushSample, labSampleIdOf, toIsoDate } from '../src/lib/airtablePush.js';
 
 test('only a sample with a numeric Sample ID can be pushed', () => {
   const [sample] = initializeSamples(1);
@@ -38,4 +38,13 @@ test('noScore sample pushes null score, not zero, and empty notes stay empty, no
   assert.equal(payload.otherText, '');
   assert.deepEqual(payload.cupProfile, []);
   assert.deepEqual(payload.negativeNotes, []);
+});
+
+test('the session start time becomes a plain YYYY-MM-DD date, with today as the fallback if it cannot be read', () => {
+  const now = new Date(2026, 10, 20, 9, 0, 0);
+  assert.equal(toIsoDate('11/17/2026, 6:00:41 PM', now), '2026-11-17');
+  assert.equal(toIsoDate('2026-03-05T10:00:00', now), '2026-03-05');
+  assert.equal(toIsoDate('17/11/2026, 18:00:41', now), '2026-11-20', 'a day-first string JS cannot parse falls back to today');
+  assert.equal(toIsoDate(null, now), '2026-11-20');
+  assert.equal(toIsoDate('', now), '2026-11-20');
 });

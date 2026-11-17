@@ -91,7 +91,10 @@ assert.equal(requests.length, 0, 'a requestId with an existing receipt is never 
 // anywhere, because this logging didn't exist yet.
 requests = []; logs = []; mockRecords = [{ id: 'recE', fields: {} }]; failStatus = 401;
 post({ action: 'pushCupping', requestId: 'req-push-authfail-01', password: 'C0ff33', samples: [samplePayload('6001')] });
-assert.deepEqual(receiptFor('req-push-authfail-01').results, [{ labSampleId: '6001', status: 'error' }]);
+const failed = receiptFor('req-push-authfail-01').results;
+assert.equal(failed[0].status, 'error');
+assert.match(failed[0].detail, /AirTable GET 401 - AUTHENTICATION_REQUIRED: Invalid authentication token/, "the real reason reaches the client so it shows on screen, not just in logs");
+assert.doesNotMatch(JSON.stringify(failed), /test-token/, 'the token is never returned to the client');
 assert.ok(logs.some(line => line.includes('pushOneCupping_ failed for Sample ID 6001')), 'the failure is logged, not swallowed');
 assert.ok(logs.some(line => line.includes('401') && line.includes('AUTHENTICATION_REQUIRED')), "AirTable's own error detail is logged");
 failStatus = null;

@@ -40,7 +40,7 @@ import PanelPasswordDialog from './components/PanelPasswordDialog';
 import useLotLookup from './hooks/useLotLookup';
 import useSampleLookup from './hooks/useSampleLookup';
 import { acceptsPanelPassword } from './lib/panelAccess';
-import { buildCuppingPushPayload, canPushSample } from './lib/airtablePush';
+import { buildCuppingPushPayload, canPushSample, toIsoDate } from './lib/airtablePush';
 import HandsLogo from '../assets/hands.png';
 import {
   translate,
@@ -261,7 +261,7 @@ const App = () => {
       try {
         if (!await acceptsPanelPassword(password)) throw new Error('Incorrect Panel Report password.');
         setOsitoSessionPassword(password);
-        const payloadSamples = samples.filter(canPushSample).map(sample => ({ ...buildCuppingPushPayload(sample), cuppingDate: sessionStartTime || '' }));
+        const payloadSamples = samples.filter(canPushSample).map(sample => ({ ...buildCuppingPushPayload(sample), cuppingDate: toIsoDate(sessionStartTime) }));
         const requestId = crypto.randomUUID();
         try {
           await fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', credentials: 'omit', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'pushCupping', requestId, password, samples: payloadSamples }), signal: AbortSignal.timeout(25000) });
@@ -2584,6 +2584,9 @@ const App = () => {
                     const count = airtablePush.results.filter(r => r.status === status).length;
                     return count ? <li key={status}><strong>{count}</strong> {label}</li> : null;
                   })}
+                  {[...new Set(airtablePush.results.map(r => r.detail).filter(Boolean))].slice(0, 3).map(detail => (
+                    <li key={detail} className="text-xs text-red-700 break-words">Reason: {detail}</li>
+                  ))}
                 </ul>
               )}
               <button onClick={() => setAirtablePush(null)} className="w-full py-3 btn-stone-dark font-black text-sm uppercase tracking-widest">
