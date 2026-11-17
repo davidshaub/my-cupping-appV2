@@ -18,7 +18,7 @@ import {
   initializeSamples
 } from './lib/cupping';
 import useGoogleSheets from './hooks/useGoogleSheets';
-import { readScriptResponse, sessionFingerprint } from './lib/sharedSync';
+import { readScriptResponse, sessionFingerprint, SYNC_API_URL } from './lib/sharedSync';
 import { normalizeSessionCode, validateRecalledSession } from './lib/sessionRecall';
 import { newSyncId, normalizeSessionIdentity } from './lib/googleSheets';
 import SearchableSelect from './components/SearchableSelect';
@@ -36,8 +36,11 @@ import LotLookupStatus from './components/LotLookupStatus';
 import LotCacheControl from './components/LotCacheControl';
 import SampleLookupStatus from './components/SampleLookupStatus';
 import CuppingTimer from './components/CuppingTimer';
+import PanelPasswordDialog from './components/PanelPasswordDialog';
 import useLotLookup from './hooks/useLotLookup';
 import useSampleLookup from './hooks/useSampleLookup';
+import { acceptsPanelPassword } from './lib/panelAccess';
+import { buildCuppingPushPayload, canPushSample } from './lib/airtablePush';
 import HandsLogo from '../assets/hands.png';
 import {
   translate,
@@ -241,6 +244,37 @@ const App = () => {
     text: buildSessionCSV(samples, sessionStartTime, lexiconMode, activeSavedSession?.syncId || ''),
     name: csvFilename(activeSessionName)
   });
+  const [airtablePush, setAirtablePush] = useState(null);
+  const openAirtablePush = () => {
+    if (!samples.some(canPushSample)) { setAirtablePush({ stage: 'result', results: [], none: true }); return; }
+    setAirtablePush({ stage: 'password', password: '', error: '', busy: false });
+  };
+  const submitAirtablePush = () => {
+    const password = airtablePush.password;
+    setAirtablePush(current => ({ ...current, busy: true, error: '' }));
+    (async () => {
+      try {
+        if (!await acceptsPanelPassword(password)) throw new Error('Incorrect Panel Report password.');
+        const payloadSamples = samples.filter(canPushSample).map(sample => ({ ...buildCuppingPushPayload(sample), cuppingDate: sessionStartTime || '' }));
+        const requestId = crypto.randomUUID();
+        try {
+          await fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', credentials: 'omit', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'pushCupping', requestId, password, samples: payloadSamples }), signal: AbortSignal.timeout(25000) });
+        } catch { /* An opaque no-cors POST can appear to fail even when it landed - the receipt poll below is authoritative. */ }
+        let outcome = null;
+        for (let attempt = 0; attempt < 8 && !outcome; attempt++) {
+          const receipt = await readScriptResponse({ action: 'receipt', requestId });
+          if (receipt.results) outcome = receipt.results;
+          else if (receipt.error) throw new Error(receipt.error);
+          else if (!receipt.pending) throw new Error('sharedUnavailable');
+          else await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+        if (!outcome) throw new Error('sharedUnavailable');
+        setAirtablePush({ stage: 'result', results: outcome });
+      } catch (error) {
+        setAirtablePush(current => ({ ...current, busy: false, error: error.message || 'Push failed.' }));
+      }
+    })();
+  };
   const [historyPreview, setHistoryPreview] = useState(null);
   const [rehydratingId, setRehydratingId] = useState(null);
   const historyPdfRequest = useRef(0);
@@ -2493,6 +2527,46 @@ const App = () => {
     return (
       <div className="report-screen min-h-screen bg-stone-100 px-4 pb-4 md:px-8 md:pb-8 relative pt-[max(1rem,env(safe-area-inset-top))] md:pt-[max(2rem,env(safe-area-inset-top))]">
         {preparedCsv && <CsvExportDialog data={preparedCsv} onClose={() => setPreparedCsv(null)} t={t} />}
+        {airtablePush?.stage === 'password' && (
+          <PanelPasswordDialog
+            password={airtablePush.password}
+            onPassword={value => setAirtablePush(current => ({ ...current, password: value }))}
+            onUnlock={submitAirtablePush}
+            busy={airtablePush.busy}
+            error={airtablePush.error}
+            title="Push to AirTable"
+            submitLabel="Push"
+            busyLabel="Pushing…"
+            onClose={() => setAirtablePush(null)}
+          />
+        )}
+        {airtablePush?.stage === 'result' && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-6" onClick={() => setAirtablePush(null)}>
+            <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 space-y-4 shadow-2xl animate-in fade-in zoom-in-95" onClick={event => event.stopPropagation()}>
+              <h3 className="text-xl font-black text-stone-900">Push to AirTable</h3>
+              {airtablePush.none ? (
+                <p className="text-sm text-stone-600">No samples have a Sample ID filled in — nothing to push.</p>
+              ) : (
+                <ul className="text-sm text-stone-700 space-y-1">
+                  {[
+                    ['updated', 'pushed (first cupping for this Sample ID)'],
+                    ['archived', 'pushed (previous cupping archived to Cupping Log)'],
+                    ['notFound', 'no matching Sample ID found in AirTable'],
+                    ['ambiguous', 'multiple AirTable rows matched — skipped'],
+                    ['invalid', 'invalid data — skipped'],
+                    ['error', 'failed — try again']
+                  ].map(([status, label]) => {
+                    const count = airtablePush.results.filter(r => r.status === status).length;
+                    return count ? <li key={status}><strong>{count}</strong> {label}</li> : null;
+                  })}
+                </ul>
+              )}
+              <button onClick={() => setAirtablePush(null)} className="w-full py-3 btn-stone-dark font-black text-sm uppercase tracking-widest">
+                Close
+              </button>
+            </div>
+          </div>
+        )}
         {renderSaveSessionModal()}
         {renderPdfReadyDialog()}
         <div className="max-w-[1400px] mx-auto space-y-4 pb-28 md:pb-20 report-container">
@@ -2540,6 +2614,15 @@ const App = () => {
                 <Icon name="download" size={16} />
                 CSV
               </button>
+              {ositoMode && (
+                <button
+                  onClick={openAirtablePush}
+                  className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl font-bold text-stone-800 border border-stone-200 active:scale-95 text-xs"
+                >
+                  <Icon name="upload" size={16} />
+                  Push to AirTable
+                </button>
+              )}
               <button
                 onClick={downloadPdfSet}
                 disabled={isExportingPdfs}

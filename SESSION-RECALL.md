@@ -98,10 +98,37 @@ Cup Profile/Negative Notes on the new table start with the same choice lists Mas
 creation time; AirTable's write API accepts `typecast: true` to auto-add any new descriptor the app
 lexicon introduces later, so no separate sync job is needed to keep the lists current.
 
-Not yet built: the actual push/write logic (session-level "push to AirTable" button next to
-Export PDF/CSV, looping over samples that have a Sample ID; the update-vs-archive branch described
-above; the AirTable token upgraded from read-only to write scope; a `LockService` lock around the
-check-then-act step so two near-simultaneous pushes for the same Sample ID can't both see "empty").
+## Push to AirTable
+
+A session-level "Push to AirTable" button (next to Export PDF/CSV, Osito Mode only) sends every
+sample with a Sample ID filled in. Client-side (`src/lib/airtablePush.js`) computes the score, merges
+Fragrance/Aroma + In-the-Cup tags into Cup Profile (AirTable doesn't distinguish them), strips
+Slight/Intense modifiers to canonical English names, and combines sweetness/acidity level + notes
+the same way the CSV export's "General Notes" column already does.
+
+Submitting requires the Panel Report password (same password, same `PanelPasswordDialog`, now with
+`title`/`submitLabel`/`busyLabel` props so it reads correctly for this second purpose) - checked
+client-side first for instant feedback, then independently re-checked server-side (`doPost` action
+`pushCupping` in `server/google-apps-script.gs`) since this mutates a shared company database, not
+just this app's own data. One `LockService` lock covers the whole batch so two near-simultaneous
+pushes for the same Sample ID can't both see "nothing there yet" and both skip archiving. The
+update-vs-archive branch matches the design above exactly: look up the Sample ID's current row: if
+its Score/Other Notes/Date Cupped are all empty, update in place; if not, copy that old cupping into
+a new Cupping Log row *before* overwriting Master Sheet with the new one. Uses the normal POST +
+receipt-poll pattern already used for primary sync, since Apps Script POST responses aren't directly
+readable; the client reuses the generic `action: 'receipt'` GET handler to collect the per-sample
+results (`updated`/`archived`/`notFound`/`ambiguous`/`invalid`/`error`).
+
+**Required before this works live**: the `AIRTABLE_API_TOKEN` Script Property's AirTable Personal
+Access Token needs its scope widened from read-only (`data.records:read`) to also include
+`data.records:write` (AirTable's token page lets you edit an existing token's scopes - no need to
+create a new one or update the Script Property again if you just add the scope to the same token).
+Without that, every push will fail with `airtableUnavailable` even though the lookup still works.
+
+Tests: `node --test tests/*.test.js` (covers `airtablePush.js`'s payload/tag logic) and
+`node scripts/check-airtable-push-sync.mjs` (mocks `UrlFetchApp` to verify the update-vs-archive
+branch, that the archive write always happens before the overwrite, the password check, the lock,
+and per-sample error reporting).
 
 ## Session Update rollout
 

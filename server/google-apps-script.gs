@@ -8,9 +8,14 @@ const LOT_SOURCE_SPREADSHEET = '1hyfuTZSRZP1SQc5c-pQ3MpfRS_lJazK9Nww6HFvOskE';
 const LOT_SOURCE_TAB = 1244711014;
 const AIRTABLE_BASE_ID = 'appb33eKqdsHn03CM';
 const AIRTABLE_SAMPLE_TABLE = 'tbl9SXWK6ItEaWTbt';
+const AIRTABLE_CUPPING_LOG_TABLE = 'tblNo6waRocS6ySb0';
 // Maps this app's own sample fields to the AirTable Master Sheet's field names. Add an entry here
 // (and a line in lookupSample_ below) to pull in more columns later - everything else stays the same.
 const AIRTABLE_SAMPLE_FIELD_MAP = { ositoId: 'ID - Osito', lotName: 'Lot Name', sampleType: 'Sample Type', moisture: 'Moisture', waterActivity: 'aW', country: 'Country', roastId: 'Roast ID', processing: 'Processing' };
+// Master Sheet always holds only the MOST RECENT cupping for a Sample ID. If one is already there
+// when a new cupping is pushed, it gets archived to the Cupping Log table first, then Master Sheet
+// is overwritten - never the other way around, and never silently dropped.
+const AIRTABLE_CUPPING_FIELDS = ['Score', 'Cup Profile', 'Negative Notes', 'Other Notes', 'Date Cupped'];
 
 // Read-only, exact-ID lookup against the AirTable Master Sheet, keyed by its unique Sample ID
 // (an autoNumber - unlike Osito ID, which repeats across a coffee's several samples). The API
@@ -49,6 +54,83 @@ function lookupSample_(rawId) {
   const processing = fields[AIRTABLE_SAMPLE_FIELD_MAP.processing];
   if (typeof processing === 'string' && processing.trim()) sample.processing = processing.trim();
   return { status: 'found', id: trimmed, sample };
+}
+
+function airtableRequest_(method, url, token, payload) {
+  const options = { method, headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true };
+  if (payload) { options.contentType = 'application/json'; options.payload = JSON.stringify(payload); }
+  const response = UrlFetchApp.fetch(url, options);
+  if (response.getResponseCode() >= 300) throw new Error('airtableUnavailable');
+  return JSON.parse(response.getContentText());
+}
+
+function validateCuppingPush_(sample) {
+  if (!sample || !/^\d{1,15}$/.test(String(sample.labSampleId || ''))) throw new Error('invalidSession');
+  if (sample.score != null && (typeof sample.score !== 'number' || !Number.isFinite(sample.score) || sample.score < 0 || sample.score > 100)) throw new Error('invalidSession');
+  ['cupProfile', 'negativeNotes'].forEach(key => { if (!Array.isArray(sample[key]) || sample[key].length > 150 || sample[key].some(tag => typeof tag !== 'string' || tag.length > 120)) throw new Error('invalidSession'); });
+  if (typeof sample.otherText !== 'string' || sample.otherText.length > 6000) throw new Error('invalidSession');
+  if (sample.cuppingDate != null && typeof sample.cuppingDate !== 'string') throw new Error('invalidSession');
+}
+
+// Looks up the Sample ID's current AirTable row; if it already has a prior cupping, archives that
+// prior cupping to the Cupping Log table (linked back to this record) before overwriting Master
+// Sheet with the new one - Master Sheet only ever holds the most recent cupping for a Sample ID.
+function pushOneCupping_(sample, token) {
+  const id = String(sample.labSampleId).trim();
+  const formula = encodeURIComponent('{Sample ID}=' + Number(id));
+  const fieldParams = AIRTABLE_CUPPING_FIELDS.map(name => 'fields%5B%5D=' + encodeURIComponent(name)).join('&');
+  const listUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_SAMPLE_TABLE + '?filterByFormula=' + formula + '&' + fieldParams;
+  const records = airtableRequest_('get', listUrl, token).records;
+  if (!records.length) return { labSampleId: id, status: 'notFound' };
+  if (records.length > 1) return { labSampleId: id, status: 'ambiguous' };
+  const record = records[0], existing = record.fields;
+  const hasExisting = existing.Score != null || Boolean((existing['Other Notes'] || '').trim()) || Boolean(existing['Date Cupped']);
+  if (hasExisting) {
+    const archiveFields = { Sample: [record.id] };
+    if (existing.Score != null) archiveFields.Score = existing.Score;
+    if (existing['Cup Profile']) archiveFields['Cup Profile'] = existing['Cup Profile'];
+    if (existing['Negative Notes']) archiveFields['Negative Notes'] = existing['Negative Notes'];
+    if (existing['Other Notes']) archiveFields['Other Notes'] = existing['Other Notes'];
+    if (existing['Date Cupped']) archiveFields['Cupping Date'] = existing['Date Cupped'];
+    const createUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_CUPPING_LOG_TABLE;
+    airtableRequest_('post', createUrl, token, { records: [{ fields: archiveFields }], typecast: true });
+  }
+  const newFields = {};
+  if (sample.score != null) newFields.Score = sample.score;
+  if (sample.cupProfile.length) newFields['Cup Profile'] = sample.cupProfile;
+  if (sample.negativeNotes.length) newFields['Negative Notes'] = sample.negativeNotes;
+  if (sample.otherText) newFields['Other Notes'] = sample.otherText;
+  if (sample.cuppingDate) newFields['Date Cupped'] = sample.cuppingDate;
+  const patchUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_SAMPLE_TABLE + '/' + record.id;
+  airtableRequest_('patch', patchUrl, token, { fields: newFields, typecast: true });
+  return { labSampleId: id, status: hasExisting ? 'archived' : 'updated' };
+}
+
+// Writing to AirTable needs its own password check (same Panel Report password, checked server-side
+// independently of the client's Osito Mode gate) since this mutates a shared company database, not
+// just this app's own data. One lock covers the whole batch so two near-simultaneous pushes for the
+// same Sample ID can't both see "nothing there yet" and both skip archiving.
+function pushCuppingPost_(body) {
+  const password = PropertiesService.getScriptProperties().getProperty('OSITO_PANEL_PASSWORD') || 'C0ff33';
+  if (body.password !== password) throw new Error('Incorrect Panel Report password.');
+  if (!/^[a-zA-Z0-9_-]{10,100}$/.test(body.requestId || '')) throw new Error('invalidRequest');
+  const cache = CacheService.getScriptCache(), receiptKey = 'receipt:' + body.requestId;
+  if (cache.get(receiptKey)) return ContentService.createTextOutput('received');
+  if (!Array.isArray(body.samples) || !body.samples.length || body.samples.length > 20) throw new Error('invalidSession');
+  body.samples.forEach(validateCuppingPush_);
+  const token = PropertiesService.getScriptProperties().getProperty('AIRTABLE_API_TOKEN');
+  if (!token) throw new Error('airtableNotConfigured');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) throw new Error('busy');
+  let results;
+  try {
+    results = body.samples.map(sample => {
+      try { return pushOneCupping_(sample, token); }
+      catch (error) { return { labSampleId: String(sample.labSampleId), status: 'error' }; }
+    });
+  } finally { lock.releaseLock(); }
+  cache.put(receiptKey, JSON.stringify({ results }), 600);
+  return ContentService.createTextOutput('received');
 }
 
 // Read-only, exact-ID lookup. Never return unrelated inventory or financial columns.
@@ -250,6 +332,7 @@ function doPost(event) {
     if (text.length > 1000000) throw new Error('sessionTooLarge');
     body = JSON.parse(text);
     if (body.protocol === 'collaboration-v1') return collaborationPost_(body);
+    if (body.action === 'pushCupping') return pushCuppingPost_(body);
     validateBatch_(body);
     const cache = CacheService.getScriptCache(), receiptKey = 'receipt:' + body.requestId;
     if (cache.get(receiptKey)) return ContentService.createTextOutput('received');
