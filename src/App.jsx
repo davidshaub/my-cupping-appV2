@@ -77,8 +77,8 @@ const LanguageToggle = ({ language, onToggle, t, compact = false, iconOnly = fal
 
 // labSampleId is appended at the end, not inserted after ositoId, because every other column
 // below is addressed by its hardcoded numeric position in the hand-coded table markup further
-// down - inserting it in the middle would require renumbering every column after it.
-const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther', 'country', 'sampleType', 'roastId', 'labSampleId'];
+// down - every column's index was renumbered to match this order.
+const METADATA_TABLE_COLUMNS = ['labSampleId', 'ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther', 'country', 'sampleType', 'roastId'];
 const PROCESSING_CANONICAL = { washed: 'Washed', natural: 'Natural', honey: 'Honey', other: 'Other' };
 const draftFingerprint = (id, name, startTime, lexiconMode, samples) => sessionFingerprint({ syncId: id, name, startTime, lexiconMode, samples });
 const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
@@ -86,7 +86,7 @@ const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
 // Columns that support click-and-drag fill. Osito ID uses the "<number>.<2-digit contract year>"
 // convention, so the year suffix is matched exactly and never incremented; Roast ID just increments
 // whatever trailing run of digits it finds (works for plain numbers or things like "R-004").
-const FILL_SEQUENCE_FIELDS = new Set(['ositoId', 'roastId']);
+const FILL_SEQUENCE_FIELDS = new Set(['ositoId', 'roastId', 'labSampleId']);
 const parseFillToken = (value, field) => {
   const raw = String(value ?? '').trim();
   if (field === 'ositoId') {
@@ -1260,8 +1260,8 @@ const App = () => {
     setSamples(nextSamples);
     // Paste writes samples directly, with no field-exit event for the usual lot-lookup trigger to
     // catch — fire it explicitly whenever the Osito ID or Sample ID column was part of what was just pasted.
-    if (targetStartCol === 0) lotLookup.lookupPasted(nextSamples.slice(targetStartRow, pasteEndRow + 1));
-    if (targetStartCol <= 9 && pasteEndCol >= 9) sampleLookup.lookupPasted(nextSamples.slice(targetStartRow, pasteEndRow + 1));
+    if (targetStartCol === 0) sampleLookup.lookupPasted(nextSamples.slice(targetStartRow, pasteEndRow + 1));
+    if (targetStartCol <= 1 && pasteEndCol >= 1) lotLookup.lookupPasted(nextSamples.slice(targetStartRow, pasteEndRow + 1));
 
     setMetadataTableSelection({
       anchor: { row: targetStartRow, col: targetStartCol },
@@ -2018,8 +2018,8 @@ const App = () => {
   if (appState === 'metadata') {
     const tableColumns = METADATA_TABLE_COLUMNS;
     const tableColumnLabels = {
-      ositoId: t('ositoId'),
       labSampleId: t('labSampleId'),
+      ositoId: t('ositoId'),
       lotName: t('lotName'),
       processing: t('processing'),
       waterActivity: t('waterActivity'),
@@ -2028,8 +2028,8 @@ const App = () => {
       country: t('country'), sampleType: t('sampleType'), roastId: t('roastId')
     };
     const tableColumnWidths = {
-      ositoId: '150px',
       labSampleId: '140px',
+      ositoId: '150px',
       lotName: '230px',
       processing: '170px',
       waterActivity: '140px',
@@ -2066,8 +2066,8 @@ const App = () => {
     });
     const getSortButtonClass = (column, direction) =>
       `metadata-sort-button ${metadataTableSort?.field === column && metadataTableSort?.direction === direction ? 'is-active' : ''}`;
-    // Click-and-drag fill: only on Osito ID / Roast ID, only from the bottom of a single-column
-    // selection, and only while not already dragging (so the handle doesn't jump mid-drag).
+    // Click-and-drag fill: only on Osito ID / Roast ID / Sample ID, only from the bottom of a
+    // single-column selection, and only while not already dragging (so the handle doesn't jump mid-drag).
     const showFillHandle = (row, col) =>
       !fillDragRef.current &&
       FILL_SEQUENCE_FIELDS.has(METADATA_TABLE_COLUMNS[col]) &&
@@ -2221,44 +2221,58 @@ const App = () => {
                           {isEditingCell(idx, 0) ? (
                             <input
                               {...getTableInputProps(idx, 0)}
+                              value={s.labSampleId || ''}
+                              onChange={(e) => handleTableFieldChange(idx, 'labSampleId', e.target.value)}
+                              onBlur={sampleLookup.commit}
+                              placeholder="12345"
+                              aria-label={`${t('labSampleId')} ${idx + 1}`}
+                            />
+                          ) : renderStaticCell(idx, 0, 'labSampleId', { placeholder: '12345' })}
+                          <SampleLookupStatus sample={s} lookup={sampleLookup} language={language} compact />
+                          {renderFillHandle(idx, 0)}
+                        </td>
+                        <td {...getTableCellProps(idx, 1, 'lot-id-cell')}>
+                          {isEditingCell(idx, 1) ? (
+                            <input
+                              {...getTableInputProps(idx, 1)}
                               value={s.ositoId || ''}
                               onChange={(e) => handleTableFieldChange(idx, 'ositoId', e.target.value)}
                               onBlur={lotLookup.commit}
                               placeholder="OS-ID..."
                               aria-label={`${t('ositoId')} ${idx + 1}`}
                             />
-                          ) : renderStaticCell(idx, 0, 'ositoId', { placeholder: 'OS-ID...' })}
+                          ) : renderStaticCell(idx, 1, 'ositoId', { placeholder: 'OS-ID...' })}
                           <LotLookupStatus sample={s} lookup={lotLookup} language={language} compact />
-                          {renderFillHandle(idx, 0)}
+                          {renderFillHandle(idx, 1)}
                         </td>
-                        <td {...getTableCellProps(idx, 1)}>
-                          {isEditingCell(idx, 1) ? (
+                        <td {...getTableCellProps(idx, 2)}>
+                          {isEditingCell(idx, 2) ? (
                             <input
-                              {...getTableInputProps(idx, 1)}
+                              {...getTableInputProps(idx, 2)}
                               value={s.lotName || ''}
                               onChange={(e) => handleTableFieldChange(idx, 'lotName', e.target.value)}
                               placeholder={`${t('lotName')}...`}
                               aria-label={`${t('lotName')} ${idx + 1}`}
                             />
-                          ) : renderStaticCell(idx, 1, 'lotName', { placeholder: `${t('lotName')}...` })}
+                          ) : renderStaticCell(idx, 2, 'lotName', { placeholder: `${t('lotName')}...` })}
                         </td>
-                        <td {...getTableCellProps(idx, 2)}>
-                          {isEditingCell(idx, 2) ? (
+                        <td {...getTableCellProps(idx, 3)}>
+                          {isEditingCell(idx, 3) ? (
                             <SearchableSelect
                               value={s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : ''}
                               onChange={(value) => handleTableFieldChange(idx, 'processing', value)}
                               options={[t('washed'), t('natural'), t('honey'), t('other')]}
                               label={`${t('processing')} ${idx + 1}`}
                               noMatches={t('noMatchingOptions')}
-                              initialQuery={seededQueryFor(idx, 2, s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : '')}
-                              inputProps={{ ...getTableInputProps(idx, 2), placeholder: t('processingPlaceholder') }}
+                              initialQuery={seededQueryFor(idx, 3, s.processing && s.processing !== 'Select One' ? translateProcessing(language, s.processing) : '')}
+                              inputProps={{ ...getTableInputProps(idx, 3), placeholder: t('processingPlaceholder') }}
                             />
-                          ) : renderStaticCell(idx, 2, 'processing', { placeholder: t('processingPlaceholder') })}
+                          ) : renderStaticCell(idx, 3, 'processing', { placeholder: t('processingPlaceholder') })}
                         </td>
-                        <td {...getTableCellProps(idx, 3)}>
-                          {isEditingCell(idx, 3) ? (
+                        <td {...getTableCellProps(idx, 4)}>
+                          {isEditingCell(idx, 4) ? (
                             <input
-                              {...getTableInputProps(idx, 3)}
+                              {...getTableInputProps(idx, 4)}
                               value={s.waterActivity || ''}
                               onChange={(e) => handleTableFieldChange(idx, 'waterActivity', e.target.value)}
                               onBlur={(e) => handleTableFieldChange(idx, 'waterActivity', formatWaterActivity(e.target.value))}
@@ -2268,12 +2282,12 @@ const App = () => {
                               className="metadata-grid-input tabular-nums"
                               aria-label={`${t('waterActivity')} ${idx + 1}`}
                             />
-                          ) : renderStaticCell(idx, 3, 'waterActivity', { placeholder: '0.00' })}
+                          ) : renderStaticCell(idx, 4, 'waterActivity', { placeholder: '0.00' })}
                         </td>
-                        <td {...getTableCellProps(idx, 4, 'metadata-grid-cell-with-affix')}>
-                          {isEditingCell(idx, 4) ? (
+                        <td {...getTableCellProps(idx, 5, 'metadata-grid-cell-with-affix')}>
+                          {isEditingCell(idx, 5) ? (
                             <input
-                              {...getTableInputProps(idx, 4)}
+                              {...getTableInputProps(idx, 5)}
                               value={s.moisture || ''}
                               onChange={(e) => handleTableFieldChange(idx, 'moisture', e.target.value)}
                               onBlur={(e) => handleTableFieldChange(idx, 'moisture', formatMoisture(e.target.value))}
@@ -2283,22 +2297,22 @@ const App = () => {
                               className="metadata-grid-input tabular-nums"
                               aria-label={`${t('moisture')} ${idx + 1}`}
                             />
-                          ) : renderStaticCell(idx, 4, 'moisture', { placeholder: '0.0' })}
+                          ) : renderStaticCell(idx, 5, 'moisture', { placeholder: '0.0' })}
                           <span className="metadata-grid-affix">%</span>
                         </td>
-                        <td {...getTableCellProps(idx, 5)}>
-                          {isEditingCell(idx, 5) ? (
+                        <td {...getTableCellProps(idx, 6)}>
+                          {isEditingCell(idx, 6) ? (
                             <input
-                              {...getTableInputProps(idx, 5)}
+                              {...getTableInputProps(idx, 6)}
                               value={s.processingOther || ''}
                               onChange={(e) => handleTableFieldChange(idx, 'processingOther', e.target.value)}
                               placeholder={s.processing === 'Other' ? t('processingDetailsPlaceholder') : '-'}
                               aria-label={`${t('processingDetails')} ${idx + 1}`}
                             />
-                          ) : renderStaticCell(idx, 5, 'processingOther', { placeholder: s.processing === 'Other' ? t('processingDetailsPlaceholder') : '-' })}
+                          ) : renderStaticCell(idx, 6, 'processingOther', { placeholder: s.processing === 'Other' ? t('processingDetailsPlaceholder') : '-' })}
                         </td>
                         {['country', 'sampleType', 'roastId'].map((field, offset) => {
-                          const col = 6 + offset;
+                          const col = 7 + offset;
                           return (
                             <td key={field} {...getTableCellProps(idx, col)}>
                               {isEditingCell(idx, col) ? (
@@ -2318,19 +2332,6 @@ const App = () => {
                             </td>
                           );
                         })}
-                        <td {...getTableCellProps(idx, 9)}>
-                          {isEditingCell(idx, 9) ? (
-                            <input
-                              {...getTableInputProps(idx, 9)}
-                              value={s.labSampleId || ''}
-                              onChange={(e) => handleTableFieldChange(idx, 'labSampleId', e.target.value)}
-                              onBlur={sampleLookup.commit}
-                              placeholder="12345"
-                              aria-label={`${t('labSampleId')} ${idx + 1}`}
-                            />
-                          ) : renderStaticCell(idx, 9, 'labSampleId', { placeholder: '12345' })}
-                          <SampleLookupStatus sample={s} lookup={sampleLookup} language={language} compact />
-                        </td>
                       </tr>
                     );
                   })}
@@ -2346,17 +2347,6 @@ const App = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[9px] font-black text-stone-400 uppercase ml-1">{t('ositoId')}</label>
-                    <input
-                      value={s.ositoId}
-                      onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
-                      onBlur={lotLookup.commit}
-                      placeholder="OS-ID..."
-                      className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
-                    />
-                    <LotLookupStatus sample={s} lookup={lotLookup} language={language} />
-                  </div>
-                  <div className="space-y-1">
                     <label className="text-[9px] font-black text-stone-400 uppercase ml-1">{t('labSampleId')}</label>
                     <input
                       value={s.labSampleId || ''}
@@ -2366,6 +2356,17 @@ const App = () => {
                       className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
                     />
                     <SampleLookupStatus sample={s} lookup={sampleLookup} language={language} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-stone-400 uppercase ml-1">{t('ositoId')}</label>
+                    <input
+                      value={s.ositoId}
+                      onChange={(e) => updateMetadata(idx, 'ositoId', e.target.value)}
+                      onBlur={lotLookup.commit}
+                      placeholder="OS-ID..."
+                      className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
+                    />
+                    <LotLookupStatus sample={s} lookup={lotLookup} language={language} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-stone-400 uppercase ml-1">{t('lotName')}</label>
