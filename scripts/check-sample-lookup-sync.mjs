@@ -18,11 +18,15 @@ const doGetLookup = id => {
   return JSON.parse(text.slice('ositoSyncTest('.length, -2));
 };
 
-// Found: maps only the whitelisted fields, converts AirTable's 0-1 Moisture fraction to 0-100,
-// and reads the singleSelect Sample Type's .name rather than its raw object.
-respond(200, { records: [{ fields: { 'ID - Osito': 488.26, 'Lot Name': 'Esperanza', 'Sample Type': { id: 'selx', name: 'PSS' }, Moisture: 0.107, aW: 0.56 } }] });
+// Found: maps only the whitelisted fields, converts AirTable's 0-1 Moisture fraction to 0-100.
+// NOTE: singleSelect fields (Sample Type, Country, Processing) come back from AirTable's real
+// REST API as plain strings, NOT as {id,name,color} objects - that object shape only appeared
+// when exploring the schema through a different tool. Mocking the wrong shape here once let a
+// real bug (Sample Type silently never filling) slip past this very test, so these mocks must
+// match the actual REST API response, not whatever shape seemed convenient.
+respond(200, { records: [{ fields: { 'ID - Osito': 488.26, 'Lot Name': 'Esperanza', 'Sample Type': 'PSS', Moisture: 0.107, aW: 0.56, Country: 'Ethiopia', 'Roast ID': 4, Processing: 'Washed' } }] });
 let result = doGetLookup('3835');
-assert.deepEqual(result.sampleLookup, { status: 'found', id: '3835', sample: { ositoId: '488.26', lotName: 'Esperanza', sampleType: 'PSS', moisture: '10.7', waterActivity: '0.56' } });
+assert.deepEqual(result.sampleLookup, { status: 'found', id: '3835', sample: { ositoId: '488.26', lotName: 'Esperanza', sampleType: 'PSS', moisture: '10.7', waterActivity: '0.56', country: 'Ethiopia', roastId: '4', processing: 'Washed' } });
 assert.match(lastRequest.url, /appb33eKqdsHn03CM\/tbl9SXWK6ItEaWTbt/);
 assert.match(lastRequest.url, /filterByFormula=%7BSample%20ID%7D%3D3835/);
 assert.equal(lastRequest.options.headers.Authorization, 'Bearer test-token');

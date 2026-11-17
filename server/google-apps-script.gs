@@ -10,7 +10,7 @@ const AIRTABLE_BASE_ID = 'appb33eKqdsHn03CM';
 const AIRTABLE_SAMPLE_TABLE = 'tbl9SXWK6ItEaWTbt';
 // Maps this app's own sample fields to the AirTable Master Sheet's field names. Add an entry here
 // (and a line in lookupSample_ below) to pull in more columns later - everything else stays the same.
-const AIRTABLE_SAMPLE_FIELD_MAP = { ositoId: 'ID - Osito', lotName: 'Lot Name', sampleType: 'Sample Type', moisture: 'Moisture', waterActivity: 'aW' };
+const AIRTABLE_SAMPLE_FIELD_MAP = { ositoId: 'ID - Osito', lotName: 'Lot Name', sampleType: 'Sample Type', moisture: 'Moisture', waterActivity: 'aW', country: 'Country', roastId: 'Roast ID', processing: 'Processing' };
 
 // Read-only, exact-ID lookup against the AirTable Master Sheet, keyed by its unique Sample ID
 // (an autoNumber - unlike Osito ID, which repeats across a coffee's several samples). The API
@@ -34,13 +34,20 @@ function lookupSample_(rawId) {
   if (Number.isFinite(ositoId)) sample.ositoId = String(ositoId);
   const lotName = fields[AIRTABLE_SAMPLE_FIELD_MAP.lotName];
   if (typeof lotName === 'string' && lotName.trim()) sample.lotName = lotName.trim();
+  // AirTable's REST API returns a singleSelect field as a plain string (not an object).
   const sampleType = fields[AIRTABLE_SAMPLE_FIELD_MAP.sampleType];
-  if (sampleType && typeof sampleType === 'object' && sampleType.name) sample.sampleType = String(sampleType.name);
+  if (typeof sampleType === 'string' && sampleType.trim()) sample.sampleType = sampleType.trim();
   // AirTable's Moisture field is a percent type, returned as a 0-1 fraction; this app stores 0-100.
   const moisture = fields[AIRTABLE_SAMPLE_FIELD_MAP.moisture];
   if (Number.isFinite(moisture)) sample.moisture = (moisture * 100).toFixed(1);
   const waterActivity = fields[AIRTABLE_SAMPLE_FIELD_MAP.waterActivity];
   if (Number.isFinite(waterActivity)) sample.waterActivity = String(waterActivity);
+  const country = fields[AIRTABLE_SAMPLE_FIELD_MAP.country];
+  if (typeof country === 'string' && country.trim()) sample.country = country.trim();
+  const roastId = fields[AIRTABLE_SAMPLE_FIELD_MAP.roastId];
+  if (Number.isFinite(roastId)) sample.roastId = String(roastId);
+  const processing = fields[AIRTABLE_SAMPLE_FIELD_MAP.processing];
+  if (typeof processing === 'string' && processing.trim()) sample.processing = processing.trim();
   return { status: 'found', id: trimmed, sample };
 }
 

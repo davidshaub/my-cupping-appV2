@@ -302,16 +302,23 @@ const App = () => {
       if (drag && drag.endRow > drag.seedEndRow) {
         const { col, seedStartRow, seedEndRow, endRow } = drag;
         const field = METADATA_TABLE_COLUMNS[col];
+        let filledRows = null;
         setSamples((prev) => {
           const seedValues = prev.slice(seedStartRow, seedEndRow + 1).map((item) => item[field] || '');
           const count = endRow - seedEndRow;
           const filled = buildFillSequence(seedValues, field, count);
-          return prev.map((item, idx) => {
+          const next = prev.map((item, idx) => {
             const offset = idx - (seedEndRow + 1);
             if (offset < 0 || offset >= count) return item;
             return applyMetadataTableValueToSample(item, field, filled[offset]);
           });
+          filledRows = next.slice(seedEndRow + 1, endRow + 1);
+          return next;
         });
+        // Drag-fill writes samples directly, with no field-exit event for the usual lookup trigger
+        // to catch - fire it explicitly for the newly-filled rows when the field drives a lookup.
+        if (field === 'ositoId') lotLookup.lookupPasted(filledRows);
+        if (field === 'labSampleId') sampleLookup.lookupPasted(filledRows);
         setMetadataTableSelection({ anchor: { row: seedStartRow, col }, focus: { row: endRow, col } });
         focusMetadataTableCell(endRow, col, { immediate: true });
         return;

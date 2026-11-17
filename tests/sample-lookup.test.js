@@ -3,11 +3,23 @@ import assert from 'node:assert/strict';
 import { applySampleLookup, hasSampleLookupConflict, labSampleId, sampleLookupPatch } from '../src/lib/sampleLookup.js';
 
 test('patch only includes fields AirTable actually returned, formatting moisture/water activity', () => {
-  assert.deepEqual(sampleLookupPatch({ ositoId: '488.26', lotName: 'Esperanza', sampleType: 'PSS', moisture: '10.7', waterActivity: '0.56' }),
-    { ositoId: '488.26', lotName: 'Esperanza', sampleType: 'PSS', moisture: '10.7', waterActivity: '0.56' });
-  assert.deepEqual(sampleLookupPatch({ ositoId: '', lotName: '', sampleType: '', moisture: '', waterActivity: '' }), {});
+  assert.deepEqual(sampleLookupPatch({ ositoId: '488.26', lotName: 'Esperanza', sampleType: 'PSS', moisture: '10.7', waterActivity: '0.56', country: 'Ethiopia', roastId: '4' }),
+    { ositoId: '488.26', lotName: 'Esperanza', sampleType: 'PSS', moisture: '10.7', waterActivity: '0.56', country: 'Ethiopia', roastId: '4' });
+  assert.deepEqual(sampleLookupPatch({ ositoId: '', lotName: '', sampleType: '', moisture: '', waterActivity: '', country: '', roastId: '' }), {});
   assert.deepEqual(sampleLookupPatch({ ositoId: '488.26' }), { ositoId: '488.26' });
   assert.throws(() => sampleLookupPatch(null), /invalidSampleLookup/);
+});
+
+test('processing is canonicalized the same way the Lot Summary lookup already does', () => {
+  for (const processing of ['Washed', 'Natural', 'Honey', ' washed ']) {
+    const patch = sampleLookupPatch({ processing });
+    assert.notEqual(patch.processing, 'Other');
+    assert.equal(patch.processingOther, '');
+  }
+  assert.deepEqual(sampleLookupPatch({ processing: 'Anaerobic Washed' }), { processing: 'Other', processingOther: 'Anaerobic Washed' });
+  assert.deepEqual(sampleLookupPatch({ processing: '' }), {});
+  // A fresh sample's untouched 'Select One' default must not look like a manual edit worth protecting.
+  assert.equal(hasSampleLookupConflict({ processing: 'Select One' }, { processing: 'Washed', processingOther: '' }), false);
 });
 
 test('an offer sample with no Osito ID yet still gets its other fields filled, no error', () => {

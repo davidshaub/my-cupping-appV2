@@ -13,7 +13,9 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
   const latest = useRef(samples), previous = useRef({ scope, ids: new Map() });
   const jobs = useRef(new Map());
   const edited = useRef(new Set());
+  const statesRef = useRef({});
   latest.current = samples;
+  statesRef.current = states;
   const cancel = key => {
     const job = jobs.current.get(key);
     if (job) { clearTimeout(job.timer); job.controller.abort(); jobs.current.delete(key); }
@@ -90,10 +92,20 @@ export default function useLotLookup(samples, setSamples, enabled, scope) {
   useEffect(() => {
     mounted.current = true;
     const check = () => { if (navigator.onLine && !cache.current.fresh()) refresh(); };
+    // Reconnecting retries both the bulk catalog and any individual lookups that failed because
+    // this device was offline when they ran - the person shouldn't have to notice and tap retry.
+    const retryOffline = () => {
+      if (!active.current.enabled) return;
+      for (const sample of latest.current) {
+        const state = statesRef.current[sample.syncId];
+        if (state?.status === 'offline' && state.id === lotId(sample.ositoId)) lookup(sample.syncId, state.id, 0, true);
+      }
+    };
+    const onOnline = () => { check(); retryOffline(); };
     check();
     const timer = setInterval(check, LOT_CACHE_AGE);
-    window.addEventListener('online', check);
-    return () => { mounted.current = false; clearInterval(timer); window.removeEventListener('online', check); };
+    window.addEventListener('online', onOnline);
+    return () => { mounted.current = false; clearInterval(timer); window.removeEventListener('online', onOnline); };
   }, []);
 
   return {

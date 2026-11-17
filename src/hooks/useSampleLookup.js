@@ -12,7 +12,9 @@ export default function useSampleLookup(samples, setSamples, enabled, scope) {
   const latest = useRef(samples), previous = useRef({ scope, ids: new Map() });
   const jobs = useRef(new Map());
   const edited = useRef(new Set());
+  const statesRef = useRef({});
   latest.current = samples;
+  statesRef.current = states;
   const cancel = key => {
     const job = jobs.current.get(key);
     if (job) { clearTimeout(job.timer); job.controller.abort(); jobs.current.delete(key); }
@@ -69,6 +71,19 @@ export default function useSampleLookup(samples, setSamples, enabled, scope) {
     previous.current = { scope, ids };
   }, [samples, enabled, scope]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; stop(); }; }, []);
+  useEffect(() => {
+    // Reconnecting retries any lookup that failed only because this device was offline when it
+    // ran - the person shouldn't have to notice and tap retry themselves.
+    const retryOffline = () => {
+      if (!active.current.enabled) return;
+      for (const sample of latest.current) {
+        const state = statesRef.current[sample.syncId];
+        if (state?.status === 'offline' && state.id === labSampleId(sample.labSampleId)) lookup(sample.syncId, state.id, 0);
+      }
+    };
+    window.addEventListener('online', retryOffline);
+    return () => window.removeEventListener('online', retryOffline);
+  }, []);
 
   return {
     states,
