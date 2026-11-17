@@ -61,8 +61,47 @@ Tests: `node --test tests/*.test.js` (covers `sampleLookup.js`'s patch/conflict 
 against found/missing/ambiguous/unconfigured AirTable responses).
 
 Not yet built, flagged for later: writing cupping scores/notes back into this AirTable base after a
-session - that would need write access (a different trust model than this read-only lookup) and a
-schema decision about where repeat-cupping data lives in AirTable.
+session - that would need write access (a different trust model than this read-only lookup). The
+schema decision is now resolved (see "Cupping Log table" below); the write logic itself (the push
+button, the update-vs-archive branch, the lock around it) is not yet implemented.
+
+## Osito Mode toggle
+
+A password-gated, device-remembered toggle in Settings (`getOsitoMode`/`setOsitoMode` in
+`src/lib/collaboration.js`, key `osito_mode_enabled`) hides internal-team-only extras from the
+general public by default. Right now that's just the Sample ID field (both Lot Information views);
+future internal-only features (e.g. the AirTable push button once built) should check the same flag.
+
+Turning it OFF never needs the password; turning it back ON from OFF always does, matching how
+Panel Report access itself always re-checks - only the on/off *state* persists across visits, not an
+unlock that would let someone re-enable it without the password. Reuses the same password as Panel
+Report (`acceptsPanelPassword`) and the same dialog component (`PanelPasswordDialog`, now with
+optional `title`/`submitLabel`/`busyLabel` props so it reads correctly for either purpose).
+
+In `App.jsx`, `METADATA_TABLE_COLUMNS` became a per-render value (`metadataTableColumns(ositoMode)`)
+instead of a module-level constant, since Table View addresses every other column by a hardcoded
+numeric position in the hand-coded markup - those are now computed as `idOffset + N` (`idOffset` is
+1 when Osito Mode is on, 0 when off) rather than literal numbers, so turning the toggle off removes
+Sample ID's column entirely (not just hides it) without renumbering anything else.
+
+## Cupping Log table
+
+AirTable's Master Sheet always holds only the *most recent* cupping for a Sample ID. A new "Cupping
+Log" table (`tblNo6waRocS6ySb0` in the same base) holds superseded ones: when a Sample ID that
+already has Score/notes gets cupped again, its current Score/Cup Profile/Negative Notes/Other
+Notes/Cupping Date get copied into a new Cupping Log row *before* Master Sheet is overwritten with
+the new cupping. Only Sample IDs cupped more than once ever have a row here. The table's "Sample"
+field links back to Master Sheet, which automatically gained a reverse "Cupping Log" link column
+showing each sample's archived history inline - no separate lookup field was needed.
+
+Cup Profile/Negative Notes on the new table start with the same choice lists Master Sheet had at
+creation time; AirTable's write API accepts `typecast: true` to auto-add any new descriptor the app
+lexicon introduces later, so no separate sync job is needed to keep the lists current.
+
+Not yet built: the actual push/write logic (session-level "push to AirTable" button next to
+Export PDF/CSV, looping over samples that have a Sample ID; the update-vs-archive branch described
+above; the AirTable token upgraded from read-only to write scope; a `LockService` lock around the
+check-then-act step so two near-simultaneous pushes for the same Sample ID can't both see "empty").
 
 ## Session Update rollout
 

@@ -9,6 +9,13 @@ export const setCupper = name => localStorage.setItem(CUPPER_KEY, name.trim().sl
 export const CHIMES_ENABLED_KEY = 'osito_chimes_enabled';
 export const getChimesEnabled = () => localStorage.getItem(CHIMES_ENABLED_KEY) !== 'off';
 export const setChimesEnabled = enabled => localStorage.setItem(CHIMES_ENABLED_KEY, enabled ? 'on' : 'off');
+// Internal-team extras (Sample ID field, AirTable push). Off by default for the general public;
+// turning it on requires the Panel Report password, but the on/off state itself is then remembered
+// on this device like any other setting - turning it off never needs the password again, only
+// turning it back on from off does, matching how Panel Report access itself always re-checks.
+export const OSITO_MODE_KEY = 'osito_mode_enabled';
+export const getOsitoMode = () => localStorage.getItem(OSITO_MODE_KEY) === 'on';
+export const setOsitoMode = enabled => localStorage.setItem(OSITO_MODE_KEY, enabled ? 'on' : 'off');
 export const DEFAULT_READY_MINUTES = 18;
 export const READY_MINUTES_KEY = 'osito_ready_minutes';
 export const getReadyMinutes = () => {
