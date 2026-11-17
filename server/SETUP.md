@@ -165,7 +165,7 @@ if it has not yet run. New saves populate the summary columns directly.
 Shared reports and Panel Reports use the same landscape vector PDF renderer, score
 block, fonts, logo/footer, and chart layout as primary reports. Their identification
 blocks contain only Osito ID, Lot/Coffee Name, and Processing. Country, sample type,
-roast ID, water activity, and moisture are omitted from previews and all aggregate
+roast ID, water activity, moisture, and Lab Sample ID are omitted from previews and all aggregate
 PDF exports, including saved editions. Cupper attribution stays in its existing
 location. Primary reports and source data retain their metadata. The flavor wheel retains external descriptor
 labels, connecting lines, and the color-group key. Full-form Panels include the

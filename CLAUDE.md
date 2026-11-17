@@ -24,6 +24,7 @@ Several `scripts/check-*.mjs` files are manual verification scripts (not part of
 node scripts/check-sheets-sync.mjs
 node scripts/check-shared-sync.mjs
 node scripts/check-session-growth-sync.mjs
+node scripts/check-sample-lookup-sync.mjs
 node scripts/check-sheet-repair.mjs
 node scripts/check-collaboration-ui.mjs   # needs Playwright/Chrome + local Vite server (not a package.json dependency — install separately: npx playwright install)
 node scripts/check-shared-offline-ui.mjs  # needs `npm run preview -- --host 127.0.0.1 --port 4173`
@@ -47,6 +48,7 @@ node scripts/build-apps-script.mjs   # writes output/apps-script/Code.gs (gitign
   - `sharedSync.js` — talks to the Apps Script endpoint via **JSONP** (`readScriptResponse` injects a `<script>` tag with a callback, since the Apps Script web app doesn't support a normal CORS fetch for this flow), with upload + polling-for-receipt logic in `saveSharedSessions`.
   - `collaboration.js`, `sharedAutosave.js`, `sharedAutosaveRegistry.js`, `sharedLink.js`, `sharedCuppingSearch.js`, `panelAccess.js`, `panelComparisons.js` — shared/guest cupping invitations and the Panel Report feature described in `server/SETUP.md`.
   - `lotLookup.js`, `lotCache.js`, `lotOptions.js` — Lot Summary sheet lookups, with a local cache described in `SESSION-RECALL.md`.
+  - `sampleLookup.js` — AirTable-backed Sample ID lookup (moisture, water activity, sample type, Osito ID, lot name), described in `SESSION-RECALL.md`. Unlike the Lot Summary lookup, this has no bulk local catalog — the AirTable table is too large to prefetch, so every lookup is a live per-ID call.
   - `lexicon.js`, `tagModifiers.js`, `flavorWheel.js` — flavor descriptor/tag domain logic (see `LEXICONS.md`).
   - `sessionRecall.js`, `sessionDisplay.js` — recall-by-code validation/formatting.
 - `src/hooks/*` — React wiring around the `lib` modules (`useGoogleSheets`, `useLotLookup`, `useSharedAutosave`, `useSharedOutboxSync`).

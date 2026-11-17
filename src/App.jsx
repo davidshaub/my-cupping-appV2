@@ -34,8 +34,10 @@ import CoffeeReportModal from './components/CoffeeReportModal';
 import SessionUpdate from './components/SessionUpdate';
 import LotLookupStatus from './components/LotLookupStatus';
 import LotCacheControl from './components/LotCacheControl';
+import SampleLookupStatus from './components/SampleLookupStatus';
 import CuppingTimer from './components/CuppingTimer';
 import useLotLookup from './hooks/useLotLookup';
+import useSampleLookup from './hooks/useSampleLookup';
 import HandsLogo from '../assets/hands.png';
 import {
   translate,
@@ -73,7 +75,10 @@ const LanguageToggle = ({ language, onToggle, t, compact = false, iconOnly = fal
   </button>
 );
 
-const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther', 'country', 'sampleType', 'roastId'];
+// labSampleId is appended at the end, not inserted after ositoId, because every other column
+// below is addressed by its hardcoded numeric position in the hand-coded table markup further
+// down - inserting it in the middle would require renumbering every column after it.
+const METADATA_TABLE_COLUMNS = ['ositoId', 'lotName', 'processing', 'waterActivity', 'moisture', 'processingOther', 'country', 'sampleType', 'roastId', 'labSampleId'];
 const PROCESSING_CANONICAL = { washed: 'Washed', natural: 'Natural', honey: 'Honey', other: 'Other' };
 const draftFingerprint = (id, name, startTime, lexiconMode, samples) => sessionFingerprint({ syncId: id, name, startTime, lexiconMode, samples });
 const METADATA_NUMERIC_COLUMNS = new Set(['waterActivity', 'moisture']);
@@ -345,6 +350,7 @@ const App = () => {
 
   const isMobile = viewportWidth < 640;
   const lotLookup = useLotLookup(samples, setSamples, appState === 'metadata', activeSavedSessionId);
+  const sampleLookup = useSampleLookup(samples, setSamples, appState === 'metadata', activeSavedSessionId);
   const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
   const isEinkMode = displayMode === 'eink';
   const t = (key) => translate(language, key);
@@ -920,7 +926,7 @@ const App = () => {
       next.moisture = formatMoisture(raw);
     } else if (field === 'ositoId') {
       next.ositoId = raw;
-    } else if (['lotName', 'country', 'sampleType', 'roastId'].includes(field)) {
+    } else if (['lotName', 'country', 'sampleType', 'roastId', 'labSampleId'].includes(field)) {
       next[field] = raw;
     }
 
@@ -1253,8 +1259,9 @@ const App = () => {
     });
     setSamples(nextSamples);
     // Paste writes samples directly, with no field-exit event for the usual lot-lookup trigger to
-    // catch — fire it explicitly whenever the Osito ID column was part of what was just pasted.
+    // catch — fire it explicitly whenever the Osito ID or Sample ID column was part of what was just pasted.
     if (targetStartCol === 0) lotLookup.lookupPasted(nextSamples.slice(targetStartRow, pasteEndRow + 1));
+    if (targetStartCol <= 9 && pasteEndCol >= 9) sampleLookup.lookupPasted(nextSamples.slice(targetStartRow, pasteEndRow + 1));
 
     setMetadataTableSelection({
       anchor: { row: targetStartRow, col: targetStartCol },
@@ -1299,6 +1306,7 @@ const App = () => {
   // exit through here instead of setEditingCell(null) directly keeps that commit call in sync.
   const stopEditingCell = () => {
     lotLookup.commit();
+    sampleLookup.commit();
     setEditingCell(null);
   };
 
@@ -2011,6 +2019,7 @@ const App = () => {
     const tableColumns = METADATA_TABLE_COLUMNS;
     const tableColumnLabels = {
       ositoId: t('ositoId'),
+      labSampleId: t('labSampleId'),
       lotName: t('lotName'),
       processing: t('processing'),
       waterActivity: t('waterActivity'),
@@ -2020,6 +2029,7 @@ const App = () => {
     };
     const tableColumnWidths = {
       ositoId: '150px',
+      labSampleId: '140px',
       lotName: '230px',
       processing: '170px',
       waterActivity: '140px',
@@ -2308,6 +2318,19 @@ const App = () => {
                             </td>
                           );
                         })}
+                        <td {...getTableCellProps(idx, 9)}>
+                          {isEditingCell(idx, 9) ? (
+                            <input
+                              {...getTableInputProps(idx, 9)}
+                              value={s.labSampleId || ''}
+                              onChange={(e) => handleTableFieldChange(idx, 'labSampleId', e.target.value)}
+                              onBlur={sampleLookup.commit}
+                              placeholder="12345"
+                              aria-label={`${t('labSampleId')} ${idx + 1}`}
+                            />
+                          ) : renderStaticCell(idx, 9, 'labSampleId', { placeholder: '12345' })}
+                          <SampleLookupStatus sample={s} lookup={sampleLookup} language={language} compact />
+                        </td>
                       </tr>
                     );
                   })}
@@ -2332,6 +2355,17 @@ const App = () => {
                       className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
                     />
                     <LotLookupStatus sample={s} lookup={lotLookup} language={language} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-stone-400 uppercase ml-1">{t('labSampleId')}</label>
+                    <input
+                      value={s.labSampleId || ''}
+                      onChange={(e) => updateMetadata(idx, 'labSampleId', e.target.value)}
+                      onBlur={sampleLookup.commit}
+                      placeholder="12345"
+                      className="w-full bg-stone-50 p-3 rounded-xl border border-transparent focus:bg-white focus:border-stone-200 outline-none font-bold text-stone-800 text-sm"
+                    />
+                    <SampleLookupStatus sample={s} lookup={sampleLookup} language={language} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-stone-400 uppercase ml-1">{t('lotName')}</label>

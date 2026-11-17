@@ -57,6 +57,7 @@ const drawIdentity = (pdf, sample, index, language) => {
   });
   const metadataY = details.length ? detailsY + 18 : y + 79;
   const meta = [
+    ...(!sample.reportKind ? [[translate(language, 'labSampleId'), sample.labSampleId || '']] : []),
     [translate(language, 'processing'), sample.processing === 'Other' ? sample.processingOther || translate(language, 'other') : translateProcessing(language, sample.processing || 'Select One')],
     ...(!sample.reportKind ? [
       [translate(language, 'waterActivity'), sample.waterActivity || ''],

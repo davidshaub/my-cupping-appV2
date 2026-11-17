@@ -22,6 +22,48 @@ Requests are cancelled when the ID, session, or view changes, and results are ti
 
 Tests: `node --test tests/lot-lookup.test.js tests/lot-cache.test.js` and `scripts/check-lot-lookup-ui.mjs` (Playwright/Chrome, mocked network, local port 5175 or `LOT_TEST_URL`). The source-sheet check found conflicting duplicate IDs `41` and `356`; these are not selected automatically.
 
+## AirTable Sample ID lookup
+
+A new "Sample ID" field sits alongside Osito ID on each sample. Unlike Osito ID (one per coffee,
+shared across that coffee's several samples), Sample ID is unique per physical sample (PSS, Arrival,
+etc.) in the company's AirTable "Master Sheet" (base `appb33eKqdsHn03CM`, table `tbl9SXWK6ItEaWTbt`),
+so a lookup by Sample ID is never ambiguous the way an Osito-ID-based one would be. The two fields
+are independent: either can be filled alone (an offer sample often has no Osito ID yet), and filling
+Sample ID with one that resolves to an Osito ID also fills the Osito ID field, which in turn triggers
+the existing Lot Summary lookup on its own - no special chaining code was needed for that.
+
+The Apps Script `lookupSample_` function (`doGet` action `lookupSample`) calls AirTable's REST API
+directly with `UrlFetchApp`, using a Personal Access Token stored as the `AIRTABLE_API_TOKEN` Script
+Property (Apps Script editor -> Project Settings -> Script Properties) - never in the client, never in
+this repo. It only requests/returns the fields in `AIRTABLE_SAMPLE_FIELD_MAP`: Osito ID, Lot Name,
+Sample Type, Moisture, and aW (water activity); AirTable's `percent`-type Moisture is converted from
+its 0-1 fraction to this app's 0-100 scale. Adding another field later (the base has many more, e.g.
+Processing, Country) only needs a new map entry and one line in `lookupSample_` - no client changes.
+
+Unlike the Lot Summary sheet (a few hundred rows, safe to prefetch whole), this AirTable table has
+7,000+ rows and keeps growing, so there is no bulk catalog or local cache here (`useSampleLookup.js`
+is a point-lookup-only version of `useLotLookup.js`) - every lookup is a live network call on blur or
+paste, same debounce/conflict-review/retry pattern as the Lot Summary lookup otherwise.
+
+Saved with the session like Osito ID (CSV column `Lab Sample ID`, spreadsheet column `Lab Sample ID`,
+shown on primary PDF reports only - omitted from shared/Panel reports along with the other fields
+`server/SETUP.md` already excludes there).
+
+`SAMPLE_TYPE_OPTIONS` (`src/lib/lotOptions.js`) was updated to match AirTable's actual Sample Type
+choices (Type, Offer, PSS, Arrival, Spot, Frozen - Spot, Client, Cacao) plus an Other catch-all; it is
+a suggestion list only (`SearchableSelect` accepts any typed value), so this is cosmetic, not validation.
+
+Deployment: paste the regenerated Apps Script, set the `AIRTABLE_API_TOKEN` Script Property (read
+access to the base above), then redeploy as the usual new version of the existing `/exec` deployment.
+
+Tests: `node --test tests/*.test.js` (covers `sampleLookup.js`'s patch/conflict logic) and
+`node scripts/check-sample-lookup-sync.mjs` (mocks `UrlFetchApp` to verify `lookupSample_`/`doGet`
+against found/missing/ambiguous/unconfigured AirTable responses).
+
+Not yet built, flagged for later: writing cupping scores/notes back into this AirTable base after a
+session - that would need write access (a different trust model than this read-only lookup) and a
+schema decision about where repeat-cupping data lives in AirTable.
+
 ## Session Update rollout
 
 For the version-protected Session Update feature, deploy the updated Apps Script **before** publishing the frontend. Replace the existing source, save, then Deploy > Manage deployments > pencil > New version > Deploy, retaining the existing URL. Do not run the repair function again. No new sheet column is required.

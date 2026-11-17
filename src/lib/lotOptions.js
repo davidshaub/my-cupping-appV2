@@ -4,5 +4,6 @@ export const COUNTRY_OPTIONS = [
   'Venezuela', 'Vietnam', 'Yemen'
 ].sort((a, b) => a.localeCompare(b, 'en')).concat('Other');
 
-// Match the Sample Type validation choices in Cupping Lab Data.
-export const SAMPLE_TYPE_OPTIONS = ['Offer', 'Pre-Milling', 'PSS', 'Arrival', 'Spot', 'Type', 'Other'];
+// Match the Sample Type choices in the AirTable Master Sheet (see server/google-apps-script.gs
+// lookupSample_), so suggestions line up with what a Sample ID lookup can actually fill in.
+export const SAMPLE_TYPE_OPTIONS = ['Type', 'Offer', 'PSS', 'Arrival', 'Spot', 'Frozen - Spot', 'Client', 'Cacao', 'Other'];

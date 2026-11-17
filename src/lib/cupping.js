@@ -62,7 +62,7 @@ const parseTagsCell = (value) => {
     .filter(Boolean);
 };
 
-const formatWaterActivity = (value) => {
+export const formatWaterActivity = (value) => {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
   const numeric = Number.parseFloat(raw);
@@ -71,7 +71,7 @@ const formatWaterActivity = (value) => {
   return clamped.toFixed(2);
 };
 
-const formatMoisture = (value) => {
+export const formatMoisture = (value) => {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
   const numeric = Number.parseFloat(raw.replace('%', ''));
@@ -207,6 +207,7 @@ export const initializeSamples = (count) =>
     syncId: globalThis.crypto.randomUUID(),
     noScore: false,
     ositoId: '',
+    labSampleId: '',
     lotName: '',
     country: '',
     sampleType: '',
@@ -266,6 +267,7 @@ export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito'
   const headers = [
     'Sample #',
     'Osito ID',
+    'Lab Sample ID',
     'Lot Name',
     'Processing',
     'Processing Details',
@@ -306,6 +308,7 @@ export const buildSessionCSV = (samples, sessionStartTime, lexiconMode = 'osito'
     return [
       idx + 1,
       csvEscape(s.ositoId),
+      csvEscape(s.labSampleId || ''),
       csvEscape(s.lotName),
       csvEscape(proc),
       csvEscape(procDetails),
@@ -393,6 +396,7 @@ export const importSessionFromCSV = (csvText, filename) => {
 
   const idxSample = colIndex('Sample #');
   const idxOsitoId = colIndex('Osito ID');
+  const idxLabSampleId = colIndex('Lab Sample ID');
   const idxLotName = colIndex('Lot Name');
   const idxProcessing = colIndex('Processing');
   const idxProcessingDetails = colIndex('Processing Details');
@@ -461,6 +465,7 @@ export const importSessionFromCSV = (csvText, filename) => {
       syncId: String(row[colIndex('Sample ID')] || '').trim() || globalThis.crypto.randomUUID(),
       noScore: idxScoringStatus >= 0 && String(row[idxScoringStatus] ?? '').trim().toLowerCase() === 'no score',
       ositoId: idxOsitoId >= 0 ? String(row[idxOsitoId] ?? '') : '',
+      labSampleId: idxLabSampleId >= 0 ? String(row[idxLabSampleId] ?? '') : '',
       country: colIndex('Country') >= 0 ? String(row[colIndex('Country')] ?? '') : '',
       sampleType: colIndex('Sample Type') >= 0 ? String(row[colIndex('Sample Type')] ?? '') : '',
       roastId: colIndex('Roast ID') >= 0 ? String(row[colIndex('Roast ID')] ?? '') : '',

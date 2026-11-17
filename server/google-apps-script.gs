@@ -6,6 +6,43 @@ const CUPPING_TAB = 58722764;
 const OWNED_COLUMNS = ['Session ID', 'Sample ID', 'App Data', 'Session Code', 'Cupper'];
 const LOT_SOURCE_SPREADSHEET = '1hyfuTZSRZP1SQc5c-pQ3MpfRS_lJazK9Nww6HFvOskE';
 const LOT_SOURCE_TAB = 1244711014;
+const AIRTABLE_BASE_ID = 'appb33eKqdsHn03CM';
+const AIRTABLE_SAMPLE_TABLE = 'tbl9SXWK6ItEaWTbt';
+// Maps this app's own sample fields to the AirTable Master Sheet's field names. Add an entry here
+// (and a line in lookupSample_ below) to pull in more columns later - everything else stays the same.
+const AIRTABLE_SAMPLE_FIELD_MAP = { ositoId: 'ID - Osito', lotName: 'Lot Name', sampleType: 'Sample Type', moisture: 'Moisture', waterActivity: 'aW' };
+
+// Read-only, exact-ID lookup against the AirTable Master Sheet, keyed by its unique Sample ID
+// (an autoNumber - unlike Osito ID, which repeats across a coffee's several samples). The API
+// token lives only in this script's Script Properties, never in the client. Only the whitelisted
+// fields above are ever requested or returned - never the whole record, scores, or other columns.
+function lookupSample_(rawId) {
+  const trimmed = String(rawId || '').trim();
+  if (!/^\d{1,15}$/.test(trimmed)) throw new Error('invalidSampleId');
+  const token = PropertiesService.getScriptProperties().getProperty('AIRTABLE_API_TOKEN');
+  if (!token) throw new Error('airtableNotConfigured');
+  const fieldParams = Object.values(AIRTABLE_SAMPLE_FIELD_MAP).map(name => 'fields%5B%5D=' + encodeURIComponent(name)).join('&');
+  const formula = encodeURIComponent('{Sample ID}=' + Number(trimmed));
+  const url = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_SAMPLE_TABLE + '?filterByFormula=' + formula + '&' + fieldParams;
+  const response = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+  if (response.getResponseCode() !== 200) throw new Error('airtableUnavailable');
+  const records = JSON.parse(response.getContentText()).records;
+  if (!records.length) return { status: 'missing', id: trimmed };
+  if (records.length > 1) return { status: 'ambiguous', id: trimmed };
+  const fields = records[0].fields, sample = {};
+  const ositoId = fields[AIRTABLE_SAMPLE_FIELD_MAP.ositoId];
+  if (Number.isFinite(ositoId)) sample.ositoId = String(ositoId);
+  const lotName = fields[AIRTABLE_SAMPLE_FIELD_MAP.lotName];
+  if (typeof lotName === 'string' && lotName.trim()) sample.lotName = lotName.trim();
+  const sampleType = fields[AIRTABLE_SAMPLE_FIELD_MAP.sampleType];
+  if (sampleType && typeof sampleType === 'object' && sampleType.name) sample.sampleType = String(sampleType.name);
+  // AirTable's Moisture field is a percent type, returned as a 0-1 fraction; this app stores 0-100.
+  const moisture = fields[AIRTABLE_SAMPLE_FIELD_MAP.moisture];
+  if (Number.isFinite(moisture)) sample.moisture = (moisture * 100).toFixed(1);
+  const waterActivity = fields[AIRTABLE_SAMPLE_FIELD_MAP.waterActivity];
+  if (Number.isFinite(waterActivity)) sample.waterActivity = String(waterActivity);
+  return { status: 'found', id: trimmed, sample };
+}
 
 // Read-only, exact-ID lookup. Never return unrelated inventory or financial columns.
 function lookupLot_(rawId) {
@@ -160,7 +197,7 @@ function valuesForSample_(session, sample, index) {
   return {
     Cupper: sample.cupper || session.cupper || '',
     'Table Position': index + 1, Country: sample.country || '', Coffee: sample.lotName || '',
-    'Osito ID/REF#': sample.ositoId || '', 'Sample Type': sample.sampleType || '',
+    'Osito ID/REF#': sample.ositoId || '', 'Lab Sample ID': sample.labSampleId || '', 'Sample Type': sample.sampleType || '',
     Process: sample.processing === 'Other' ? sample.processingOther || 'Other' : sample.processing === 'Select One' ? '' : sample.processing || '',
     'Roast ID': sample.roastId || '', 'Date Cupped': session.startTime || session.date || '',
     Fragrance: scores.fragrance, Aroma: scores.aroma == null ? '' : scores.aroma, 'Frag/Aroma': average,
@@ -192,7 +229,7 @@ function validateBatch_(body) {
       const scores = sample.scores;
       if (['fragrance', 'cleanCup', 'sweetness', 'acidity', 'body', 'flavor', 'aftertaste', 'balance', 'consistency', 'overall', 'defects', 'correction'].some(key => !Number.isFinite(scores[key])) || (scores.aroma != null && !Number.isFinite(scores.aroma))) throw new Error('invalidSession');
       if (['fragAromaTags', 'inCupTags', 'negativeTags'].some(key => !Array.isArray(sample.notes[key]) || sample.notes[key].some(value => typeof value !== 'string'))) throw new Error('invalidSession');
-      ['ositoId', 'lotName', 'country', 'sampleType', 'roastId', 'processing', 'processingOther', 'waterActivity', 'moisture'].forEach(key => { if (sample[key] != null && typeof sample[key] !== 'string') throw new Error('invalidSession'); });
+      ['ositoId', 'labSampleId', 'lotName', 'country', 'sampleType', 'roastId', 'processing', 'processingOther', 'waterActivity', 'moisture'].forEach(key => { if (sample[key] != null && typeof sample[key] !== 'string') throw new Error('invalidSession'); });
       if (sample.notes.otherText != null && typeof sample.notes.otherText !== 'string') throw new Error('invalidSession');
       if (JSON.stringify(sample).length > 40000) throw new Error('sessionTooLarge');
     });
@@ -350,6 +387,8 @@ function doGet(event) {
       result = { lotCatalog: lotCatalog_() };
     } else if (event.parameter.action === 'lookupLot') {
       result = { lotLookup: lookupLot_(event.parameter.id) };
+    } else if (event.parameter.action === 'lookupSample') {
+      result = { sampleLookup: lookupSample_(event.parameter.id) };
     } else if (event.parameter.action === 'receipt') {
       const id = event.parameter.requestId || '';
       if (!/^[a-zA-Z0-9_-]{10,100}$/.test(id)) throw new Error('invalidRequest');
