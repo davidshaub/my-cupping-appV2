@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 
-let requests = [], mockRecords = [], properties = { AIRTABLE_API_TOKEN: 'test-token' };
-let locked = false, lockCount = 0;
+let requests = [], mockRecords = [], properties = { AIRTABLE_API_TOKEN: 'test-token' }, logs = [];
+let locked = false, lockCount = 0, failStatus = null;
 const runtime = vm.createContext({
+  console: { log: message => logs.push(message) },
   PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] ?? null }) },
   CacheService: { getScriptCache: () => { const store = CacheService_store; return { get: key => store.get(key), put: (key, value) => store.set(key, value) }; } },
   LockService: { getScriptLock: () => ({ tryLock: () => { lockCount++; locked = true; return true; }, releaseLock: () => { locked = false; } }) },
@@ -16,6 +17,7 @@ const runtime = vm.createContext({
       assert.equal(locked, true, 'every AirTable call must happen while the batch lock is held');
       const method = (options.method || 'get').toLowerCase();
       requests.push({ url, method, body: options.payload ? JSON.parse(options.payload) : null });
+      if (failStatus) return { getResponseCode: () => failStatus, getContentText: () => JSON.stringify({ error: { type: 'AUTHENTICATION_REQUIRED', message: 'Invalid authentication token' } }) };
       if (method === 'get') return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ records: mockRecords }) };
       if (method === 'post') return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ records: [{ id: 'recLogNew' }] }) };
       if (method === 'patch') return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ id: mockRecords[0]?.id, fields: {} }) };
@@ -83,4 +85,15 @@ mockRecords = [{ id: 'recA', fields: {} }];
 post({ action: 'pushCupping', requestId: 'req-push-fresh-0001', password: 'C0ff33', samples: [samplePayload('3835')] });
 assert.equal(requests.length, 0, 'a requestId with an existing receipt is never re-processed');
 
-console.log('Passed: update-in-place vs archive-then-overwrite, archive always precedes overwrite, password check, batch lock held for every AirTable call, missing/ambiguous reporting, input validation, and request dedup.');
+// An AirTable-side failure (bad/expired token, wrong scope, etc.) reports a generic 'error' status
+// to the client, but the REAL reason - AirTable's own response - must land in the Executions log,
+// not disappear silently. This is what the user actually hit: 15 generic "error"s with no detail
+// anywhere, because this logging didn't exist yet.
+requests = []; logs = []; mockRecords = [{ id: 'recE', fields: {} }]; failStatus = 401;
+post({ action: 'pushCupping', requestId: 'req-push-authfail-01', password: 'C0ff33', samples: [samplePayload('6001')] });
+assert.deepEqual(receiptFor('req-push-authfail-01').results, [{ labSampleId: '6001', status: 'error' }]);
+assert.ok(logs.some(line => line.includes('pushOneCupping_ failed for Sample ID 6001')), 'the failure is logged, not swallowed');
+assert.ok(logs.some(line => line.includes('401') && line.includes('AUTHENTICATION_REQUIRED')), "AirTable's own error detail is logged");
+failStatus = null;
+
+console.log('Passed: update-in-place vs archive-then-overwrite, archive always precedes overwrite, password check, batch lock held for every AirTable call, missing/ambiguous reporting, input validation, request dedup, and that AirTable-side failures are logged with real detail instead of a bare generic status.');

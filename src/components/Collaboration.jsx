@@ -106,7 +106,7 @@ export default function Collaboration({ initialView='settings', session, initial
   // Panel Report access itself always re-checking. The on/off state then persists on this device.
   const unlockOsito=()=>run(async()=>{
     if (!await acceptsPanelPassword(password)) throw new Error('Incorrect Panel Report password.');
-    setOsitoMode(true); setOsitoState(true); setOsitoPrompt(false); setPassword('');
+    setOsitoMode(true); setOsitoState(true); setOsitoSessionPassword(password); setOsitoPrompt(false); setPassword('');
   });
   useEffect(()=>{
     if (view === 'panel' || view === 'guest' || view === 'report') import('../lib/collaborationPdf').then(module=>module.preloadCollaborationPdf()).catch(()=>{});

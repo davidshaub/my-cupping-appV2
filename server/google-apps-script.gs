@@ -60,7 +60,12 @@ function airtableRequest_(method, url, token, payload) {
   const options = { method, headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true };
   if (payload) { options.contentType = 'application/json'; options.payload = JSON.stringify(payload); }
   const response = UrlFetchApp.fetch(url, options);
-  if (response.getResponseCode() >= 300) throw new Error('airtableUnavailable');
+  if (response.getResponseCode() >= 300) {
+    // Logged (not returned to the client) so the actual AirTable error - wrong/expired token, bad
+    // scope, a typecast rejection, etc. - is visible in Executions instead of a bare generic status.
+    console.log('AirTable ' + method.toUpperCase() + ' ' + url + ' -> ' + response.getResponseCode() + ': ' + response.getContentText());
+    throw new Error('airtableUnavailable');
+  }
   return JSON.parse(response.getContentText());
 }
 
@@ -126,7 +131,7 @@ function pushCuppingPost_(body) {
   try {
     results = body.samples.map(sample => {
       try { return pushOneCupping_(sample, token); }
-      catch (error) { return { labSampleId: String(sample.labSampleId), status: 'error' }; }
+      catch (error) { console.log('pushOneCupping_ failed for Sample ID ' + sample.labSampleId + ': ' + String(error)); return { labSampleId: String(sample.labSampleId), status: 'error' }; }
     });
   } finally { lock.releaseLock(); }
   cache.put(receiptKey, JSON.stringify({ results }), 600);

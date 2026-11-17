@@ -16,6 +16,14 @@ export const setChimesEnabled = enabled => localStorage.setItem(CHIMES_ENABLED_K
 export const OSITO_MODE_KEY = 'osito_mode_enabled';
 export const getOsitoMode = () => localStorage.getItem(OSITO_MODE_KEY) === 'on';
 export const setOsitoMode = enabled => localStorage.setItem(OSITO_MODE_KEY, enabled ? 'on' : 'off');
+// The password itself is never written to disk (plain JS module variable, not localStorage) - it's
+// remembered only for the rest of this browser tab's life, the first time it's verified correct,
+// so an already-unlocked Osito Mode doesn't re-prompt for every password-gated action (e.g. Push to
+// AirTable) that follows. A fresh page load with Osito Mode already on from a prior visit still asks
+// once, the first time something needs it, then stops asking for the rest of that session too.
+let ositoSessionPassword = null;
+export const getOsitoSessionPassword = () => ositoSessionPassword;
+export const setOsitoSessionPassword = password => { ositoSessionPassword = password; };
 export const DEFAULT_READY_MINUTES = 18;
 export const READY_MINUTES_KEY = 'osito_ready_minutes';
 export const getReadyMinutes = () => {
