@@ -4,7 +4,7 @@ import SessionEvaluation from './components/SessionEvaluation';
 import React, { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Collaboration from './components/Collaboration';
-import { getCupper, getOsitoMode, getOsitoSessionPassword, setOsitoSessionPassword } from './lib/collaboration';
+import { getCupper, getOsitoMode, getOsitoPassword, setOsitoPassword } from './lib/collaboration';
 import {
   INITIAL_SCORE
 } from './constants';
@@ -246,11 +246,11 @@ const App = () => {
   });
   const [airtablePush, setAirtablePush] = useState(null);
   // A password already verified once this browser session (remembered in memory only, never on
-  // disk - see getOsitoSessionPassword) is reused silently; Osito Mode itself already required it
+  // disk - see getOsitoPassword) is reused silently; Osito Mode itself already required it
   // once, so asking again on every push would just be friction with no real security benefit.
   const openAirtablePush = () => {
     if (!samples.some(canPushSample)) { setAirtablePush({ stage: 'result', results: [], none: true }); return; }
-    const remembered = getOsitoSessionPassword();
+    const remembered = getOsitoPassword();
     if (remembered) { setAirtablePush({ stage: 'pushing' }); runAirtablePush(remembered); return; }
     setAirtablePush({ stage: 'password', password: '', error: '', busy: false });
   };
@@ -260,7 +260,7 @@ const App = () => {
     (async () => {
       try {
         if (!await acceptsPanelPassword(password)) throw new Error('Incorrect Panel Report password.');
-        setOsitoSessionPassword(password);
+        setOsitoPassword(password);
         const payloadSamples = samples.filter(canPushSample).map(sample => ({ ...buildCuppingPushPayload(sample), cuppingDate: toIsoDate(sessionStartTime) }));
         const requestId = crypto.randomUUID();
         try {
@@ -280,7 +280,7 @@ const App = () => {
         const message = error.message || 'Push failed.';
         // A remembered password that's since gone stale (e.g. the server password changed) must
         // fall back to asking again, not just show an error with no way to retry.
-        if (message === 'Incorrect Panel Report password.') setOsitoSessionPassword(null);
+        if (message === 'Incorrect Panel Report password.') setOsitoPassword(null);
         setAirtablePush(current => {
           if (current.stage !== 'pushing') return { ...current, busy: false, error: message };
           return message === 'Incorrect Panel Report password.'

@@ -72,11 +72,12 @@ A password-gated, device-remembered toggle in Settings (`getOsitoMode`/`setOsito
 general public by default. Right now that's just the Sample ID field (both Lot Information views);
 future internal-only features (e.g. the AirTable push button once built) should check the same flag.
 
-Turning it OFF never needs the password; turning it back ON from OFF always does, matching how
-Panel Report access itself always re-checks - only the on/off *state* persists across visits, not an
-unlock that would let someone re-enable it without the password. Reuses the same password as Panel
-Report (`acceptsPanelPassword`) and the same dialog component (`PanelPasswordDialog`, now with
-optional `title`/`submitLabel`/`busyLabel` props so it reads correctly for either purpose).
+Turning it ON requires the Panel Report password (same password, `acceptsPanelPassword`, same
+`PanelPasswordDialog` with optional `title`/`submitLabel`/`busyLabel` props). The password is then
+remembered on that device (`osito_mode_password` in localStorage, like the cupper name) for as long as
+Osito Mode stays on, so password-gated actions like Push to AirTable never re-prompt; turning Osito
+Mode off clears it. If Osito Mode was already on before this existed (no remembered password), the
+first Push asks once and remembers it. The server still re-checks the password on every push.
 
 In `App.jsx`, `METADATA_TABLE_COLUMNS` became a per-render value (`metadataTableColumns(ositoMode)`)
 instead of a module-level constant, since Table View addresses every other column by a hardcoded
