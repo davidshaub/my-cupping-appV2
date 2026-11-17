@@ -80,9 +80,22 @@ function validateCuppingPush_(sample) {
   if (sample.cuppingDate != null && typeof sample.cuppingDate !== 'string') throw new Error('invalidSession');
 }
 
-// Looks up the Sample ID's current AirTable row; if it already has a prior cupping, archives that
-// prior cupping to the Cupping Log table (linked back to this record) before overwriting Master
-// Sheet with the new one - Master Sheet only ever holds the most recent cupping for a Sample ID.
+// Same value regardless of how AirTable returns it: tag lists compare as sets (order doesn't matter),
+// numbers numerically, text trimmed.
+function airtableFieldEqual_(existing, incoming) {
+  if (incoming === null) return existing == null || String(existing).trim() === '';
+  if (Array.isArray(incoming)) {
+    const a = (Array.isArray(existing) ? existing : []).map(String).sort(), b = incoming.map(String).sort();
+    return a.length === b.length && a.every((value, index) => value === b[index]);
+  }
+  if (typeof incoming === 'number') return Number(existing) === incoming;
+  return String(existing == null ? '' : existing).trim() === String(incoming).trim();
+}
+
+// Looks up the Sample ID's current AirTable row. If the cupping being pushed is identical to what's
+// already there, nothing is written (pushing the same session twice must not create an archive copy of
+// itself). Otherwise, if a prior cupping exists it is archived to the Cupping Log table (linked back to
+// this record) before Master Sheet is overwritten - Master Sheet only ever holds the most recent cupping.
 function pushOneCupping_(sample, token) {
   const id = String(sample.labSampleId).trim();
   const formula = encodeURIComponent('{Sample ID}=' + Number(id));
@@ -92,6 +105,16 @@ function pushOneCupping_(sample, token) {
   if (!records.length) return { labSampleId: id, status: 'notFound' };
   if (records.length > 1) return { labSampleId: id, status: 'ambiguous' };
   const record = records[0], existing = record.fields;
+  // Every cupping field is always written: one the new cupping doesn't have is cleared, so Master
+  // Sheet holds exactly the newest cupping and never a mix of old and new.
+  const newFields = {
+    Score: sample.score != null ? sample.score : null,
+    'Cup Profile': sample.cupProfile.length ? sample.cupProfile : [],
+    'Negative Notes': sample.negativeNotes.length ? sample.negativeNotes : [],
+    'Other Notes': sample.otherText ? sample.otherText : null,
+    'Date Cupped': sample.cuppingDate ? sample.cuppingDate : null
+  };
+  if (Object.keys(newFields).every(key => airtableFieldEqual_(existing[key], newFields[key]))) return { labSampleId: id, status: 'unchanged' };
   const hasExisting = existing.Score != null || Boolean((existing['Other Notes'] || '').trim()) || Boolean(existing['Date Cupped']);
   if (hasExisting) {
     const archiveFields = { Sample: [record.id] };
@@ -103,12 +126,6 @@ function pushOneCupping_(sample, token) {
     const createUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_CUPPING_LOG_TABLE;
     airtableRequest_('post', createUrl, token, { records: [{ fields: archiveFields }], typecast: true });
   }
-  const newFields = {};
-  if (sample.score != null) newFields.Score = sample.score;
-  if (sample.cupProfile.length) newFields['Cup Profile'] = sample.cupProfile;
-  if (sample.negativeNotes.length) newFields['Negative Notes'] = sample.negativeNotes;
-  if (sample.otherText) newFields['Other Notes'] = sample.otherText;
-  if (sample.cuppingDate) newFields['Date Cupped'] = sample.cuppingDate;
   const patchUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_SAMPLE_TABLE + '/' + record.id;
   airtableRequest_('patch', patchUrl, token, { fields: newFields, typecast: true });
   return { labSampleId: id, status: hasExisting ? 'archived' : 'updated' };

@@ -48,7 +48,7 @@ assert.deepEqual(receiptFor('req-push-fresh-0001').results, [{ labSampleId: '383
 assert.equal(requests.filter(r => r.method === 'post').length, 0, 'no archive row for a first cupping');
 const patchCall = requests.find(r => r.method === 'patch');
 assert.match(patchCall.url, /\/recA$/);
-assert.deepEqual(patchCall.body.fields, { Score: 87.25, 'Cup Profile': ['Floral', 'Chocolate'], 'Other Notes': 'Clean finish.', 'Date Cupped': '2026-11-20' });
+assert.deepEqual(patchCall.body.fields, { Score: 87.25, 'Cup Profile': ['Floral', 'Chocolate'], 'Negative Notes': [], 'Other Notes': 'Clean finish.', 'Date Cupped': '2026-11-20' });
 assert.equal(patchCall.body.typecast, true);
 
 // A Sample ID that already has a cupping archives the OLD data to Cupping Log (linked back to the
@@ -85,6 +85,28 @@ mockRecords = [{ id: 'recA', fields: {} }];
 post({ action: 'pushCupping', requestId: 'req-push-fresh-0001', password: 'C0ff33', samples: [samplePayload('3835')] });
 assert.equal(requests.length, 0, 'a requestId with an existing receipt is never re-processed');
 
+// Pushing the exact same cupping twice must be a no-op: no archive copy of itself, no rewrite. Tag
+// order doesn't matter - AirTable may hand the same tags back in a different order.
+requests = []; failStatus = null;
+mockRecords = [{ id: 'recF', fields: { Score: 87.25, 'Cup Profile': ['Chocolate', 'Floral'], 'Other Notes': 'Clean finish.', 'Date Cupped': '2026-11-20' } }];
+post({ action: 'pushCupping', requestId: 'req-push-same-000001', password: 'C0ff33', samples: [samplePayload('7001')] });
+assert.deepEqual(receiptFor('req-push-same-000001').results, [{ labSampleId: '7001', status: 'unchanged' }]);
+assert.deepEqual(requests.map(r => r.method), ['get'], 'an identical re-push only reads - no archive row, no overwrite');
+
+// A genuinely different cupping of the same Sample ID still archives the old one and overwrites.
+requests = [];
+post({ action: 'pushCupping', requestId: 'req-push-changed-0001', password: 'C0ff33', samples: [samplePayload('7001', { score: 88 })] });
+assert.deepEqual(receiptFor('req-push-changed-0001').results, [{ labSampleId: '7001', status: 'archived' }]);
+assert.deepEqual(requests.map(r => r.method), ['get', 'post', 'patch']);
+
+// Master Sheet must hold exactly the newest cupping: a field the new cupping lacks is cleared, not left stale.
+requests = [];
+mockRecords = [{ id: 'recG', fields: { Score: 87.25, 'Cup Profile': ['Floral', 'Chocolate'], 'Negative Notes': ['Papery'], 'Other Notes': 'Clean finish.', 'Date Cupped': '2026-11-20' } }];
+post({ action: 'pushCupping', requestId: 'req-push-stale-00001', password: 'C0ff33', samples: [samplePayload('7001')] });
+assert.deepEqual(receiptFor('req-push-stale-00001').results, [{ labSampleId: '7001', status: 'archived' }], 'dropping a field is a real change');
+assert.deepEqual(requests.find(r => r.method === 'patch').body.fields['Negative Notes'], [], 'old Negative Notes cleared from Master Sheet');
+assert.deepEqual(requests.find(r => r.method === 'post').body.records[0].fields['Negative Notes'], ['Papery'], 'and preserved in the archive');
+
 // An AirTable-side failure (bad/expired token, wrong scope, etc.) reports a generic 'error' status
 // to the client, but the REAL reason - AirTable's own response - must land in the Executions log,
 // not disappear silently. This is what the user actually hit: 15 generic "error"s with no detail
@@ -99,4 +121,4 @@ assert.ok(logs.some(line => line.includes('pushOneCupping_ failed for Sample ID 
 assert.ok(logs.some(line => line.includes('401') && line.includes('AUTHENTICATION_REQUIRED')), "AirTable's own error detail is logged");
 failStatus = null;
 
-console.log('Passed: update-in-place vs archive-then-overwrite, archive always precedes overwrite, password check, batch lock held for every AirTable call, missing/ambiguous reporting, input validation, request dedup, and that AirTable-side failures are logged with real detail instead of a bare generic status.');
+console.log('Passed: update-in-place vs archive-then-overwrite, archive always precedes overwrite, password check, batch lock held for every AirTable call, missing/ambiguous reporting, input validation, request dedup, identical re-pushes being no-ops, and that AirTable-side failures are logged with real detail instead of a bare generic status.');

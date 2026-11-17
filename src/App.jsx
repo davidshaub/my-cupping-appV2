@@ -2576,6 +2576,7 @@ const App = () => {
                   {[
                     ['updated', 'pushed (first cupping for this Sample ID)'],
                     ['archived', 'pushed (previous cupping archived to Cupping Log)'],
+                    ['unchanged', 'already up to date — nothing to change'],
                     ['notFound', 'no matching Sample ID found in AirTable'],
                     ['ambiguous', 'multiple AirTable rows matched — skipped'],
                     ['invalid', 'invalid data — skipped'],

@@ -93,7 +93,9 @@ already has Score/notes gets cupped again, its current Score/Cup Profile/Negativ
 Notes/Cupping Date get copied into a new Cupping Log row *before* Master Sheet is overwritten with
 the new cupping. Only Sample IDs cupped more than once ever have a row here. The table's "Sample"
 field links back to Master Sheet, which automatically gained a reverse "Cupping Log" link column
-showing each sample's archived history inline - no separate lookup field was needed.
+showing each sample's archived history inline. The Sample link chip shows Master Sheet's primary field
+(ID - Osito), which is blank for samples without an Osito ID ("Unnamed record"), so the table also has
+lookup columns Coffee (Lot Name), Sample ID and Osito ID.
 
 Cup Profile/Negative Notes on the new table start with the same choice lists Master Sheet had at
 creation time; AirTable's write API accepts `typecast: true` to auto-add any new descriptor the app
@@ -118,7 +120,9 @@ its Score/Other Notes/Date Cupped are all empty, update in place; if not, copy t
 a new Cupping Log row *before* overwriting Master Sheet with the new one. Uses the normal POST +
 receipt-poll pattern already used for primary sync, since Apps Script POST responses aren't directly
 readable; the client reuses the generic `action: 'receipt'` GET handler to collect the per-sample
-results (`updated`/`archived`/`notFound`/`ambiguous`/`invalid`/`error`).
+results (`updated`/`archived`/`unchanged`/`notFound`/`ambiguous`/`invalid`/`error`). Re-pushing a cupping that
+already matches Master Sheet exactly (tag order ignored) returns `unchanged` and writes nothing, so
+pushing the same session twice never creates duplicate Cupping Log rows.
 
 **Required before this works live**: the `AIRTABLE_API_TOKEN` Script Property's AirTable Personal
 Access Token needs its scope widened from read-only (`data.records:read`) to also include
