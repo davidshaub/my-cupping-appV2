@@ -170,6 +170,14 @@ post({ action: 'pushCupping', requestId: 'req-push-pdf-bad-001', password: 'C0ff
 assert.match(receiptFor('req-push-pdf-bad-001').error, /invalidSession/);
 assert.equal(requests.length, 0);
 
+// A realistic batch (3 PDFs, ~1.7 MB of base64) must not trip the 1 MB cap that protects session uploads.
+requests = [];
+const bigPdf = Buffer.alloc(420000, 7).toString('base64');
+mockRecords = [{ id: 'recBig', fields: {} }];
+post({ action: 'pushCupping', requestId: 'req-push-big-body-01', password: 'C0ff33', samples: ['7001', '7002', '7003'].map(id => withPdf(id, { pdfBase64: bigPdf })) });
+assert.deepEqual(receiptFor('req-push-big-body-01').results.map(r => r.status), ['updated', 'updated', 'updated']);
+assert.equal(requests.filter(isUpload).length, 3);
+
 // An AirTable-side failure (bad/expired token, wrong scope, etc.) reports a generic 'error' status
 // to the client, but the REAL reason - AirTable's own response - must land in the Executions log,
 // not disappear silently. This is what the user actually hit: 15 generic "error"s with no detail

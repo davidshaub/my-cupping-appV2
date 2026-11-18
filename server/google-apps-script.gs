@@ -395,8 +395,11 @@ function doPost(event) {
   let body, lock;
   try {
     const text = event.postData.contents;
-    if (text.length > 1000000) throw new Error('sessionTooLarge');
+    // Session uploads stay capped at 1 MB; a cupping push carries base64 PDFs (up to AIRTABLE_PDF_MAX_BASE64 each,
+    // 3 per batch), so it gets a larger cap. Every sample is still individually validated.
+    if (text.length > 21000000) throw new Error('sessionTooLarge');
     body = JSON.parse(text);
+    if (body.action !== 'pushCupping' && text.length > 1000000) throw new Error('sessionTooLarge');
     if (body.protocol === 'collaboration-v1') return collaborationPost_(body);
     if (body.action === 'pushCupping') return pushCuppingPost_(body);
     validateBatch_(body);
