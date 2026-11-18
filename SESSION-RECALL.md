@@ -62,7 +62,7 @@ against found/missing/ambiguous/unconfigured AirTable responses).
 
 Not yet built, flagged for later: writing cupping scores/notes back into this AirTable base after a
 session - that would need write access (a different trust model than this read-only lookup). The
-schema decision is now resolved (see "Cupping Log table" below); the write logic itself (the push
+schema decision is now resolved (see "Historical Cuppings table" below); the write logic itself (the push
 button, the update-vs-archive branch, the lock around it) is not yet implemented.
 
 ## Osito Mode toggle
@@ -85,14 +85,14 @@ numeric position in the hand-coded markup - those are now computed as `idOffset 
 1 when Osito Mode is on, 0 when off) rather than literal numbers, so turning the toggle off removes
 Sample ID's column entirely (not just hides it) without renumbering anything else.
 
-## Cupping Log table
+## Historical Cuppings table
 
 AirTable's Master Sheet always holds only the *most recent* cupping for a Sample ID. A new "Cupping
 Log" table (`tblNo6waRocS6ySb0` in the same base) holds superseded ones: when a Sample ID that
 already has Score/notes gets cupped again, its current Score/Cup Profile/Negative Notes/Other
-Notes/Cupping Date get copied into a new Cupping Log row *before* Master Sheet is overwritten with
+Notes/Cupping Date get copied into a new Historical Cuppings row *before* Master Sheet is overwritten with
 the new cupping. Only Sample IDs cupped more than once ever have a row here. The table's "Sample"
-field links back to Master Sheet, which automatically gained a reverse "Cupping Log" link column
+field links back to Master Sheet, which automatically gained a reverse "Historical Cuppings" link column
 showing each sample's archived history inline. The Sample link chip shows Master Sheet's primary field
 (ID - Osito), which is blank for samples without an Osito ID ("Unnamed record"), so the table also has
 lookup columns Coffee (Lot Name), Sample ID and Osito ID.
@@ -117,12 +117,12 @@ just this app's own data. One `LockService` lock covers the whole batch so two n
 pushes for the same Sample ID can't both see "nothing there yet" and both skip archiving. The
 update-vs-archive branch matches the design above exactly: look up the Sample ID's current row: if
 its Score/Other Notes/Date Cupped are all empty, update in place; if not, copy that old cupping into
-a new Cupping Log row *before* overwriting Master Sheet with the new one. Uses the normal POST +
+a new Historical Cuppings row *before* overwriting Master Sheet with the new one. Uses the normal POST +
 receipt-poll pattern already used for primary sync, since Apps Script POST responses aren't directly
 readable; the client reuses the generic `action: 'receipt'` GET handler to collect the per-sample
 results (`updated`/`archived`/`unchanged`/`notFound`/`ambiguous`/`invalid`/`error`). Re-pushing a cupping that
 already matches Master Sheet exactly (tag order ignored) returns `unchanged` and writes nothing, so
-pushing the same session twice never creates duplicate Cupping Log rows.
+pushing the same session twice never creates duplicate Historical Cuppings rows.
 
 **Required before this works live**: the `AIRTABLE_API_TOKEN` Script Property's AirTable Personal
 Access Token needs its scope widened from read-only (`data.records:read`) to also include
@@ -174,3 +174,18 @@ Do not delete Session Codes: this does not realign the coffee fields and would i
 The repair recovers coffee order from stored positions or matching displaced visible records. If a legacy session's order cannot be recovered, it restores the original coffee numbering and lists that session in `originalNumberingRestoredFor` in the execution log. Names, scores, and notes still come from the stored snapshot. Invalid identities or ambiguous original numbering stop the repair before any writes.
 
 Uploads now expand the standard sheet filter across every column, including hidden IDs and Session Code, and store order inside App Data as well. Use that full-width filter for sorting. Existing custom filter views or manually selected ranges are not updated: recreate those across all columns before using them. Do not sort only a subset of columns. The repair function is editor-only; it is not exposed through the public web endpoint.
+
+## Cupper + Lab Summary PDF on push
+
+Each pushed sample also carries its **Cupper** (the sample's/session's cupper, else the device's saved
+name) and a one-coffee PDF (same builder as History's per-coffee PDF, ~0.4 MB). The Apps Script uploads
+the PDF straight into Master Sheet's **Lab Summary** attachment field via AirTable's
+`content.airtable.com/.../uploadAttachment` (base64, 5 MB cap; no public hosting). Rules:
+- Master Sheet holds only the newest PDF. When a changed cupping is pushed, the old Cupper + Lab Summary
+  PDF are copied into the new **Historical Cuppings** row (AirTable re-fetches the file from its URL),
+  Master's Lab Summary is cleared, and the new PDF is uploaded last.
+- A cupping identical to what's there is never archived, but a missing PDF or Cupper is still filled in
+  (result "missing PDF/Cupper added"). Cupper is not part of the "did the cupping change" comparison.
+- A failed upload reports `pdfFailed`; the scores were already saved, and pushing again retries the PDF.
+- The client pushes in batches of 3 (`PUSH_BATCH_SIZE`) and waits up to ~90 s per batch for the receipt.
+- Redeploying the Apps Script is required for any change here (same /exec deployment, new version).

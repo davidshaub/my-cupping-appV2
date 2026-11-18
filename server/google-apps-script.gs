@@ -8,14 +8,18 @@ const LOT_SOURCE_SPREADSHEET = '1hyfuTZSRZP1SQc5c-pQ3MpfRS_lJazK9Nww6HFvOskE';
 const LOT_SOURCE_TAB = 1244711014;
 const AIRTABLE_BASE_ID = 'appb33eKqdsHn03CM';
 const AIRTABLE_SAMPLE_TABLE = 'tbl9SXWK6ItEaWTbt';
-const AIRTABLE_CUPPING_LOG_TABLE = 'tblNo6waRocS6ySb0';
+const AIRTABLE_HISTORY_TABLE = 'tblNo6waRocS6ySb0';
 // Maps this app's own sample fields to the AirTable Master Sheet's field names. Add an entry here
 // (and a line in lookupSample_ below) to pull in more columns later - everything else stays the same.
 const AIRTABLE_SAMPLE_FIELD_MAP = { ositoId: 'ID - Osito', lotName: 'Lot Name', sampleType: 'Sample Type', moisture: 'Moisture', waterActivity: 'aW', country: 'Country', roastId: 'Roast ID', processing: 'Processing' };
 // Master Sheet always holds only the MOST RECENT cupping for a Sample ID. If one is already there
-// when a new cupping is pushed, it gets archived to the Cupping Log table first, then Master Sheet
+// when a new cupping is pushed, it gets archived to the Historical Cuppings table first, then Master Sheet
 // is overwritten - never the other way around, and never silently dropped.
 const AIRTABLE_CUPPING_FIELDS = ['Score', 'Cup Profile', 'Negative Notes', 'Other Notes', 'Date Cupped'];
+// Written/read alongside the cupping but never part of "did the cupping change?": who cupped it, and the
+// one-coffee Lab Summary PDF (Master Sheet holds only the newest; the old one moves to Historical Cuppings).
+const AIRTABLE_LAB_SUMMARY_FIELD_ID = 'fld6yyi9zeHY8u2sE';
+const AIRTABLE_PDF_MAX_BASE64 = 6600000; // AirTable's direct upload caps a file at 5 MB (base64 is ~4/3 larger)
 
 // Read-only, exact-ID lookup against the AirTable Master Sheet, keyed by its unique Sample ID
 // (an autoNumber - unlike Osito ID, which repeats across a coffee's several samples). The API
@@ -78,6 +82,9 @@ function validateCuppingPush_(sample) {
   ['cupProfile', 'negativeNotes'].forEach(key => { if (!Array.isArray(sample[key]) || sample[key].length > 150 || sample[key].some(tag => typeof tag !== 'string' || tag.length > 120)) throw new Error('invalidSession'); });
   if (typeof sample.otherText !== 'string' || sample.otherText.length > 6000) throw new Error('invalidSession');
   if (sample.cuppingDate != null && typeof sample.cuppingDate !== 'string') throw new Error('invalidSession');
+  if (sample.cupper != null && (typeof sample.cupper !== 'string' || sample.cupper.length > 80)) throw new Error('invalidSession');
+  if (sample.pdfBase64 != null && (typeof sample.pdfBase64 !== 'string' || sample.pdfBase64.length > AIRTABLE_PDF_MAX_BASE64 || !/^[A-Za-z0-9+\/=]+$/.test(sample.pdfBase64))) throw new Error('invalidSession');
+  if (sample.pdfFilename != null && (typeof sample.pdfFilename !== 'string' || sample.pdfFilename.length > 120)) throw new Error('invalidSession');
 }
 
 // Same value regardless of how AirTable returns it: tag lists compare as sets (order doesn't matter),
@@ -94,17 +101,19 @@ function airtableFieldEqual_(existing, incoming) {
 
 // Looks up the Sample ID's current AirTable row. If the cupping being pushed is identical to what's
 // already there, nothing is written (pushing the same session twice must not create an archive copy of
-// itself). Otherwise, if a prior cupping exists it is archived to the Cupping Log table (linked back to
+// itself). Otherwise, if a prior cupping exists it is archived to the Historical Cuppings table (linked back to
 // this record) before Master Sheet is overwritten - Master Sheet only ever holds the most recent cupping.
 function pushOneCupping_(sample, token) {
   const id = String(sample.labSampleId).trim();
   const formula = encodeURIComponent('{Sample ID}=' + Number(id));
-  const fieldParams = AIRTABLE_CUPPING_FIELDS.map(name => 'fields%5B%5D=' + encodeURIComponent(name)).join('&');
+  const fieldParams = AIRTABLE_CUPPING_FIELDS.concat(['Cupper', 'Lab Summary']).map(name => 'fields%5B%5D=' + encodeURIComponent(name)).join('&');
   const listUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_SAMPLE_TABLE + '?filterByFormula=' + formula + '&' + fieldParams;
   const records = airtableRequest_('get', listUrl, token).records;
   if (!records.length) return { labSampleId: id, status: 'notFound' };
   if (records.length > 1) return { labSampleId: id, status: 'ambiguous' };
   const record = records[0], existing = record.fields;
+  const existingPdfs = Array.isArray(existing['Lab Summary']) ? existing['Lab Summary'] : [];
+  const cupper = sample.cupper ? String(sample.cupper).trim() : '';
   // Every cupping field is always written: one the new cupping doesn't have is cleared, so Master
   // Sheet holds exactly the newest cupping and never a mix of old and new.
   const newFields = {
@@ -114,8 +123,22 @@ function pushOneCupping_(sample, token) {
     'Other Notes': sample.otherText ? sample.otherText : null,
     'Date Cupped': sample.cuppingDate ? sample.cuppingDate : null
   };
-  if (Object.keys(newFields).every(key => airtableFieldEqual_(existing[key], newFields[key]))) return { labSampleId: id, status: 'unchanged' };
-  const hasExisting = existing.Score != null || Boolean((existing['Other Notes'] || '').trim()) || Boolean(existing['Date Cupped']);
+  const patchUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_SAMPLE_TABLE + '/' + record.id;
+  if (Object.keys(newFields).every(key => airtableFieldEqual_(existing[key], newFields[key]))) {
+    // Same cupping already there: never archive it against itself, but DO fill in anything missing - a
+    // Cupper that was never recorded, or a Lab Summary PDF that was never attached.
+    const fill = {};
+    if (cupper && !airtableFieldEqual_(existing.Cupper, cupper)) fill.Cupper = cupper;
+    const needsPdf = Boolean(sample.pdfBase64) && !existingPdfs.length;
+    if (!Object.keys(fill).length && !needsPdf) return { labSampleId: id, status: 'unchanged' };
+    if (Object.keys(fill).length) airtableRequest_('patch', patchUrl, token, { fields: fill, typecast: true });
+    if (needsPdf) {
+      try { uploadLabSummary_(record.id, sample, token); }
+      catch (error) { console.log('Lab Summary upload failed for Sample ID ' + id + ': ' + String(error)); return { labSampleId: id, status: 'pdfFailed', detail: String(error && error.message || error).slice(0, 200) }; }
+    }
+    return { labSampleId: id, status: 'filled' };
+  }
+  const hasExisting = existing.Score != null || Boolean((existing['Other Notes'] || '').trim()) || Boolean(existing['Date Cupped']) || existingPdfs.length > 0;
   if (hasExisting) {
     const archiveFields = { Sample: [record.id] };
     if (existing.Score != null) archiveFields.Score = existing.Score;
@@ -123,12 +146,30 @@ function pushOneCupping_(sample, token) {
     if (existing['Negative Notes']) archiveFields['Negative Notes'] = existing['Negative Notes'];
     if (existing['Other Notes']) archiveFields['Other Notes'] = existing['Other Notes'];
     if (existing['Date Cupped']) archiveFields['Cupping Date'] = existing['Date Cupped'];
-    const createUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_CUPPING_LOG_TABLE;
+    if (existing.Cupper) archiveFields.Cupper = existing.Cupper;
+    // AirTable copies the file itself from the attachment's current URL, so the old PDF is preserved
+    // in the archive row before Master Sheet's copy is cleared below.
+    if (existingPdfs.length) archiveFields['Lab Summary'] = existingPdfs.map(file => ({ url: file.url, filename: file.filename }));
+    const createUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_HISTORY_TABLE;
     airtableRequest_('post', createUrl, token, { records: [{ fields: archiveFields }], typecast: true });
   }
-  const patchUrl = 'https://api.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + AIRTABLE_SAMPLE_TABLE + '/' + record.id;
+  newFields.Cupper = cupper || null;
+  newFields['Lab Summary'] = [];
   airtableRequest_('patch', patchUrl, token, { fields: newFields, typecast: true });
-  return { labSampleId: id, status: hasExisting ? 'archived' : 'updated' };
+  const status = hasExisting ? 'archived' : 'updated';
+  if (sample.pdfBase64) {
+    try { uploadLabSummary_(record.id, sample, token); }
+    catch (error) { console.log('Lab Summary upload failed for Sample ID ' + id + ': ' + String(error)); return { labSampleId: id, status: 'pdfFailed', detail: String(error && error.message || error).slice(0, 200) }; }
+  }
+  return { labSampleId: id, status };
+}
+
+// AirTable's direct-upload endpoint takes the file as base64 in the request body (no public URL needed)
+// and APPENDS it to the attachment field, which is why callers clear the field first when replacing.
+function uploadLabSummary_(recordId, sample, token) {
+  const filename = String(sample.pdfFilename || 'Lab Summary.pdf').replace(/[^\w .()-]/g, '_');
+  const url = 'https://content.airtable.com/v0/' + AIRTABLE_BASE_ID + '/' + recordId + '/' + AIRTABLE_LAB_SUMMARY_FIELD_ID + '/uploadAttachment';
+  airtableRequest_('post', url, token, { contentType: 'application/pdf', filename, file: sample.pdfBase64 });
 }
 
 // Writing to AirTable needs its own password check (same Panel Report password, checked server-side

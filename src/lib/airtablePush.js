@@ -38,3 +38,14 @@ export const buildCuppingPushPayload = sample => {
     ].filter(Boolean).join('; ')
   };
 };
+
+// Pushes go in small batches because each sample carries a PDF that the Apps Script uploads to AirTable.
+export const PUSH_BATCH_SIZE = 3;
+// AirTable's direct upload caps a file at 5 MB; base64 is ~4/3 the raw size. Bigger PDFs are skipped, not sent.
+export const MAX_PUSH_PDF_BASE64 = 6_600_000;
+
+export const bytesToBase64 = bytes => {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + 0x8000));
+  return btoa(binary);
+};

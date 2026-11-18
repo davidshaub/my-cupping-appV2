@@ -40,7 +40,7 @@ import PanelPasswordDialog from './components/PanelPasswordDialog';
 import useLotLookup from './hooks/useLotLookup';
 import useSampleLookup from './hooks/useSampleLookup';
 import { acceptsPanelPassword } from './lib/panelAccess';
-import { buildCuppingPushPayload, canPushSample, toIsoDate } from './lib/airtablePush';
+import { buildCuppingPushPayload, bytesToBase64, canPushSample, MAX_PUSH_PDF_BASE64, PUSH_BATCH_SIZE, toIsoDate } from './lib/airtablePush';
 import HandsLogo from '../assets/hands.png';
 import {
   translate,
@@ -261,20 +261,40 @@ const App = () => {
       try {
         if (!await acceptsPanelPassword(password)) throw new Error('Incorrect Panel Report password.');
         setOsitoPassword(password);
-        const payloadSamples = samples.filter(canPushSample).map(sample => ({ ...buildCuppingPushPayload(sample), cuppingDate: toIsoDate(sessionStartTime) }));
-        const requestId = crypto.randomUUID();
-        try {
-          await fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', credentials: 'omit', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'pushCupping', requestId, password, samples: payloadSamples }), signal: AbortSignal.timeout(25000) });
-        } catch { /* An opaque no-cors POST can appear to fail even when it landed - the receipt poll below is authoritative. */ }
-        let outcome = null;
-        for (let attempt = 0; attempt < 8 && !outcome; attempt++) {
-          const receipt = await readScriptResponse({ action: 'receipt', requestId });
-          if (receipt.results) outcome = receipt.results;
-          else if (receipt.error) throw new Error(receipt.error);
-          else if (!receipt.pending) throw new Error('sharedUnavailable');
-          else await new Promise(resolve => setTimeout(resolve, 1500));
+        const reportDate = reportDateWithCode(sessionStartTime, activeSavedSession);
+        const pushable = samples.map((sample, index) => ({ sample, index })).filter(({ sample }) => canPushSample(sample));
+        const usedNames = new Map();
+        const payloadSamples = [];
+        for (const { sample, index } of pushable) {
+          const payload = { ...buildCuppingPushPayload(sample), cuppingDate: toIsoDate(sessionStartTime), cupper: String(sample.cupper || activeSavedSession?.cupper || getCupper() || '').trim().slice(0, 80) };
+          const pdfFilename = uniquePdfFilename(sample, index, usedNames);
+          try {
+            // The same one-coffee PDF the History screen offers, attached to this sample's Lab Summary.
+            const { buildCombinedReportPdf } = await import('./lib/pdfReport');
+            const bytes = await buildCombinedReportPdf([sample], { sessionStartTime: reportDate, language, logoSrc: HandsLogo, title: pdfFilename.replace(/\.pdf$/, '') });
+            const pdfBase64 = bytesToBase64(bytes);
+            if (pdfBase64.length <= MAX_PUSH_PDF_BASE64) { payload.pdfBase64 = pdfBase64; payload.pdfFilename = pdfFilename; }
+          } catch (pdfError) { console.error(pdfError); /* the scores still push; the PDF is filled in by the next push */ }
+          payloadSamples.push(payload);
         }
-        if (!outcome) throw new Error('sharedUnavailable');
+        // PDFs make each request large and slow (each is uploaded to AirTable), so push in small batches.
+        const outcome = [];
+        for (let offset = 0; offset < payloadSamples.length; offset += PUSH_BATCH_SIZE) {
+          const requestId = crypto.randomUUID();
+          try {
+            await fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', credentials: 'omit', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'pushCupping', requestId, password, samples: payloadSamples.slice(offset, offset + PUSH_BATCH_SIZE) }), signal: AbortSignal.timeout(60000) });
+          } catch { /* An opaque no-cors POST can appear to fail even when it landed - the receipt poll below is authoritative. */ }
+          let batch = null;
+          for (let attempt = 0; attempt < 60 && !batch; attempt++) {
+            const receipt = await readScriptResponse({ action: 'receipt', requestId });
+            if (receipt.results) batch = receipt.results;
+            else if (receipt.error) throw new Error(receipt.error);
+            else if (!receipt.pending) throw new Error('sharedUnavailable');
+            else await new Promise(resolve => setTimeout(resolve, 1500));
+          }
+          if (!batch) throw new Error('sharedUnavailable');
+          outcome.push(...batch);
+        }
         setAirtablePush({ stage: 'result', results: outcome });
       } catch (error) {
         const message = error.message || 'Push failed.';
@@ -2575,8 +2595,10 @@ const App = () => {
                 <ul className="text-sm text-stone-700 space-y-1">
                   {[
                     ['updated', 'pushed (first cupping for this Sample ID)'],
-                    ['archived', 'pushed (previous cupping archived to Cupping Log)'],
+                    ['archived', 'pushed (previous cupping and PDF moved to Historical Cuppings)'],
+                    ['filled', 'already up to date — missing PDF/Cupper added'],
                     ['unchanged', 'already up to date — nothing to change'],
+                    ['pdfFailed', 'scores saved, but the PDF upload failed — push again to retry'],
                     ['notFound', 'no matching Sample ID found in AirTable'],
                     ['ambiguous', 'multiple AirTable rows matched — skipped'],
                     ['invalid', 'invalid data — skipped'],

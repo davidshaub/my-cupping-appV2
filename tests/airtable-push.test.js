@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeSamples } from '../src/lib/cupping.js';
-import { buildCuppingPushPayload, canPushSample, labSampleIdOf, toIsoDate } from '../src/lib/airtablePush.js';
+import { buildCuppingPushPayload, bytesToBase64, canPushSample, labSampleIdOf, toIsoDate } from '../src/lib/airtablePush.js';
 
 test('only a sample with a numeric Sample ID can be pushed', () => {
   const [sample] = initializeSamples(1);
@@ -47,4 +47,9 @@ test('the session start time becomes a plain YYYY-MM-DD date, with today as the 
   assert.equal(toIsoDate('17/11/2026, 18:00:41', now), '2026-11-20', 'a day-first string JS cannot parse falls back to today');
   assert.equal(toIsoDate(null, now), '2026-11-20');
   assert.equal(toIsoDate('', now), '2026-11-20');
+});
+
+test('bytesToBase64 round-trips large binary data (PDF bytes) without overflowing the call stack', () => {
+  const bytes = Uint8Array.from({ length: 300_000 }, (_, i) => (i * 31) % 256);
+  assert.deepEqual(new Uint8Array(Buffer.from(bytesToBase64(bytes), 'base64')), bytes);
 });

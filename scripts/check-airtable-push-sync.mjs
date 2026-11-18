@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 
 let requests = [], mockRecords = [], properties = { AIRTABLE_API_TOKEN: 'test-token' }, logs = [];
-let locked = false, lockCount = 0, failStatus = null;
+let locked = false, lockCount = 0, failStatus = null, failUrl = null;
 const runtime = vm.createContext({
   console: { log: message => logs.push(message) },
   PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] ?? null }) },
@@ -17,6 +17,7 @@ const runtime = vm.createContext({
       assert.equal(locked, true, 'every AirTable call must happen while the batch lock is held');
       const method = (options.method || 'get').toLowerCase();
       requests.push({ url, method, body: options.payload ? JSON.parse(options.payload) : null });
+      if (failUrl && failUrl.test(url)) return { getResponseCode: () => 500, getContentText: () => JSON.stringify({ error: { type: 'SERVER_ERROR', message: 'upload exploded' } }) };
       if (failStatus) return { getResponseCode: () => failStatus, getContentText: () => JSON.stringify({ error: { type: 'AUTHENTICATION_REQUIRED', message: 'Invalid authentication token' } }) };
       if (method === 'get') return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ records: mockRecords }) };
       if (method === 'post') return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ records: [{ id: 'recLogNew' }] }) };
@@ -48,17 +49,17 @@ assert.deepEqual(receiptFor('req-push-fresh-0001').results, [{ labSampleId: '383
 assert.equal(requests.filter(r => r.method === 'post').length, 0, 'no archive row for a first cupping');
 const patchCall = requests.find(r => r.method === 'patch');
 assert.match(patchCall.url, /\/recA$/);
-assert.deepEqual(patchCall.body.fields, { Score: 87.25, 'Cup Profile': ['Floral', 'Chocolate'], 'Negative Notes': [], 'Other Notes': 'Clean finish.', 'Date Cupped': '2026-11-20' });
+assert.deepEqual(patchCall.body.fields, { Score: 87.25, 'Cup Profile': ['Floral', 'Chocolate'], 'Negative Notes': [], 'Other Notes': 'Clean finish.', 'Date Cupped': '2026-11-20', Cupper: null, 'Lab Summary': [] });
 assert.equal(patchCall.body.typecast, true);
 
-// A Sample ID that already has a cupping archives the OLD data to Cupping Log (linked back to the
+// A Sample ID that already has a cupping archives the OLD data to Historical Cuppings (linked back to the
 // Master Sheet record) BEFORE Master Sheet is overwritten with the NEW cupping.
 requests = [];
 mockRecords = [{ id: 'recB', fields: { Score: 84, 'Cup Profile': ['Earthy'], 'Other Notes': 'Old notes.', 'Date Cupped': '2026-01-01' } }];
 post({ action: 'pushCupping', requestId: 'req-push-repeat-0001', password: 'C0ff33', samples: [samplePayload('7445')] });
 assert.deepEqual(receiptFor('req-push-repeat-0001').results, [{ labSampleId: '7445', status: 'archived' }]);
 const createCall = requests.find(r => r.method === 'post');
-assert.match(createCall.url, /tblNo6waRocS6ySb0$/);
+assert.match(createCall.url, /tblNo6waRocS6ySb0$/);  // table id is unchanged by the rename to Historical Cuppings
 assert.deepEqual(createCall.body.records[0].fields, { Sample: ['recB'], Score: 84, 'Cup Profile': ['Earthy'], 'Other Notes': 'Old notes.', 'Cupping Date': '2026-01-01' });
 const patchCall2 = requests.find(r => r.method === 'patch');
 assert.deepEqual(patchCall2.body.fields.Score, 87.25, 'Master Sheet now holds the NEW cupping, not the old one');
@@ -107,6 +108,68 @@ assert.deepEqual(receiptFor('req-push-stale-00001').results, [{ labSampleId: '70
 assert.deepEqual(requests.find(r => r.method === 'patch').body.fields['Negative Notes'], [], 'old Negative Notes cleared from Master Sheet');
 assert.deepEqual(requests.find(r => r.method === 'post').body.records[0].fields['Negative Notes'], ['Papery'], 'and preserved in the archive');
 
+// ---- Cupper + Lab Summary PDF ----
+const pdf = Buffer.from('%PDF-1.4 fake').toString('base64');
+const withPdf = (id, extra = {}) => samplePayload(id, { cupper: 'Dana', pdfBase64: pdf, pdfFilename: 'Coffee.pdf', ...extra });
+const isUpload = r => /content\.airtable\.com/.test(r.url);
+
+// First cupping: Cupper is written and the PDF is uploaded straight to the Lab Summary field.
+requests = [];
+mockRecords = [{ id: 'recP1', fields: {} }];
+post({ action: 'pushCupping', requestId: 'req-push-pdf-fresh-1', password: 'C0ff33', samples: [withPdf('7001')] });
+assert.deepEqual(receiptFor('req-push-pdf-fresh-1').results, [{ labSampleId: '7001', status: 'updated' }]);
+assert.equal(requests.find(r => r.method === 'patch').body.fields.Cupper, 'Dana');
+const upload = requests.find(isUpload);
+assert.match(upload.url, /\/recP1\/fld6yyi9zeHY8u2sE\/uploadAttachment$/);
+assert.deepEqual(upload.body, { contentType: 'application/pdf', filename: 'Coffee.pdf', file: pdf });
+assert.ok(requests.indexOf(requests.find(r => r.method === 'patch')) < requests.indexOf(upload), 'old PDF cleared before the new one is added');
+
+// Identical cupping that is simply missing its PDF: the PDF (and Cupper) get filled in, nothing is archived.
+requests = [];
+const sameCupping = { Score: 87.25, 'Cup Profile': ['Floral', 'Chocolate'], 'Other Notes': 'Clean finish.', 'Date Cupped': '2026-11-20' };
+mockRecords = [{ id: 'recP2', fields: { ...sameCupping } }];
+post({ action: 'pushCupping', requestId: 'req-push-pdf-fill-01', password: 'C0ff33', samples: [withPdf('7001')] });
+assert.deepEqual(receiptFor('req-push-pdf-fill-01').results, [{ labSampleId: '7001', status: 'filled' }]);
+assert.equal(requests.filter(r => r.method === 'post' && !isUpload(r)).length, 0, 'no archive row for an identical cupping');
+assert.deepEqual(requests.find(r => r.method === 'patch').body.fields, { Cupper: 'Dana' }, 'only the missing Cupper is written');
+assert.ok(requests.some(isUpload), 'the missing PDF is uploaded');
+
+// Identical cupping with its PDF and Cupper already there: nothing at all is written.
+requests = [];
+mockRecords = [{ id: 'recP3', fields: { ...sameCupping, Cupper: 'Dana', 'Lab Summary': [{ id: 'att1', url: 'https://dl.airtable.com/old.pdf', filename: 'old.pdf' }] } }];
+post({ action: 'pushCupping', requestId: 'req-push-pdf-same-01', password: 'C0ff33', samples: [withPdf('7001')] });
+assert.deepEqual(receiptFor('req-push-pdf-same-01').results, [{ labSampleId: '7001', status: 'unchanged' }]);
+assert.deepEqual(requests.map(r => r.method), ['get']);
+
+// A genuinely new cupping moves the OLD Cupper + PDF into Historical Cuppings, then replaces them on Master Sheet.
+requests = [];
+mockRecords = [{ id: 'recP4', fields: { ...sameCupping, Cupper: 'Old Cupper', 'Lab Summary': [{ id: 'att1', url: 'https://dl.airtable.com/old.pdf', filename: 'old.pdf' }] } }];
+post({ action: 'pushCupping', requestId: 'req-push-pdf-new-001', password: 'C0ff33', samples: [withPdf('7001', { score: 90 })] });
+assert.deepEqual(receiptFor('req-push-pdf-new-001').results, [{ labSampleId: '7001', status: 'archived' }]);
+const archive = requests.find(r => r.method === 'post' && !isUpload(r));
+assert.equal(archive.body.records[0].fields.Cupper, 'Old Cupper');
+assert.deepEqual(archive.body.records[0].fields['Lab Summary'], [{ url: 'https://dl.airtable.com/old.pdf', filename: 'old.pdf' }]);
+const replace = requests.find(r => r.method === 'patch');
+assert.deepEqual([replace.body.fields.Cupper, replace.body.fields['Lab Summary']], ['Dana', []]);
+const order = requests.map(r => (isUpload(r) ? 'upload' : r.method === 'post' ? 'archive' : r.method));
+assert.deepEqual(order, ['get', 'archive', 'patch', 'upload'], 'archive, then overwrite, then attach the new PDF');
+
+// A failed PDF upload never loses the scores, and is reported so the push can be retried.
+requests = []; failUrl = /content\.airtable\.com/;
+mockRecords = [{ id: 'recP5', fields: {} }];
+post({ action: 'pushCupping', requestId: 'req-push-pdf-fail-01', password: 'C0ff33', samples: [withPdf('7001')] });
+failUrl = null;
+const pdfFail = receiptFor("req-push-pdf-fail-01").results[0];
+assert.equal(pdfFail.status, "pdfFailed");
+assert.match(pdfFail.detail, /upload exploded/);
+assert.ok(requests.some(r => r.method === 'patch'), 'the cupping itself was still written');
+
+// Anything that isn't base64 is rejected before AirTable is touched.
+requests = [];
+post({ action: 'pushCupping', requestId: 'req-push-pdf-bad-001', password: 'C0ff33', samples: [withPdf('7001', { pdfBase64: 'not base64!!' })] });
+assert.match(receiptFor('req-push-pdf-bad-001').error, /invalidSession/);
+assert.equal(requests.length, 0);
+
 // An AirTable-side failure (bad/expired token, wrong scope, etc.) reports a generic 'error' status
 // to the client, but the REAL reason - AirTable's own response - must land in the Executions log,
 // not disappear silently. This is what the user actually hit: 15 generic "error"s with no detail
@@ -121,4 +184,4 @@ assert.ok(logs.some(line => line.includes('pushOneCupping_ failed for Sample ID 
 assert.ok(logs.some(line => line.includes('401') && line.includes('AUTHENTICATION_REQUIRED')), "AirTable's own error detail is logged");
 failStatus = null;
 
-console.log('Passed: update-in-place vs archive-then-overwrite, archive always precedes overwrite, password check, batch lock held for every AirTable call, missing/ambiguous reporting, input validation, request dedup, identical re-pushes being no-ops, and that AirTable-side failures are logged with real detail instead of a bare generic status.');
+console.log('Passed: update-in-place vs archive-then-overwrite, archive always precedes overwrite, password check, batch lock held for every AirTable call, missing/ambiguous reporting, input validation, request dedup, identical re-pushes being no-ops, Cupper + Lab Summary PDF upload/backfill/archive, and that AirTable-side failures are logged with real detail instead of a bare generic status.');
