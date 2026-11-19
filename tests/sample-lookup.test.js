@@ -45,3 +45,8 @@ test('lookup preserves manual edits, uses stable IDs regardless of row order, an
   assert.equal(applySampleLookup(samples, 'b', '1427', patch)[1].lotName, 'Sheet name');
   assert.equal(samples[0].lotName, 'Manual name');
 });
+
+test('supplier from AirTable is kept on the sample so it can be exported to the sheet', () => {
+  assert.deepEqual(sampleLookupPatch({ supplier: ' Long Miles ' }), { supplier: 'Long Miles' });
+  assert.deepEqual(sampleLookupPatch({ supplier: '' }), {});
+});

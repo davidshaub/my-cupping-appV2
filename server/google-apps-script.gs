@@ -11,7 +11,7 @@ const AIRTABLE_SAMPLE_TABLE = 'tbl9SXWK6ItEaWTbt';
 const AIRTABLE_HISTORY_TABLE = 'tblNo6waRocS6ySb0';
 // Maps this app's own sample fields to the AirTable Master Sheet's field names. Add an entry here
 // (and a line in lookupSample_ below) to pull in more columns later - everything else stays the same.
-const AIRTABLE_SAMPLE_FIELD_MAP = { ositoId: 'ID - Osito', lotName: 'Lot Name', sampleType: 'Sample Type', moisture: 'Moisture', waterActivity: 'aW', country: 'Country', roastId: 'Roast ID', processing: 'Processing' };
+const AIRTABLE_SAMPLE_FIELD_MAP = { ositoId: 'ID - Osito', lotName: 'Lot Name', sampleType: 'Sample Type', moisture: 'Moisture', waterActivity: 'aW', country: 'Country', roastId: 'Roast ID', processing: 'Processing', supplier: 'Supplier' };
 // Master Sheet always holds only the MOST RECENT cupping for a Sample ID. If one is already there
 // when a new cupping is pushed, it gets archived to the Historical Cuppings table first, then Master Sheet
 // is overwritten - never the other way around, and never silently dropped.
@@ -57,6 +57,8 @@ function lookupSample_(rawId) {
   if (Number.isFinite(roastId)) sample.roastId = String(roastId);
   const processing = fields[AIRTABLE_SAMPLE_FIELD_MAP.processing];
   if (typeof processing === 'string' && processing.trim()) sample.processing = processing.trim();
+  const supplier = fields[AIRTABLE_SAMPLE_FIELD_MAP.supplier];
+  if (typeof supplier === 'string' && supplier.trim()) sample.supplier = supplier.trim();
   return { status: 'found', id: trimmed, sample };
 }
 
@@ -352,7 +354,7 @@ function valuesForSample_(session, sample, index) {
   return {
     Cupper: sample.cupper || session.cupper || '',
     'Table Position': index + 1, Country: sample.country || '', Coffee: sample.lotName || '',
-    'Osito ID/REF#': sample.ositoId || '', 'Lab Sample ID': sample.labSampleId || '', 'Sample Type': sample.sampleType || '',
+    'Osito ID/REF#': sample.ositoId || '', 'Lab Sample ID': sample.labSampleId || '', 'Sample Type': sample.sampleType || '', Supplier: sample.supplier || '',
     Process: sample.processing === 'Other' ? sample.processingOther || 'Other' : sample.processing === 'Select One' ? '' : sample.processing || '',
     'Roast ID': sample.roastId || '', 'Date Cupped': session.startTime || session.date || '',
     Fragrance: scores.fragrance, Aroma: scores.aroma == null ? '' : scores.aroma, 'Frag/Aroma': average,

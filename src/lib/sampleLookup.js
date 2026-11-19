@@ -11,6 +11,7 @@ export const sampleLookupPatch = sample => {
   if (typeof sample.country === 'string' && sample.country.trim()) patch.country = sample.country.trim();
   if (typeof sample.roastId === 'string' && sample.roastId.trim()) patch.roastId = sample.roastId.trim();
   if (typeof sample.sampleType === 'string' && sample.sampleType.trim()) patch.sampleType = sample.sampleType.trim();
+  if (typeof sample.supplier === 'string' && sample.supplier.trim()) patch.supplier = sample.supplier.trim();
   if (typeof sample.processing === 'string') Object.assign(patch, normalizeProcessingLookup(sample.processing));
   if (typeof sample.moisture === 'string' && sample.moisture.trim()) patch.moisture = formatMoisture(sample.moisture);
   if (typeof sample.waterActivity === 'string' && sample.waterActivity.trim()) patch.waterActivity = formatWaterActivity(sample.waterActivity);

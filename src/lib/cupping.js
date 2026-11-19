@@ -208,6 +208,7 @@ export const initializeSamples = (count) =>
     noScore: false,
     ositoId: '',
     labSampleId: '',
+    supplier: '',
     lotName: '',
     country: '',
     sampleType: '',
@@ -466,6 +467,7 @@ export const importSessionFromCSV = (csvText, filename) => {
       noScore: idxScoringStatus >= 0 && String(row[idxScoringStatus] ?? '').trim().toLowerCase() === 'no score',
       ositoId: idxOsitoId >= 0 ? String(row[idxOsitoId] ?? '') : '',
       labSampleId: idxLabSampleId >= 0 ? String(row[idxLabSampleId] ?? '') : '',
+      supplier: '', // not in the CSV; the Sample ID lookup fills it in
       country: colIndex('Country') >= 0 ? String(row[colIndex('Country')] ?? '') : '',
       sampleType: colIndex('Sample Type') >= 0 ? String(row[colIndex('Sample Type')] ?? '') : '',
       roastId: colIndex('Roast ID') >= 0 ? String(row[colIndex('Roast ID')] ?? '') : '',

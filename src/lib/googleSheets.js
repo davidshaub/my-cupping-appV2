@@ -27,7 +27,7 @@ export const sampleSheetValues = (session, sample, index) => {
   return {
     'Table Position': index + 1,
     Country: sample.country || '', Coffee: sample.lotName || '', 'Osito ID/REF#': sample.ositoId || '',
-    'Sample Type': sample.sampleType || '', Process: sample.processing === 'Other' ? sample.processingOther || 'Other' : sample.processing === 'Select One' ? '' : sample.processing,
+    'Sample Type': sample.sampleType || '', Supplier: sample.supplier || '', Process: sample.processing === 'Other' ? sample.processingOther || 'Other' : sample.processing === 'Select One' ? '' : sample.processing,
     'Roast ID': sample.roastId || '', 'Date Cupped': session.startTime || session.date || '',
     Fragrance: scores.fragrance, Aroma: scores.aroma ?? '', 'Frag/Aroma': (scores.fragrance + (scores.aroma ?? scores.fragrance)) / 2,
     'Clean Cup': scores.cleanCup, Sweetness: scores.sweetness, Acidity: scores.acidity, Body: scores.body,

@@ -24,9 +24,9 @@ const doGetLookup = id => {
 // when exploring the schema through a different tool. Mocking the wrong shape here once let a
 // real bug (Sample Type silently never filling) slip past this very test, so these mocks must
 // match the actual REST API response, not whatever shape seemed convenient.
-respond(200, { records: [{ fields: { 'ID - Osito': 488.26, 'Lot Name': 'Esperanza', 'Sample Type': 'PSS', Moisture: 0.107, aW: 0.56, Country: 'Ethiopia', 'Roast ID': 4, Processing: 'Washed' } }] });
+respond(200, { records: [{ fields: { 'ID - Osito': 488.26, 'Lot Name': 'Esperanza', 'Sample Type': 'PSS', Moisture: 0.107, aW: 0.56, Country: 'Ethiopia', 'Roast ID': 4, Processing: 'Washed', Supplier: 'Long Miles' } }] });
 let result = doGetLookup('3835');
-assert.deepEqual(result.sampleLookup, { status: 'found', id: '3835', sample: { ositoId: '488.26', lotName: 'Esperanza', sampleType: 'PSS', moisture: '10.7', waterActivity: '0.56', country: 'Ethiopia', roastId: '4', processing: 'Washed' } });
+assert.deepEqual(result.sampleLookup, { status: 'found', id: '3835', sample: { ositoId: '488.26', lotName: 'Esperanza', sampleType: 'PSS', moisture: '10.7', waterActivity: '0.56', country: 'Ethiopia', roastId: '4', processing: 'Washed', supplier: 'Long Miles' } });
 assert.match(lastRequest.url, /appb33eKqdsHn03CM\/tbl9SXWK6ItEaWTbt/);
 assert.match(lastRequest.url, /filterByFormula=%7BSample%20ID%7D%3D3835/);
 assert.equal(lastRequest.options.headers.Authorization, 'Bearer test-token');
